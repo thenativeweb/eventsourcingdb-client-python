@@ -1,6 +1,10 @@
+from dataclasses import dataclass
+from typing import Optional
+
+
+@dataclass
 class ClientOptions:
-	def __init__(self, timeoutMilliseconds=None, accessToken=None, protocolVersion=None, maxTries=None):
-		self.timeoutMilliseconds = timeoutMilliseconds
-		self.accessToken = accessToken
-		self.protocolVersion = protocolVersion
-		self.maxTries = maxTries
+    timeoutMilliseconds: Optional[int]
+    accessToken: Optional[str]
+    protocolVersion: Optional[str]
+    maxTries: Optional[int]
