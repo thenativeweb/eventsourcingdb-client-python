@@ -1,6 +1,6 @@
 from .client_configuration import ClientConfiguration
 from .client_options import ClientOptions
-from .exceptions.server_exception import ServerException
+from .errors.server_error import ServerError
 from .http_client import HttpClient
 from http import HTTPStatus
 from typing import Optional
@@ -28,4 +28,4 @@ class Client:
         response = self.http_client.get('/path')
 
         if response.status_code != HTTPStatus.OK or response.text != 'OK':
-            raise ServerException('Received unexpected response.')
+            raise ServerError('Received unexpected response.')

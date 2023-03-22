@@ -1,5 +1,5 @@
 from .client import Client
-from .exceptions.client_exception import ClientException
+from .errors.client_error import ClientError
 from .util import url
 from http import HTTPStatus
 import requests
@@ -21,7 +21,7 @@ class HttpClient:
         if server_protocol_version is None:
             server_protocol_version = 'unknown version'
 
-        raise ClientException(
+        raise ClientError(
             f'Protocol version mismatch, server \'{server_protocol_version}\','
             f' client \'{self.database_client.configuration.protocolVersion}\'.'
         )
