@@ -1,9 +1,7 @@
 from .container import Container
+from .docker_command_failed_error import DockerCommandFailedError
 import subprocess
-
-
-class DockerCommandFailedError(Exception):
-	pass
+from typing import List
 
 
 class Image:
@@ -11,7 +9,7 @@ class Image:
 		self.__name: str = name
 		self.__tag: str = tag
 
-	def run(self, command: str, is_detached: bool, do_expose_ports: bool) -> Container:
+	def run(self, command: List[str], is_detached: bool, do_expose_ports: bool) -> Container:
 		docker_command = ['docker', 'run', '--rm']
 
 		if is_detached:
@@ -21,7 +19,7 @@ class Image:
 			docker_command.append('-P')
 
 		docker_command.append(self.__get_full_name())
-		docker_command.append(command)
+		docker_command.extend(command)
 
 		process = subprocess.Popen(
 				docker_command,
@@ -38,7 +36,7 @@ class Image:
 		return Container(container_id)
 
 	def build(self, directory: str) -> None:
-		docker_command = ['docker', 'build', '-t', {self.__get_full_name()}, directory]
+		docker_command = ['docker', 'build', '-t', self.__get_full_name(), directory]
 
 		process = subprocess.Popen(docker_command, stderr=subprocess.PIPE)
 		_, stderr = process.communicate()
