@@ -19,13 +19,13 @@ class Client:
 		else:
 			self.configuration: ClientConfiguration = ClientConfiguration(
 				base_url,
-				timeoutMilliseconds=options.timeoutMilliseconds,
+				timeoutSeconds=options.timeoutSeconds,
 				accessToken=options.accessToken,
 				protocolVersion=options.protocolVersion,
 				maxTries=options.maxTries
 			)
 
-		self.http_client: HttpClient = HttpClient(base_url, options.protocolVersion)
+		self.http_client: HttpClient = HttpClient(self.configuration)
 
 	def ping(self) -> None:
 		response = self.http_client.get('/ping')

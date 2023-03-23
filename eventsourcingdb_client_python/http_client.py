@@ -1,16 +1,18 @@
+from .client_configuration import ClientConfiguration
 from .errors.client_error import ClientError
 from .util import url
 from http import HTTPStatus
 import requests
 from requests.structures import CaseInsensitiveDict
+from typing import Dict
 
 Headers = CaseInsensitiveDict[str]
 
 
+
 class HttpClient:
-	def __init__(self, base_url: str, protocol_version: str):
-		self.__base_url: str = base_url
-		self.__protocol_version: str = protocol_version
+	def __init__(self, client_configuration: ClientConfiguration):
+		self.__client_configuration: ClientConfiguration = client_configuration
 
 	def __validate_protocol_version(self, http_status_code: int, headers: Headers) -> None:
 		if http_status_code != HTTPStatus.UNPROCESSABLE_ENTITY:
@@ -23,11 +25,25 @@ class HttpClient:
 
 		raise ClientError(
 			f'Protocol version mismatch, server \'{server_protocol_version}\','
-			f' client \'{self.__protocol_version}\'.'
+			f' client \'{self.__client_configuration.protocolVersion}\'.'
 		)
 
-	def get(self, path: str) -> requests.Response:
-		response = requests.get(url.join_segments(self.__base_url, path))
+	def __get_get_request_headers(self, with_authorization: bool) -> Dict[str, str]:
+		headers = {
+			'X-EventSourcingDB-Protocol-Version': self.__client_configuration.protocolVersion,
+		}
+
+		if with_authorization:
+			headers['Authorization'] = f'Bearer {self.__client_configuration.accessToken}'
+
+		return headers
+
+	def get(self, path: str, with_authorization: bool = True) -> requests.Response:
+		response = requests.get(
+			url.join_segments(self.__client_configuration.baseUrl, path),
+			timeout=self.__client_configuration.timeoutSeconds,
+			headers=self.__get_get_request_headers(with_authorization)
+		)
 
 		self.__validate_protocol_version(response.status_code, response.headers)
 
