@@ -1,4 +1,7 @@
-class RetryError(Exception):
+from ...errors.custom_error import CustomError
+
+
+class RetryError(CustomError):
 	def __init__(self):
 		self.__errors = []
 

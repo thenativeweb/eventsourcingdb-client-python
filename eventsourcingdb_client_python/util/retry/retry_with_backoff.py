@@ -17,6 +17,9 @@ class Retry:
 		self.cause = cause
 
 
+RetryResult = Union[Return[TReturn], Retry]
+
+
 def get_randomized_duration(
 		duration_milliseconds: int,
 		deviation_milliseconds: int
@@ -24,7 +27,7 @@ def get_randomized_duration(
 	return duration_milliseconds - deviation_milliseconds + round(random.random() * deviation_milliseconds * 2)
 
 
-def retry_with_backoff(tries: int, fn: Callable[[], Union[Return[TReturn], Retry]]) -> TReturn:
+def retry_with_backoff(tries: int, fn: Callable[[], RetryResult]) -> TReturn:
 	if tries < 1:
 		raise ValueError('Tries must be greater than 0')
 

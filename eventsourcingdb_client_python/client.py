@@ -12,18 +12,13 @@ class Client:
 			base_url: str,
 			options: ClientOptions = ClientOptions()
 	):
-		if options is None:
-			self.configuration: ClientConfiguration = ClientConfiguration(
-				base_url
-			)
-		else:
-			self.configuration: ClientConfiguration = ClientConfiguration(
-				base_url,
-				timeoutSeconds=options.timeoutSeconds,
-				accessToken=options.accessToken,
-				protocolVersion=options.protocolVersion,
-				maxTries=options.maxTries
-			)
+		self.configuration: ClientConfiguration = ClientConfiguration(
+			base_url,
+			timeoutSeconds=options.timeoutSeconds,
+			accessToken=options.accessToken,
+			protocolVersion=options.protocolVersion,
+			maxTries=options.maxTries
+		)
 
 		self.http_client: HttpClient = HttpClient(self.configuration)
 

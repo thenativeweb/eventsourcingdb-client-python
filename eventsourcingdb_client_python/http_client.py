@@ -1,13 +1,17 @@
 from .client_configuration import ClientConfiguration
 from .errors.client_error import ClientError
+from .errors.custom_error import CustomError
+from .errors.internal_error import InternalError
+from .errors.server_error import ServerError
 from .util import url
+from .util.retry.retry_with_backoff import retry_with_backoff, RetryResult, Return, Retry
+from .util.retry.retry_error import RetryError
 from http import HTTPStatus
 import requests
 from requests.structures import CaseInsensitiveDict
 from typing import Dict
 
 Headers = CaseInsensitiveDict[str]
-
 
 
 class HttpClient:
@@ -39,12 +43,33 @@ class HttpClient:
 		return headers
 
 	def get(self, path: str, with_authorization: bool = True) -> requests.Response:
-		response = requests.get(
-			url.join_segments(self.__client_configuration.baseUrl, path),
-			timeout=self.__client_configuration.timeoutSeconds,
-			headers=self.__get_get_request_headers(with_authorization)
-		)
+		try:
 
-		self.__validate_protocol_version(response.status_code, response.headers)
+			def execute_request() -> RetryResult[requests.Response]:
+				response = requests.get(
+					url.join_segments(self.__client_configuration.baseUrl, path),
+					timeout=self.__client_configuration.timeoutSeconds,
+					headers=self.__get_get_request_headers(with_authorization)
+				)
 
-		return response
+				if 500 <= response.status_code < 600:
+					return Retry(ServerError(f'Request failed with status code \'{response.status_code}\'.'))
+
+				if 400 <= response.status_code < 500:
+					raise ClientError(f'Request failed with status code \'{response.status_code}\'.')
+
+				self.__validate_protocol_version(response.status_code, response.headers)
+
+				return Return(response)
+
+			return retry_with_backoff(
+				self.__client_configuration.maxTries,
+				execute_request
+			)
+		except RetryError as retry_error:
+			raise ServerError(retry_error.__str__())
+		except CustomError as custom_error:
+			raise custom_error
+		except Exception as other_error:
+			raise InternalError(other_error.__str__())
+
