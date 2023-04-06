@@ -3,8 +3,8 @@ from dataclasses import dataclass
 
 @dataclass
 class ClientConfiguration:
-    baseUrl: str
-    timeoutMilliseconds: int = 10_000
-    accessToken: str = ''
-    protocolVersion: str = '1.0.0'
-    maxTries: int = 10
+    base_url: str
+    timeout_seconds: int
+    access_token: str
+    protocol_version: str
+    max_tries: int

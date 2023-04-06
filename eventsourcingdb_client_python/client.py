@@ -12,20 +12,15 @@ class Client:
 			base_url: str,
 			options: ClientOptions = ClientOptions()
 	):
-		if options is None:
-			self.configuration: ClientConfiguration = ClientConfiguration(
-				base_url
-			)
-		else:
-			self.configuration: ClientConfiguration = ClientConfiguration(
-				base_url,
-				timeoutMilliseconds=options.timeoutMilliseconds,
-				accessToken=options.accessToken,
-				protocolVersion=options.protocolVersion,
-				maxTries=options.maxTries
-			)
+		self.configuration: ClientConfiguration = ClientConfiguration(
+			base_url=base_url,
+			timeout_seconds=options.timeout_seconds,
+			access_token=options.access_token,
+			protocol_version=options.protocol_version,
+			max_tries=options.max_tries
+		)
 
-		self.http_client: HttpClient = HttpClient(base_url, options.protocolVersion)
+		self.http_client: HttpClient = HttpClient(self.configuration)
 
 	def ping(self) -> None:
 		response = self.http_client.get('/ping')
