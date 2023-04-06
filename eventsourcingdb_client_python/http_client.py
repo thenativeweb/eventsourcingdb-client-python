@@ -29,16 +29,16 @@ class HttpClient:
 
 		raise ClientError(
 			f'Protocol version mismatch, server \'{server_protocol_version}\','
-			f' client \'{self.__client_configuration.protocolVersion}\'.'
+			f' client \'{self.__client_configuration.protocol_version}\'.'
 		)
 
 	def __get_get_request_headers(self, with_authorization: bool) -> Dict[str, str]:
 		headers = {
-			'X-EventSourcingDB-Protocol-Version': self.__client_configuration.protocolVersion,
+			'X-EventSourcingDB-Protocol-Version': self.__client_configuration.protocol_version,
 		}
 
 		if with_authorization:
-			headers['Authorization'] = f'Bearer {self.__client_configuration.accessToken}'
+			headers['Authorization'] = f'Bearer {self.__client_configuration.access_token}'
 
 		return headers
 
@@ -47,8 +47,8 @@ class HttpClient:
 
 			def execute_request() -> RetryResult[requests.Response]:
 				response = requests.get(
-					url.join_segments(self.__client_configuration.baseUrl, path),
-					timeout=self.__client_configuration.timeoutSeconds,
+					url.join_segments(self.__client_configuration.base_url, path),
+					timeout=self.__client_configuration.timeout_seconds,
 					headers=self.__get_get_request_headers(with_authorization)
 				)
 
@@ -63,13 +63,15 @@ class HttpClient:
 				return Return(response)
 
 			return retry_with_backoff(
-				self.__client_configuration.maxTries,
+				self.__client_configuration.max_tries,
 				execute_request
 			)
 		except RetryError as retry_error:
 			raise ServerError(retry_error.__str__())
 		except CustomError as custom_error:
 			raise custom_error
+		except requests.exceptions.RequestException as request_error:
+			raise ServerError(request_error.__str__())
 		except Exception as other_error:
 			raise InternalError(other_error.__str__())
 

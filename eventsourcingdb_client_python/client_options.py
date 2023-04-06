@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 @dataclass
 class ClientOptions:
-    timeoutSeconds: int = 10
-    accessToken: str = ''
-    protocolVersion: str = '1.0.0'
-    maxTries: int = 10
+    timeout_seconds: int = 10
+    access_token: str = ''
+    protocol_version: str = '1.0.0'
+    max_tries: int = 10

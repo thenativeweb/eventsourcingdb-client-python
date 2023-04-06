@@ -13,11 +13,11 @@ class Client:
 			options: ClientOptions = ClientOptions()
 	):
 		self.configuration: ClientConfiguration = ClientConfiguration(
-			base_url,
-			timeoutSeconds=options.timeoutSeconds,
-			accessToken=options.accessToken,
-			protocolVersion=options.protocolVersion,
-			maxTries=options.maxTries
+			base_url=base_url,
+			timeout_seconds=options.timeout_seconds,
+			access_token=options.access_token,
+			protocol_version=options.protocol_version,
+			max_tries=options.max_tries
 		)
 
 		self.http_client: HttpClient = HttpClient(self.configuration)

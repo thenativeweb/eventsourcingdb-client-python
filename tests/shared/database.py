@@ -14,7 +14,7 @@ class Database:
 		with_authorization = ContainerizedTestingDatabase(
 			image,
 			['server', '--dev', '--ui', '--access-token', f'{access_token}'],
-			ClientOptions(accessToken=access_token)
+			ClientOptions(access_token=access_token)
 		)
 
 		without_authorization = ContainerizedTestingDatabase(
