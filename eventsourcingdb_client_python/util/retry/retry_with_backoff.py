@@ -1,23 +1,24 @@
 from .retry_error import RetryError
+from dataclasses import dataclass
 import time
 import random
-from typing import Callable, Generic, TypeVar, Union
+from typing import Callable, Generic, TypeVar
 
 TReturn = TypeVar('TReturn')
 TData = TypeVar('TData')
 
 
+@dataclass
 class Return(Generic[TData]):
-	def __init__(self, data: TData):
-		self.data = data
+	data: TData
 
 
+@dataclass
 class Retry:
-	def __init__(self, cause: Exception):
-		self.cause = cause
+	cause: Exception
 
 
-RetryResult = Union[Return[TReturn], Retry]
+RetryResult = Return[TReturn] | Retry
 
 
 def get_randomized_duration(

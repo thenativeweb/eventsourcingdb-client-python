@@ -6,6 +6,7 @@ from .errors.server_error import ServerError
 from .util import url
 from .util.retry.retry_with_backoff import retry_with_backoff, RetryResult, Return, Retry
 from .util.retry.retry_error import RetryError
+from dataclasses import dataclass
 from http import HTTPStatus
 import requests
 from requests.structures import CaseInsensitiveDict
@@ -15,9 +16,9 @@ Headers = CaseInsensitiveDict[str]
 
 
 # TODO: Add response streaming
+@dataclass
 class HttpClient:
-	def __init__(self, client_configuration: ClientConfiguration):
-		self.__client_configuration: ClientConfiguration = client_configuration
+	client_configuration: ClientConfiguration
 
 	def __validate_protocol_version(self, http_status_code: int, headers: Headers) -> None:
 		if http_status_code != HTTPStatus.UNPROCESSABLE_ENTITY:
@@ -30,7 +31,7 @@ class HttpClient:
 
 		raise ClientError(
 			f'Protocol version mismatch, server \'{server_protocol_version}\','
-			f' client \'{self.__client_configuration.protocol_version}\'.'
+			f' client \'{self.client_configuration.protocol_version}\'.'
 		)
 
 	def __validate_response(self, response: requests.Response) -> RetryResult[requests.Response]:
@@ -46,8 +47,8 @@ class HttpClient:
 
 	def __get_post_request_headers(self) -> Dict[str, str]:
 		headers = {
-			'X-EventSourcingDB-Protocol-Version': self.__client_configuration.protocol_version,
-			'Authorization': f'Bearer {self.__client_configuration.access_token}',
+			'X-EventSourcingDB-Protocol-Version': self.client_configuration.protocol_version,
+			'Authorization': f'Bearer {self.client_configuration.access_token}',
 			'Content-Type': 'application/json'
 		}
 
@@ -58,8 +59,8 @@ class HttpClient:
 
 			def execute_request() -> RetryResult[requests.Response]:
 				response = requests.post(
-					url.join_segments(self.__client_configuration.base_url, path),
-					timeout=self.__client_configuration.timeout_seconds,
+					url.join_segments(self.client_configuration.base_url, path),
+					timeout=self.client_configuration.timeout_seconds,
 					headers=self.__get_post_request_headers(),
 					data=request_body,
 				)
@@ -67,7 +68,7 @@ class HttpClient:
 				return self.__validate_response(response)
 
 			return retry_with_backoff(
-				self.__client_configuration.max_tries,
+				self.client_configuration.max_tries,
 				execute_request
 			)
 		except RetryError as retry_error:
@@ -81,11 +82,11 @@ class HttpClient:
 
 	def __get_get_request_headers(self, with_authorization: bool) -> Dict[str, str]:
 		headers = {
-			'X-EventSourcingDB-Protocol-Version': self.__client_configuration.protocol_version,
+			'X-EventSourcingDB-Protocol-Version': self.client_configuration.protocol_version,
 		}
 
 		if with_authorization:
-			headers['Authorization'] = f'Bearer {self.__client_configuration.access_token}'
+			headers['Authorization'] = f'Bearer {self.client_configuration.access_token}'
 
 		return headers
 
@@ -94,15 +95,15 @@ class HttpClient:
 
 			def execute_request() -> RetryResult[requests.Response]:
 				response = requests.get(
-					url.join_segments(self.__client_configuration.base_url, path),
-					timeout=self.__client_configuration.timeout_seconds,
+					url.join_segments(self.client_configuration.base_url, path),
+					timeout=self.client_configuration.timeout_seconds,
 					headers=self.__get_get_request_headers(with_authorization)
 				)
 
 				return self.__validate_response(response)
 
 			return retry_with_backoff(
-				self.__client_configuration.max_tries,
+				self.client_configuration.max_tries,
 				execute_request
 			)
 		except RetryError as retry_error:

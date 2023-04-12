@@ -24,3 +24,11 @@ class TestReadSubjects:
 
 		with pytest.raises(ServerError):
 			client.read_subjects()
+
+	def test_supports_authorization(self):
+		client = TestReadSubjects.database.with_authorization.client
+
+		client.read_subjects()
+
+	def test_reads_all_subjects_starting_from_root(self):
+		raise NotImplemented
