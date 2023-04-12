@@ -1,2 +1,3 @@
 class CustomError(Exception):
-	pass
+	def message(self):
+		return self.__str__()

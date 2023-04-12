@@ -14,6 +14,7 @@ from typing import Dict
 Headers = CaseInsensitiveDict[str]
 
 
+# TODO: Add response streaming
 class HttpClient:
 	def __init__(self, client_configuration: ClientConfiguration):
 		self.__client_configuration: ClientConfiguration = client_configuration
@@ -31,6 +32,52 @@ class HttpClient:
 			f'Protocol version mismatch, server \'{server_protocol_version}\','
 			f' client \'{self.__client_configuration.protocol_version}\'.'
 		)
+
+	def __validate_response(self, response: requests.Response) -> RetryResult[requests.Response]:
+		if 500 <= response.status_code < 600:
+			return Retry(ServerError(f'Request failed with status code \'{response.status_code}\'.'))
+
+		if 400 <= response.status_code < 500:
+			raise ClientError(f'Request failed with status code \'{response.status_code}\'.')
+
+		self.__validate_protocol_version(response.status_code, response.headers)
+
+		return Return(response)
+
+	def __get_post_request_headers(self) -> Dict[str, str]:
+		headers = {
+			'X-EventSourcingDB-Protocol-Version': self.__client_configuration.protocol_version,
+			'Authorization': f'Bearer {self.__client_configuration.access_token}',
+			'Content-Type': 'application/json'
+		}
+
+		return headers
+
+	def post(self, path: str, request_body: str):
+		try:
+
+			def execute_request() -> RetryResult[requests.Response]:
+				response = requests.post(
+					url.join_segments(self.__client_configuration.base_url, path),
+					timeout=self.__client_configuration.timeout_seconds,
+					headers=self.__get_post_request_headers(),
+					data=request_body,
+				)
+
+				return self.__validate_response(response)
+
+			return retry_with_backoff(
+				self.__client_configuration.max_tries,
+				execute_request
+			)
+		except RetryError as retry_error:
+			raise ServerError(retry_error.message())
+		except CustomError as custom_error:
+			raise custom_error
+		except requests.exceptions.RequestException as request_error:
+			raise ServerError(str(request_error))
+		except Exception as other_error:
+			raise InternalError(str(other_error))
 
 	def __get_get_request_headers(self, with_authorization: bool) -> Dict[str, str]:
 		headers = {
@@ -52,26 +99,18 @@ class HttpClient:
 					headers=self.__get_get_request_headers(with_authorization)
 				)
 
-				if 500 <= response.status_code < 600:
-					return Retry(ServerError(f'Request failed with status code \'{response.status_code}\'.'))
-
-				if 400 <= response.status_code < 500:
-					raise ClientError(f'Request failed with status code \'{response.status_code}\'.')
-
-				self.__validate_protocol_version(response.status_code, response.headers)
-
-				return Return(response)
+				return self.__validate_response(response)
 
 			return retry_with_backoff(
 				self.__client_configuration.max_tries,
 				execute_request
 			)
 		except RetryError as retry_error:
-			raise ServerError(retry_error.__str__())
+			raise ServerError(retry_error.message())
 		except CustomError as custom_error:
 			raise custom_error
 		except requests.exceptions.RequestException as request_error:
-			raise ServerError(request_error.__str__())
+			raise ServerError(str(request_error))
 		except Exception as other_error:
-			raise InternalError(other_error.__str__())
+			raise InternalError(str(other_error))
 

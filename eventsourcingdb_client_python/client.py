@@ -1,11 +1,12 @@
+from .abstract_base_client import AbstractBaseClient
 from .client_configuration import ClientConfiguration
 from .client_options import ClientOptions
-from .errors.server_error import ServerError
 from .http_client import HttpClient
-from http import HTTPStatus
+from .handlers.ping import ping
+from .handlers.read_subjects import read_subjects, ReadSubjectsOptions
 
 
-class Client:
+class Client(AbstractBaseClient):
 
 	def __init__(
 			self,
@@ -20,10 +21,14 @@ class Client:
 			max_tries=options.max_tries
 		)
 
-		self.http_client: HttpClient = HttpClient(self.configuration)
+		self.__http_client: HttpClient = HttpClient(self.configuration)
+
+	@property
+	def http_client(self) -> HttpClient:
+		return self.__http_client
 
 	def ping(self) -> None:
-		response = self.http_client.get('/ping')
+		return ping(self)
 
-		if response.status_code != HTTPStatus.OK or response.text != 'OK':
-			raise ServerError(f'Received unexpected response: {response.text}')
+	def read_subjects(self, options: ReadSubjectsOptions = ReadSubjectsOptions()) -> str:
+		return read_subjects(self, options)
