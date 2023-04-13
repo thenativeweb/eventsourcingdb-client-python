@@ -2,7 +2,7 @@
 name = "eventsourcingdb-client-python"
 version = "0.1.0"
 description = "The Python client for the EventSourcingDB."
-authors = [ "Alexander Kampf", "Golo Roden" ]
+authors = [ "Alexander Kampf", "Golo Roden", "Noah Hummel" ]
 readme = "README.md"
 packages = [{include = "eventsourcingdb_client_python"}]
 
@@ -13,7 +13,7 @@ requests = "2.28.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "7.2.2"
-flask = "^2.2.3"
+flask = "2.2.3"
 
 [build-system]
 requires = ["poetry-core"]
