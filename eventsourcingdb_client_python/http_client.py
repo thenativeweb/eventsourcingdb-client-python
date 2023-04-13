@@ -63,6 +63,7 @@ class HttpClient:
 					timeout=self.client_configuration.timeout_seconds,
 					headers=self.__get_post_request_headers(),
 					data=request_body,
+					stream=True
 				)
 
 				return self.__validate_response(response)

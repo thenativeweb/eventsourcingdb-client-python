@@ -5,10 +5,10 @@ from dataclasses import dataclass
 
 @dataclass
 class EventCandidate:
-	data: dict
 	source: str
 	subject: str
 	type: str
+	data: dict
 
 	def validate(self) -> None:
 		validate_subject(self.subject)

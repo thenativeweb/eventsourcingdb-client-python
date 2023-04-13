@@ -4,7 +4,9 @@ from .validate_subject import validate_subject
 from .validate_type import validate_type
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Self
+from typing import TypeVar
+
+Self = TypeVar("Self", bound="EventContext")
 
 
 @dataclass

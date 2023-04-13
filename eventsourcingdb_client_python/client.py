@@ -1,13 +1,16 @@
 from .abstract_base_client import AbstractBaseClient
 from .client_configuration import ClientConfiguration
 from .client_options import ClientOptions
+from .event.event_candidate import EventCandidate
+from .event.event_context import EventContext
 from .http_client import HttpClient
 from .handlers.ping import ping
 from .handlers.read_subjects import read_subjects, ReadSubjectsOptions
+from .handlers.write_events import Precondition, write_events
+from typing import List, Generator
 
 
 class Client(AbstractBaseClient):
-
 	def __init__(
 			self,
 			base_url: str,
@@ -30,5 +33,14 @@ class Client(AbstractBaseClient):
 	def ping(self) -> None:
 		return ping(self)
 
-	def read_subjects(self, options: ReadSubjectsOptions = ReadSubjectsOptions()) -> str:
+	def read_subjects(self, options: ReadSubjectsOptions = ReadSubjectsOptions()) -> Generator[str, None, None]:
 		return read_subjects(self, options)
+
+	def write_events(
+			self,
+			event_candidates: List[EventCandidate],
+			preconditions: List[Precondition] = None
+	) -> List[EventContext]:
+		if preconditions is None:
+			preconditions = []
+		return write_events(self, event_candidates, preconditions)
