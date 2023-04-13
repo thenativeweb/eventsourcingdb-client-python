@@ -12,5 +12,5 @@ class RetryError(CustomError):
 	def __str__(self) -> str:
 		return (
 			f'Failed operation with {len(self.__errors)} error(s):\n'
-			'\n'.join(self.__errors.__str__())
+			'\n'.join(str(self.__errors))
 		)

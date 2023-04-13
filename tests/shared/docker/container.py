@@ -1,14 +1,15 @@
 from .docker_command_failed_error import DockerCommandFailedError
 from ..util.remove_whitespace import remove_whitespace
+from dataclasses import dataclass
 import subprocess
 
 
+@dataclass
 class Container:
-	def __init__(self, container_id: str):
-		self.__id: str = container_id
+	id: str
 
 	def kill(self) -> None:
-		process = subprocess.Popen(['docker', 'kill', self.__id], stderr=subprocess.PIPE)
+		process = subprocess.Popen(['docker', 'kill', self.id], stderr=subprocess.PIPE)
 		_, stderr = process.communicate()
 
 		if process.returncode != 0:
@@ -19,7 +20,7 @@ class Container:
 			'docker',
 			'inspect',
 			f'--format=\'{{{{(index (index .NetworkSettings.Ports "{internal_port}/tcp") 0).HostPort}}}}\'',
-			self.__id
+			self.id
 		]
 
 		process = subprocess.Popen(docker_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
