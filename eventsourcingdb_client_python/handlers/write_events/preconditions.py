@@ -3,29 +3,28 @@ from dataclasses import dataclass
 
 
 class Precondition(ABC):
-	@abstractmethod
-	def to_json(self):
-		raise NotImplemented
+    @abstractmethod
+    def to_json(self):
+        raise NotImplemented
 
 
 @dataclass
 class IsSubjectPristinePrecondition(Precondition):
-	subject: str
+    subject: str
 
-	def to_json(self):
-		return {
-			'subject': self.subject
-		}
+    def to_json(self):
+        return {
+            'subject': self.subject
+        }
 
 
 @dataclass
 class IsSubjectOnEventIdPrecondition(Precondition):
-	subject: str
-	event_id: str
+    subject: str
+    event_id: str
 
-	def to_json(self):
-		return {
-			'subject': self.subject,
-			'eventId': self.event_id
-		}
-
+    def to_json(self):
+        return {
+            'subject': self.subject,
+            'eventId': self.event_id
+        }

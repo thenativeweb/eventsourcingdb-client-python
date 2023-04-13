@@ -12,30 +12,28 @@ StopServer = Callable[[], None]
 
 
 def start_local_http_server(attach_handlers: AttachHandlers) -> (Client, StopServer):
-	app = Flask('local')
+    app = Flask('local')
 
-	def attach_handler(route: str, method: str, handler: Handler):
-		@app.route(route, methods=[method])
-		def attached_handler():
-			response = make_response()
-			return handler(response)
+    def attach_handler(route: str, method: str, handler: Handler):
+        @app.route(route, methods=[method])
+        def attached_handler():
+            response = make_response()
+            return handler(response)
 
-	attach_handlers(attach_handler)
+    attach_handlers(attach_handler)
 
-	port = get_random_available_port()
+    port = get_random_available_port()
 
-	def start():
-		app.run(host='localhost', port=port)
+    def start():
+        app.run(host='localhost', port=port)
 
-	server = Process(target=start)
-	server.start()
+    server = Process(target=start)
+    server.start()
 
-	def stop_server():
-		server.terminate()
-		server.join()
+    def stop_server():
+        server.terminate()
+        server.join()
 
-	client = Client(f'http://localhost:{port}', ClientOptions(max_tries=2))
+    client = Client(f'http://localhost:{port}', ClientOptions(max_tries=2))
 
-	return client, stop_server
-
-
+    return client, stop_server

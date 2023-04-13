@@ -4,4 +4,4 @@ from dataclasses import dataclass
 
 @dataclass
 class TestingDatabase:
-	client: Client
+    client: Client

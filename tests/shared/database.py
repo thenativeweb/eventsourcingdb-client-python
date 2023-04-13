@@ -7,27 +7,27 @@ import uuid
 
 
 class Database:
-	def __init__(self):
-		image = Image('eventsourcingdb', 'latest')
+    def __init__(self):
+        image = Image('eventsourcingdb', 'latest')
 
-		access_token = str(uuid.uuid4())
-		with_authorization = ContainerizedTestingDatabase(
-			image,
-			['server', '--dev', '--ui', '--access-token', f'{access_token}'],
-			ClientOptions(access_token=access_token)
-		)
+        access_token = str(uuid.uuid4())
+        with_authorization = ContainerizedTestingDatabase(
+            image,
+            ['server', '--dev', '--ui', '--access-token', f'{access_token}'],
+            ClientOptions(access_token=access_token)
+        )
 
-		without_authorization = ContainerizedTestingDatabase(
-			image,
-			['server', '--dev', '--ui']
-		)
+        without_authorization = ContainerizedTestingDatabase(
+            image,
+            ['server', '--dev', '--ui']
+        )
 
-		with_invalid_url = TestingDatabase(Client('http://localhost.invalid'))
+        with_invalid_url = TestingDatabase(Client('http://localhost.invalid'))
 
-		self.with_authorization: ContainerizedTestingDatabase = with_authorization
-		self.without_authorization: ContainerizedTestingDatabase = without_authorization
-		self.with_invalid_url: TestingDatabase = with_invalid_url
+        self.with_authorization: ContainerizedTestingDatabase = with_authorization
+        self.without_authorization: ContainerizedTestingDatabase = without_authorization
+        self.with_invalid_url: TestingDatabase = with_invalid_url
 
-	def stop(self):
-		self.with_authorization.stop()
-		self.without_authorization.stop()
+    def stop(self):
+        self.with_authorization.stop()
+        self.without_authorization.stop()

@@ -11,36 +11,36 @@ from typing import List, Generator
 
 
 class Client(AbstractBaseClient):
-	def __init__(
-			self,
-			base_url: str,
-			options: ClientOptions = ClientOptions()
-	):
-		self.configuration: ClientConfiguration = ClientConfiguration(
-			base_url=base_url,
-			timeout_seconds=options.timeout_seconds,
-			access_token=options.access_token,
-			protocol_version=options.protocol_version,
-			max_tries=options.max_tries
-		)
+    def __init__(
+        self,
+        base_url: str,
+        options: ClientOptions = ClientOptions()
+    ):
+        self.configuration: ClientConfiguration = ClientConfiguration(
+            base_url=base_url,
+            timeout_seconds=options.timeout_seconds,
+            access_token=options.access_token,
+            protocol_version=options.protocol_version,
+            max_tries=options.max_tries
+        )
 
-		self.__http_client: HttpClient = HttpClient(self.configuration)
+        self.__http_client: HttpClient = HttpClient(self.configuration)
 
-	@property
-	def http_client(self) -> HttpClient:
-		return self.__http_client
+    @property
+    def http_client(self) -> HttpClient:
+        return self.__http_client
 
-	def ping(self) -> None:
-		return ping(self)
+    def ping(self) -> None:
+        return ping(self)
 
-	def read_subjects(self, options: ReadSubjectsOptions = ReadSubjectsOptions()) -> Generator[str, None, None]:
-		return read_subjects(self, options)
+    def read_subjects(self, options: ReadSubjectsOptions = ReadSubjectsOptions()) -> Generator[str, None, None]:
+        return read_subjects(self, options)
 
-	def write_events(
-			self,
-			event_candidates: List[EventCandidate],
-			preconditions: List[Precondition] = None
-	) -> List[EventContext]:
-		if preconditions is None:
-			preconditions = []
-		return write_events(self, event_candidates, preconditions)
+    def write_events(
+        self,
+        event_candidates: List[EventCandidate],
+        preconditions: List[Precondition] = None
+    ) -> List[EventContext]:
+        if preconditions is None:
+            preconditions = []
+        return write_events(self, event_candidates, preconditions)

@@ -10,43 +10,41 @@ TData = TypeVar('TData')
 
 @dataclass
 class Return(Generic[TData]):
-	data: TData
+    data: TData
 
 
 @dataclass
 class Retry:
-	cause: Exception
+    cause: Exception
 
 
 RetryResult = Return[TReturn] | Retry
 
 
 def get_randomized_duration(
-		duration_milliseconds: int,
-		deviation_milliseconds: int
+    duration_milliseconds: int,
+    deviation_milliseconds: int
 ) -> int:
-	return duration_milliseconds - deviation_milliseconds + round(random.random() * deviation_milliseconds * 2)
+    return duration_milliseconds - deviation_milliseconds + round(random.random() * deviation_milliseconds * 2)
 
 
 def retry_with_backoff(tries: int, fn: Callable[[], RetryResult]) -> TReturn:
-	if tries < 1:
-		raise ValueError('Tries must be greater than 0')
+    if tries < 1:
+        raise ValueError('Tries must be greater than 0')
 
-	retry_error = RetryError()
+    retry_error = RetryError()
 
-	for tries_count in range(tries):
-		timeout = get_randomized_duration(100, 25) * tries_count
+    for tries_count in range(tries):
+        timeout = get_randomized_duration(100, 25) * tries_count
 
-		time.sleep(timeout / 1_000)
+        time.sleep(timeout / 1_000)
 
-		result = fn()
+        result = fn()
 
-		if isinstance(result, Return):
-			return result.data
+        if isinstance(result, Return):
+            return result.data
 
-		else:
-			retry_error.append_error(result.cause)
+        else:
+            retry_error.append_error(result.cause)
 
-	raise retry_error
-
-
+    raise retry_error
