@@ -12,7 +12,6 @@ from ...errors.server_error import ServerError
 from ...errors.validation_error import ValidationError
 from ...event.event import Event
 from ...event.validate_subject import validate_subject
-from ..is_heartbeat import is_heartbeat
 from ..is_item import is_item
 from ..is_stream_error import is_stream_error
 from ..parse_raw_message import parse_raw_message
@@ -64,9 +63,6 @@ def read_events(
             )
         for raw_message in response.iter_lines():
             message = parse_raw_message(raw_message)
-
-            if is_heartbeat(message):
-                continue
 
             if is_stream_error(message):
                 raise ServerError(f'{message["payload"]["error"]}.')
