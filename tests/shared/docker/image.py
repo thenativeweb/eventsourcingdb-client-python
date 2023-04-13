@@ -1,13 +1,14 @@
 from .container import Container
 from .docker_command_failed_error import DockerCommandFailedError
+from dataclasses import dataclass
 import subprocess
 from typing import List
 
 
+@dataclass
 class Image:
-	def __init__(self, name: str, tag: str):
-		self.__name: str = name
-		self.__tag: str = tag
+	name: str
+	tag: str
 
 	def run(self, command: List[str], is_detached: bool, do_expose_ports: bool) -> Container:
 		docker_command = ['docker', 'run', '--rm']
@@ -45,6 +46,6 @@ class Image:
 			raise DockerCommandFailedError(f'Build failed with output: {stderr.decode("utf-8")}')
 
 	def __get_full_name(self) -> str:
-		return f'{self.__name}:{self.__tag}'
+		return f'{self.name}:{self.tag}'
 
 
