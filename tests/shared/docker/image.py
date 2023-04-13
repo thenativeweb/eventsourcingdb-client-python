@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 import subprocess
-from typing import List
 
 from .container import Container
 from .docker_command_failed_error import DockerCommandFailedError
@@ -11,7 +10,7 @@ class Image:
     name: str
     tag: str
 
-    def run(self, command: List[str], is_detached: bool, do_expose_ports: bool) -> Container:
+    def run(self, command: list[str], is_detached: bool, do_expose_ports: bool) -> Container:
         docker_command = ['docker', 'run', '--rm']
 
         if is_detached:

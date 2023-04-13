@@ -1,7 +1,8 @@
+from collections.abc import Callable
 from dataclasses import dataclass
 import time
 import random
-from typing import Callable, Generic, TypeVar
+from typing import Generic, TypeVar
 
 from .retry_error import RetryError
 

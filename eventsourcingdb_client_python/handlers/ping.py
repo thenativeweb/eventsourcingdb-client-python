@@ -7,5 +7,5 @@ from ..errors.server_error import ServerError
 def ping(client: AbstractBaseClient) -> None:
     response = client.http_client.get('/ping')
 
-    if response.status_code != HTTPStatus.OK or response.text != 'OK':
+    if response.status_code != HTTPStatus.OK or response.text != HTTPStatus.OK.phrase:
         raise ServerError(f'Received unexpected response: {response.text}')

@@ -21,7 +21,6 @@ class EventContext:
     data_content_type: str
     predecessor_hash: str
 
-
     @staticmethod
     def parse(unknown_object: dict) -> Self:
         source = unknown_object.get('source')
@@ -56,9 +55,9 @@ class EventContext:
             raise ValidationError(
                 f'Failed to parse time \'{time}\' to datetime.')
 
+        rest, sub_seconds = time.split('.')
+        sub_seconds = f'{sub_seconds[:6]:06}'
         try:
-            rest, sub_seconds = time.split('.')
-            sub_seconds = f'{sub_seconds[:6]:06}'
             time = datetime.fromisoformat(f'{rest}.{sub_seconds}')
         except ValueError as value_error:
             raise ValidationError(

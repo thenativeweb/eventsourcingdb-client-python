@@ -1,6 +1,7 @@
+from collections.abc import Generator
 import json
 from http import HTTPStatus
-from typing import Generator
+from typing import Any
 
 import requests
 
@@ -46,11 +47,16 @@ def read_subjects(
                 f'Unexpected response status: '
                 f'{response.status_code} {HTTPStatus(response.status_code).phrase}'
             )
-
-        for message in response.iter_lines():
+        for raw_message in response.iter_lines():
+            decoded_message: str
             try:
-                message = message.decode('utf8')
-                message = json.loads(message)
+                decoded_message = raw_message.decode('utf8')
+            except Exception as error:
+                raise ServerError(str(error)) from error
+
+            message: Any
+            try:
+                message = json.loads(decoded_message)
             except Exception as error:
                 raise ServerError(str(error)) from error
 

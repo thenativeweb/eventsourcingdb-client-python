@@ -1,12 +1,11 @@
 from dataclasses import dataclass
-from typing import Optional
 
 from ...event.validate_subject import validate_subject
 
 
 @dataclass
 class ReadSubjectsOptions:
-    base_subject: Optional[str] = None
+    base_subject: str | None = None
 
     def validate(self):
         if self.base_subject is not None:

@@ -28,18 +28,21 @@ class TestPing:
     def teardown_method():
         TestPing.database.stop()
 
-    def test_throws_no_error_if_server_is_reachable(self):
+    @staticmethod
+    def test_throws_no_error_if_server_is_reachable():
         client = TestPing.database.without_authorization.client
 
         client.ping()
 
-    def test_throws_error_if_server_is_not_reachable(self):
+    @staticmethod
+    def test_throws_error_if_server_is_not_reachable():
         client = TestPing.database.with_invalid_url.client
 
         with pytest.raises(ServerError):
             client.ping()
 
-    def test_supports_authorization(self):
+    @staticmethod
+    def test_supports_authorization():
         client = TestPing.database.with_authorization.client
 
         client.ping()
@@ -52,7 +55,8 @@ class TestPingWithMockServer:
     def teardown_method():
         TestPingWithMockServer.stop_server()
 
-    def test_throws_error_if_server_responds_with_unexpected_status_code(self):
+    @staticmethod
+    def test_throws_error_if_server_responds_with_unexpected_status_code():
         def attach_handlers(attach_handler: AttachHandler):
             def handle_ping(response: Response) -> Response:
                 response.status_code = HTTPStatus.BAD_GATEWAY
@@ -67,7 +71,8 @@ class TestPingWithMockServer:
         with pytest.raises(ServerError):
             client.ping()
 
-    def test_throws_error_if_server_respond_body_is_not_ok(self):
+    @staticmethod
+    def test_throws_error_if_server_respond_body_is_not_ok():
         def attach_handlers(attach_handler: AttachHandler):
             def handle_ping(response: Response) -> Response:
                 response.status_code = HTTPStatus.OK

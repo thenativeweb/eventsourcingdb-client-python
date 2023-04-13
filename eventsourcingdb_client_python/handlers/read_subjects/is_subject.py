@@ -1,8 +1,10 @@
 from typing import Any
 
+SUBJECT_TYPE = 'subject'
+
 
 def is_subject(message: Any) -> bool:
-    if not isinstance(message, dict) or message.get('type') != 'subject':
+    if not isinstance(message, dict) or message.get('type') != SUBJECT_TYPE:
         return False
 
     payload = message.get('payload')

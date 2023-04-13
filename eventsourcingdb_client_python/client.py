@@ -1,4 +1,4 @@
-from typing import Generator
+from collections.abc import Generator
 
 from .abstract_base_client import AbstractBaseClient
 from .client_configuration import ClientConfiguration

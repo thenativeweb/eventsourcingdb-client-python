@@ -1,5 +1,5 @@
+from collections.abc import Callable
 from multiprocessing import Process
-from typing import Callable
 
 from flask import Flask, Response, make_response
 

@@ -1,6 +1,5 @@
 from http import HTTPStatus
 import json
-from typing import List
 
 import requests
 
@@ -17,9 +16,9 @@ from .preconditions import Precondition
 
 def write_events(
     client: AbstractBaseClient,
-    event_candidates: List[EventCandidate],
-    preconditions: List[Precondition]
-) -> List[EventContext]:
+    event_candidates: list[EventCandidate],
+    preconditions: list[Precondition]
+) -> list[EventContext]:
     if len(event_candidates) < 1:
         raise InvalidParameterError(
             'event_candidates',
@@ -67,8 +66,7 @@ def write_events(
     return_value = []
     for unparsed_event_context in response_data:
         try:
-            event_context = EventContext.parse(unparsed_event_context)
-            return_value.append(event_context)
+            return_value.append(EventContext.parse(unparsed_event_context))
         except ValidationError as validation_error:
             raise ServerError(str(validation_error)) from validation_error
         except Exception as other_error:

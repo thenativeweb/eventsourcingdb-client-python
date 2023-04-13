@@ -1,6 +1,6 @@
+from collections import namedtuple
 from dataclasses import dataclass
 from http import HTTPStatus
-from typing import Dict
 
 import requests
 from requests.structures import CaseInsensitiveDict
@@ -15,7 +15,7 @@ from .util.retry.retry_with_backoff import retry_with_backoff, RetryResult, Retu
 from .util.retry.retry_error import RetryError
 
 Headers = CaseInsensitiveDict[str]
-
+Range = namedtuple('Range', 'lower, upper')
 
 @dataclass
 class HttpClient:
@@ -37,12 +37,14 @@ class HttpClient:
         )
 
     def __validate_response(self, response: requests.Response) -> RetryResult[requests.Response]:
-        if 500 <= response.status_code < 600:
+        server_failure_range = Range(500, 600)
+        if server_failure_range.lower <= response.status_code < server_failure_range.upper:
             return Retry(
                 ServerError(f'Request failed with status code \'{response.status_code}\'.')
             )
 
-        if 400 <= response.status_code < 500:
+        client_failure_range = Range(400, 500)
+        if client_failure_range.lower <= response.status_code < client_failure_range.upper:
             raise ClientError(
                 f'Request failed with status code \'{response.status_code}\'.')
 
@@ -51,7 +53,7 @@ class HttpClient:
 
         return Return(response)
 
-    def __get_post_request_headers(self) -> Dict[str, str]:
+    def __get_post_request_headers(self) -> dict[str, str]:
         headers = {
             'X-EventSourcingDB-Protocol-Version': self.client_configuration.protocol_version,
             'Authorization': f'Bearer {self.client_configuration.access_token}',
@@ -61,20 +63,19 @@ class HttpClient:
         return headers
 
     def post(self, path: str, request_body: str, stream_response: bool = False):
+        def execute_request() -> RetryResult[requests.Response]:
+            response = requests.post(
+                url.join_segments(
+                    self.client_configuration.base_url, path),
+                timeout=self.client_configuration.timeout_seconds,
+                headers=self.__get_post_request_headers(),
+                data=request_body,
+                stream=stream_response
+            )
+
+            return self.__validate_response(response)
+
         try:
-
-            def execute_request() -> RetryResult[requests.Response]:
-                response = requests.post(
-                    url.join_segments(
-                        self.client_configuration.base_url, path),
-                    timeout=self.client_configuration.timeout_seconds,
-                    headers=self.__get_post_request_headers(),
-                    data=request_body,
-                    stream=stream_response
-                )
-
-                return self.__validate_response(response)
-
             return retry_with_backoff(
                 self.client_configuration.max_tries,
                 execute_request
@@ -88,7 +89,7 @@ class HttpClient:
         except Exception as other_error:
             raise InternalError(str(other_error)) from other_error
 
-    def __get_get_request_headers(self, with_authorization: bool) -> Dict[str, str]:
+    def __get_get_request_headers(self, with_authorization: bool) -> dict[str, str]:
         headers = {
             'X-EventSourcingDB-Protocol-Version': self.client_configuration.protocol_version,
         }
@@ -104,18 +105,18 @@ class HttpClient:
         with_authorization: bool = True,
         stream_response: bool = False
     ) -> requests.Response:
+        def execute_request() -> RetryResult[requests.Response]:
+            response = requests.get(
+                url.join_segments(
+                    self.client_configuration.base_url, path),
+                timeout=self.client_configuration.timeout_seconds,
+                headers=self.__get_get_request_headers(with_authorization),
+                stream=stream_response
+            )
+
+            return self.__validate_response(response)
+
         try:
-            def execute_request() -> RetryResult[requests.Response]:
-                response = requests.get(
-                    url.join_segments(
-                        self.client_configuration.base_url, path),
-                    timeout=self.client_configuration.timeout_seconds,
-                    headers=self.__get_get_request_headers(with_authorization),
-                    stream=stream_response
-                )
-
-                return self.__validate_response(response)
-
             return retry_with_backoff(
                 self.client_configuration.max_tries,
                 execute_request

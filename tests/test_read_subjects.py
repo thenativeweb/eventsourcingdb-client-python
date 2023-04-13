@@ -33,20 +33,23 @@ class TestReadSubjects:
     def teardown_method():
         TestReadSubjects.database.stop()
 
-    def test_throws_error_if_server_is_not_reachable(self):
+    @staticmethod
+    def test_throws_error_if_server_is_not_reachable():
         client = TestReadSubjects.database.with_invalid_url.client
 
         with pytest.raises(ServerError):
             for _ in client.read_subjects():
                 pass
 
-    def test_supports_authorization(self):
+    @staticmethod
+    def test_supports_authorization():
         client = TestReadSubjects.database.with_authorization.client
 
         for _ in client.read_subjects():
             pass
 
-    def test_reads_all_subjects_starting_from_root(self):
+    @staticmethod
+    def test_reads_all_subjects_starting_from_root():
         client = TestReadSubjects.database.with_authorization.client
 
         client.write_events([
@@ -58,7 +61,8 @@ class TestReadSubjects:
 
         assert actual_subjects == ['/', '/foo']
 
-    def test_reads_all_subjects_starting_from_given_base_subject(self):
+    @staticmethod
+    def test_reads_all_subjects_starting_from_given_base_subject():
         client = TestReadSubjects.database.with_authorization.client
 
         client.write_events([
@@ -72,7 +76,8 @@ class TestReadSubjects:
 
         assert actual_subjects == ['/foo', '/foo/bar']
 
-    def test_throws_an_error_if_base_subject_malformed(self):
+    @staticmethod
+    def test_throws_an_error_if_base_subject_malformed():
         client = TestReadSubjects.database.with_authorization.client
 
         client.write_events([
@@ -92,7 +97,8 @@ class TestReadSubjectsWithMockServer:
     def teardown_method():
         TestReadSubjectsWithMockServer.stop_server()
 
-    def test_throws_error_if_server_responds_with_5xx_status_code(self):
+    @staticmethod
+    def test_throws_error_if_server_responds_with_5xx_status_code():
         def attach_handlers(attach_handler: AttachHandler):
             def handle_read_subjects(response: Response) -> Response:
                 response.status_code = HTTPStatus.BAD_GATEWAY
@@ -108,7 +114,8 @@ class TestReadSubjectsWithMockServer:
             for _ in client.read_subjects():
                 pass
 
-    def test_throws_error_if_servers_protocol_version_not_matching(self):
+    @staticmethod
+    def test_throws_error_if_servers_protocol_version_not_matching():
         def attach_handlers(attach_handler: AttachHandler):
             def handle_read_subjects(response: Response) -> Response:
                 response.headers['X-EventSourcingDB-Protocol-Version'] = '0.0.0'
@@ -125,7 +132,8 @@ class TestReadSubjectsWithMockServer:
             for _ in client.read_subjects():
                 pass
 
-    def test_throws_error_if_server_responds_with_4xx_status_code(self):
+    @staticmethod
+    def test_throws_error_if_server_responds_with_4xx_status_code():
         def attach_handlers(attach_handler: AttachHandler):
             def handle_read_subjects(response: Response) -> Response:
                 response.status_code = HTTPStatus.NOT_FOUND
@@ -141,7 +149,8 @@ class TestReadSubjectsWithMockServer:
             for _ in client.read_subjects():
                 pass
 
-    def test_throws_error_if_server_responds_with_unusual_status_code(self):
+    @staticmethod
+    def test_throws_error_if_server_responds_with_unusual_status_code():
         def attach_handlers(attach_handler: AttachHandler):
             def handle_read_subjects(response: Response) -> Response:
                 response.status_code = HTTPStatus.ACCEPTED
@@ -158,7 +167,8 @@ class TestReadSubjectsWithMockServer:
             for _ in client.read_subjects():
                 pass
 
-    def test_throws_error_if_server_responds_with_item_that_cannot_be_unmarshalled(self):
+    @staticmethod
+    def test_throws_error_if_server_responds_with_item_that_cannot_be_unmarshalled():
         def attach_handlers(attach_handler: AttachHandler):
             def handle_read_subjects(response: Response) -> Response:
                 response.status_code = HTTPStatus.OK
@@ -174,7 +184,8 @@ class TestReadSubjectsWithMockServer:
             for _ in client.read_subjects():
                 pass
 
-    def test_throws_error_if_server_responds_with_unsupported_item(self):
+    @staticmethod
+    def test_throws_error_if_server_responds_with_unsupported_item():
         def attach_handlers(attach_handler: AttachHandler):
             def handle_read_subjects(response: Response) -> Response:
                 response.status_code = HTTPStatus.OK
@@ -191,7 +202,8 @@ class TestReadSubjectsWithMockServer:
             for _ in client.read_subjects():
                 pass
 
-    def test_throws_error_if_server_responds_with_an_error_item(self):
+    @staticmethod
+    def test_throws_error_if_server_responds_with_an_error_item():
         def attach_handlers(attach_handler: AttachHandler):
             def handle_read_subjects(response: Response) -> Response:
                 response.status_code = HTTPStatus.OK
