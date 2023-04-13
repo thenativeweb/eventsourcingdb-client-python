@@ -58,4 +58,3 @@ class Event(EventContext):
         json['data'] = self.data
 
         return json
-

@@ -19,4 +19,3 @@ class ReadFromLatestEvent:
             'type': self.type,
             'ifEventIsMissing': self.if_event_is_missing
         }
-

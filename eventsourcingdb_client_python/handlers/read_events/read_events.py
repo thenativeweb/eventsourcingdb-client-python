@@ -62,7 +62,6 @@ def read_events(
                 f'Unexpected response status: '
                 f'{response.status_code} {HTTPStatus(response.status_code).phrase}'
             )
-
         for raw_message in response.iter_lines():
             message = parse_raw_message(raw_message)
 
