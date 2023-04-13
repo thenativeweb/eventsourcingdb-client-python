@@ -57,9 +57,3 @@ def read_subjects(client: AbstractBaseClient, options: ReadSubjectsOptions) -> G
 			raise ServerError(
 				f'Failed to read subjects, an unexpected stream item was received \'{message}\'.'
 			)
-
-
-
-
-
-

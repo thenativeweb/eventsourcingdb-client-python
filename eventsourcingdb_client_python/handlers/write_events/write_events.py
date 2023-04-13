@@ -20,15 +20,15 @@ def write_events(
 ) -> List[EventContext]:
 	if len(event_candidates) < 1:
 		raise InvalidParameterError(
-			'eventCandidates',
-			'eventCandidates must contain at least one EventCandidate.'
+			'event_candidates',
+			'event_candidates must contain at least one EventCandidate.'
 		)
 
 	for event_candidate in event_candidates:
 		try:
 			event_candidate.validate()
 		except ValidationError as validation_error:
-			raise InvalidParameterError('eventCandidates', validation_error.message())
+			raise InvalidParameterError('event_candidates', validation_error.message())
 		except Exception as other_error:
 			raise InternalError(str(other_error))
 
