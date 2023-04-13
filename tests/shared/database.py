@@ -1,9 +1,11 @@
+import uuid
+
+from eventsourcingdb_client_python.client import Client
+from eventsourcingdb_client_python.client_options import ClientOptions
+
 from .containerized_testing_database import ContainerizedTestingDatabase
 from .docker.image import Image
 from .testing_database import TestingDatabase
-from eventsourcingdb_client_python.client import Client
-from eventsourcingdb_client_python.client_options import ClientOptions
-import uuid
 
 
 class Database:

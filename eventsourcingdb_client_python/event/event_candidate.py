@@ -1,6 +1,7 @@
+from dataclasses import dataclass
+
 from .validate_subject import validate_subject
 from .validate_type import validate_type
-from dataclasses import dataclass
 
 
 @dataclass

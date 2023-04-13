@@ -1,8 +1,11 @@
-from eventsourcingdb_client_python.client import Client
-from eventsourcingdb_client_python.client_options import ClientOptions
-from flask import Flask, Response, make_response
 from multiprocessing import Process
 from typing import Callable
+
+from flask import Flask, Response, make_response
+
+from eventsourcingdb_client_python.client import Client
+from eventsourcingdb_client_python.client_options import ClientOptions
+
 from .util.get_random_available_port import get_random_available_port
 
 Handler = Callable[[Response], Response]

@@ -6,4 +6,4 @@ class AbstractBaseClient(ABC):
     @property
     @abstractmethod
     def http_client(self) -> HttpClient:
-        raise NotImplemented
+        raise NotImplementedError()

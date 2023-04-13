@@ -1,6 +1,7 @@
-from ...event.validate_subject import validate_subject
 from dataclasses import dataclass
 from typing import Optional
+
+from ...event.validate_subject import validate_subject
 
 
 @dataclass
@@ -12,7 +13,7 @@ class ReadSubjectsOptions:
             validate_subject(self.base_subject)
 
     def to_json(self):
-        json = dict()
+        json = {}
 
         if self.base_subject is not None:
             json['baseSubject'] = self.base_subject

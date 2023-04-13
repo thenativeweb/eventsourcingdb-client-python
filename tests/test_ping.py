@@ -1,9 +1,16 @@
-from eventsourcingdb_client_python.errors.server_error import ServerError
 from http import HTTPStatus
+
 import pytest
+
+from eventsourcingdb_client_python.errors.server_error import ServerError
+
 from .shared.build_database import build_database
 from .shared.database import Database
-from .shared.start_local_http_server import AttachHandler, Response, start_local_http_server, StopServer
+from .shared.start_local_http_server import \
+    AttachHandler,\
+    Response,\
+    start_local_http_server,\
+    StopServer
 
 
 class TestPing:

@@ -1,6 +1,7 @@
+from http import HTTPStatus
+
 from ..abstract_base_client import AbstractBaseClient
 from ..errors.server_error import ServerError
-from http import HTTPStatus
 
 
 def ping(client: AbstractBaseClient) -> None:

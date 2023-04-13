@@ -1,10 +1,11 @@
+from dataclasses import dataclass
+from datetime import datetime
+from typing import TypeVar
+
 from ..errors.internal_error import InternalError
 from ..errors.validation_error import ValidationError
 from .validate_subject import validate_subject
 from .validate_type import validate_type
-from dataclasses import dataclass
-from datetime import datetime
-from typing import TypeVar
 
 Self = TypeVar("Self", bound="EventContext")
 
@@ -15,10 +16,11 @@ class EventContext:
     subject: str
     type: str
     spec_version: str
-    id: str
+    event_id: str
     time: datetime
     data_content_type: str
     predecessor_hash: str
+
 
     @staticmethod
     def parse(unknown_object: dict) -> Self:
@@ -58,11 +60,11 @@ class EventContext:
             rest, sub_seconds = time.split('.')
             sub_seconds = f'{sub_seconds[:6]:06}'
             time = datetime.fromisoformat(f'{rest}.{sub_seconds}')
-        except ValueError:
+        except ValueError as value_error:
             raise ValidationError(
-                f'Failed to parse time \'{time}\' to datetime.')
+                f'Failed to parse time \'{time}\' to datetime.') from value_error
         except Exception as other_error:
-            raise InternalError(str(other_error))
+            raise InternalError(str(other_error)) from other_error
 
         data_content_type = unknown_object.get('datacontenttype')
         if not isinstance(data_content_type, str):
@@ -79,7 +81,7 @@ class EventContext:
             subject=subject,
             type=event_type,
             spec_version=spec_version,
-            id=event_id,
+            event_id=event_id,
             time=time,
             data_content_type=data_content_type,
             predecessor_hash=predecessor_hash
@@ -88,7 +90,7 @@ class EventContext:
     def to_json(self):
         return {
             'specversion': self.spec_version,
-            'id': self.id,
+            'id': self.event_id,
             'time': self.time.isoformat(sep='T'),
             'source': self.source,
             'subject': self.subject,

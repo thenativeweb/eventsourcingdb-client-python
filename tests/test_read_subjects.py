@@ -1,14 +1,21 @@
-from .shared.build_database import build_database
-from .shared.database import Database
-from .shared.event.test_source import TEST_SOURCE
-from .shared.start_local_http_server import AttachHandler, StopServer, Response, start_local_http_server
+from http import HTTPStatus
+
+import pytest
+
 from eventsourcingdb_client_python.errors.client_error import ClientError
 from eventsourcingdb_client_python.errors.invalid_parameter_error import InvalidParameterError
 from eventsourcingdb_client_python.errors.server_error import ServerError
 from eventsourcingdb_client_python.event.event_candidate import EventCandidate
 from eventsourcingdb_client_python.handlers.read_subjects import ReadSubjectsOptions
-from http import HTTPStatus
-import pytest
+
+from .shared.build_database import build_database
+from .shared.database import Database
+from .shared.event.test_source import TEST_SOURCE
+from .shared.start_local_http_server import \
+    AttachHandler,\
+    StopServer,\
+    Response,\
+    start_local_http_server
 
 
 class TestReadSubjects:
@@ -47,7 +54,7 @@ class TestReadSubjects:
                            'io.thenativeweb.user.janeDoe.loggedIn', {})
         ])
 
-        actual_subjects = [subject for subject in client.read_subjects()]
+        actual_subjects = list(subject for subject in client.read_subjects())
 
         assert actual_subjects == ['/', '/foo']
 
@@ -59,8 +66,9 @@ class TestReadSubjects:
                            'io.thenativeweb.user.janeDoe.loggedIn', {})
         ])
 
-        actual_subjects = [subject for subject in client.read_subjects(
-            ReadSubjectsOptions('/foo'))]
+        actual_subjects = list(
+            subject for subject in client.read_subjects(ReadSubjectsOptions('/foo'))
+        )
 
         assert actual_subjects == ['/foo', '/foo/bar']
 

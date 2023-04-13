@@ -1,3 +1,10 @@
+from dataclasses import dataclass
+from http import HTTPStatus
+from typing import Dict
+
+import requests
+from requests.structures import CaseInsensitiveDict
+
 from .client_configuration import ClientConfiguration
 from .errors.client_error import ClientError
 from .errors.custom_error import CustomError
@@ -6,11 +13,6 @@ from .errors.server_error import ServerError
 from .util import url
 from .util.retry.retry_with_backoff import retry_with_backoff, RetryResult, Return, Retry
 from .util.retry.retry_error import RetryError
-from dataclasses import dataclass
-from http import HTTPStatus
-import requests
-from requests.structures import CaseInsensitiveDict
-from typing import Dict
 
 Headers = CaseInsensitiveDict[str]
 
@@ -36,7 +38,9 @@ class HttpClient:
 
     def __validate_response(self, response: requests.Response) -> RetryResult[requests.Response]:
         if 500 <= response.status_code < 600:
-            return Retry(ServerError(f'Request failed with status code \'{response.status_code}\'.'))
+            return Retry(
+                ServerError(f'Request failed with status code \'{response.status_code}\'.')
+            )
 
         if 400 <= response.status_code < 500:
             raise ClientError(
@@ -76,13 +80,13 @@ class HttpClient:
                 execute_request
             )
         except RetryError as retry_error:
-            raise ServerError(str(retry_error))
+            raise ServerError(str(retry_error)) from retry_error
         except CustomError as custom_error:
             raise custom_error
         except requests.exceptions.RequestException as request_error:
-            raise ServerError(str(request_error))
+            raise ServerError(str(request_error)) from request_error
         except Exception as other_error:
-            raise InternalError(str(other_error))
+            raise InternalError(str(other_error)) from other_error
 
     def __get_get_request_headers(self, with_authorization: bool) -> Dict[str, str]:
         headers = {
@@ -94,9 +98,13 @@ class HttpClient:
 
         return headers
 
-    def get(self, path: str, with_authorization: bool = True, stream_response: bool = False) -> requests.Response:
+    def get(
+        self,
+        path: str,
+        with_authorization: bool = True,
+        stream_response: bool = False
+    ) -> requests.Response:
         try:
-
             def execute_request() -> RetryResult[requests.Response]:
                 response = requests.get(
                     url.join_segments(
@@ -113,10 +121,10 @@ class HttpClient:
                 execute_request
             )
         except RetryError as retry_error:
-            raise ServerError(str(retry_error))
+            raise ServerError(str(retry_error)) from retry_error
         except CustomError as custom_error:
             raise custom_error
         except requests.exceptions.RequestException as request_error:
-            raise ServerError(str(request_error))
+            raise ServerError(str(request_error)) from request_error
         except Exception as other_error:
-            raise InternalError(str(other_error))
+            raise InternalError(str(other_error)) from other_error

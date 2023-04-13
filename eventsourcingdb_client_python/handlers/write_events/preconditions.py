@@ -5,7 +5,7 @@ from dataclasses import dataclass
 class Precondition(ABC):
     @abstractmethod
     def to_json(self):
-        raise NotImplemented
+        raise NotImplementedError()
 
 
 @dataclass

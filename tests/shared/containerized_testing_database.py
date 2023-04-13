@@ -1,7 +1,8 @@
-from .docker.container import Container
-from .docker.image import Image
 from eventsourcingdb_client_python.client import Client
 from eventsourcingdb_client_python.client_options import ClientOptions
+
+from .docker.container import Container
+from .docker.image import Image
 
 
 class ContainerizedTestingDatabase:

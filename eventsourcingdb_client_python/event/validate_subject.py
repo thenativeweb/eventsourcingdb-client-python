@@ -1,12 +1,13 @@
-from ..errors.validation_error import ValidationError
 import re
 
-word_pattern = '[0-9A-Za-z_-]+'
-subject_pattern = f'^/({word_pattern}/)*({word_pattern}/?)?$'
+from ..errors.validation_error import ValidationError
+
+WORD_PATTERN = '[0-9A-Za-z_-]+'
+SUBJECT_PATTERN = f'^/({WORD_PATTERN}/)*({WORD_PATTERN}/?)?$'
 
 
 def validate_subject(subject: str) -> None:
-    match = re.search(subject_pattern, subject)
+    match = re.search(SUBJECT_PATTERN, subject)
 
     if match is None:
         raise ValidationError(
