@@ -17,7 +17,7 @@ def read_subjects(client: AbstractBaseClient, options: ReadSubjectsOptions) -> G
 	try:
 		options.validate()
 	except ValidationError as validation_error:
-		raise InvalidParameterError('options', validation_error.message())
+		raise InvalidParameterError('options', str(validation_error))
 	except Exception as other_error:
 		raise InternalError(str(other_error))
 

@@ -72,7 +72,7 @@ class HttpClient:
 				execute_request
 			)
 		except RetryError as retry_error:
-			raise ServerError(retry_error.message())
+			raise ServerError(str(retry_error))
 		except CustomError as custom_error:
 			raise custom_error
 		except requests.exceptions.RequestException as request_error:
@@ -108,7 +108,7 @@ class HttpClient:
 				execute_request
 			)
 		except RetryError as retry_error:
-			raise ServerError(retry_error.message())
+			raise ServerError(str(retry_error))
 		except CustomError as custom_error:
 			raise custom_error
 		except requests.exceptions.RequestException as request_error:

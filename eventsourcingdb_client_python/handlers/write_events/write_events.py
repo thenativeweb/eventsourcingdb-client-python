@@ -28,7 +28,7 @@ def write_events(
 		try:
 			event_candidate.validate()
 		except ValidationError as validation_error:
-			raise InvalidParameterError('event_candidates', validation_error.message())
+			raise InvalidParameterError('event_candidates', str(validation_error))
 		except Exception as other_error:
 			raise InternalError(str(other_error))
 
@@ -62,7 +62,7 @@ def write_events(
 			event_context = EventContext.parse(unparsed_event_context)
 			return_value.append(event_context)
 		except ValidationError as validation_error:
-			raise ServerError(validation_error.message())
+			raise ServerError(str(validation_error))
 		except Exception as other_error:
 			raise InternalError(str(other_error))
 
