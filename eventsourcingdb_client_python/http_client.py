@@ -15,7 +15,6 @@ from typing import Dict
 Headers = CaseInsensitiveDict[str]
 
 
-# TODO: Add response streaming
 @dataclass
 class HttpClient:
 	client_configuration: ClientConfiguration
@@ -54,7 +53,7 @@ class HttpClient:
 
 		return headers
 
-	def post(self, path: str, request_body: str):
+	def post(self, path: str, request_body: str, stream_response: bool = False):
 		try:
 
 			def execute_request() -> RetryResult[requests.Response]:
@@ -63,7 +62,7 @@ class HttpClient:
 					timeout=self.client_configuration.timeout_seconds,
 					headers=self.__get_post_request_headers(),
 					data=request_body,
-					stream=True
+					stream=stream_response
 				)
 
 				return self.__validate_response(response)
@@ -91,14 +90,15 @@ class HttpClient:
 
 		return headers
 
-	def get(self, path: str, with_authorization: bool = True) -> requests.Response:
+	def get(self, path: str, with_authorization: bool = True, stream_response: bool = False) -> requests.Response:
 		try:
 
 			def execute_request() -> RetryResult[requests.Response]:
 				response = requests.get(
 					url.join_segments(self.client_configuration.base_url, path),
 					timeout=self.client_configuration.timeout_seconds,
-					headers=self.__get_get_request_headers(with_authorization)
+					headers=self.__get_get_request_headers(with_authorization),
+					stream=stream_response
 				)
 
 				return self.__validate_response(response)

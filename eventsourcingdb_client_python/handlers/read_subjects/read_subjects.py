@@ -27,7 +27,8 @@ def read_subjects(client: AbstractBaseClient, options: ReadSubjectsOptions) -> G
 	try:
 		response = client.http_client.post(
 			path='/api/read-subjects',
-			request_body=request_body
+			request_body=request_body,
+			stream_response=True
 		)
 	except CustomError as custom_error:
 		raise custom_error

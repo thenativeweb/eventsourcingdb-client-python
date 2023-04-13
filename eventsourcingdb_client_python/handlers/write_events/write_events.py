@@ -41,7 +41,7 @@ def write_events(
 	try:
 		response = client.http_client.post(
 			path='/api/write-events',
-			request_body=request_body
+			request_body=request_body,
 		)
 	except CustomError as custom_error:
 		raise custom_error
