@@ -32,6 +32,7 @@ disable = missing-module-docstring,
 	missing-class-docstring,
 	missing-function-docstring,
 	too-few-public-methods,
-	too-many-instance-attributes
+	too-many-instance-attributes,
+	too-many-arguments
 
 include-naming-hint = y
