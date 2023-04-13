@@ -34,5 +34,7 @@ jobs:
       run: pip install poetry
     - name: Install dependencies
       run: poetry install
+    - name: Run PyLint
+      run: poetry run --enable-all-extensions eventsourcingdb_client_python
     - name: Run tests
       run: poetry run pytest
