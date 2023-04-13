@@ -1,6 +1,6 @@
 from .shared.build_database import build_database
 from .shared.database import Database
-from .shared.event.test_source import test_source
+from .shared.event.test_source import TEST_SOURCE
 from .shared.start_local_http_server import AttachHandler, StopServer, Response, start_local_http_server
 from eventsourcingdb_client_python.errors.client_error import ClientError
 from eventsourcingdb_client_python.errors.invalid_parameter_error import InvalidParameterError
@@ -43,7 +43,7 @@ class TestReadSubjects:
         client = TestReadSubjects.database.with_authorization.client
 
         client.write_events([
-            EventCandidate(test_source, '/foo',
+            EventCandidate(TEST_SOURCE, '/foo',
                            'io.thenativeweb.user.janeDoe.loggedIn', {})
         ])
 
@@ -55,7 +55,7 @@ class TestReadSubjects:
         client = TestReadSubjects.database.with_authorization.client
 
         client.write_events([
-            EventCandidate(test_source, '/foo/bar',
+            EventCandidate(TEST_SOURCE, '/foo/bar',
                            'io.thenativeweb.user.janeDoe.loggedIn', {})
         ])
 
@@ -68,7 +68,7 @@ class TestReadSubjects:
         client = TestReadSubjects.database.with_authorization.client
 
         client.write_events([
-            EventCandidate(test_source, '/foo/bar',
+            EventCandidate(TEST_SOURCE, '/foo/bar',
                            'io.thenativeweb.user.janeDoe.loggedIn', {})
         ])
 
