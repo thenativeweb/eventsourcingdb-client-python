@@ -1,2 +1,2 @@
 class DockerCommandFailedError(Exception):
-	pass
+    pass
