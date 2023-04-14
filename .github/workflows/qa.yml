@@ -8,14 +8,13 @@ permissions:
 
 jobs:
   qa:
+    name: QA
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     strategy:
       matrix:
         os: [ubuntu-latest]
         python-version: ["3.10"]
-
-    name: QA
-    timeout-minutes: 15
-    runs-on: ${{ matrix.os }}
 
     steps:
     - name: Clone repository
@@ -26,15 +25,13 @@ jobs:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
-    - name: Use python ${{ matrix.python-version }}
+    - name: Use Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Install poetry
-      run: pip install poetry
     - name: Install dependencies
-      run: poetry install
-    - name: Run PyLint
-      run: poetry run pylint eventsourcingdb_client_python tests
-    - name: Run tests
-      run: poetry run pytest
+      run: |
+        pip install poetry
+        poetry install
+    - name: Run QA
+      run: make qa
