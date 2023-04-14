@@ -34,7 +34,7 @@ class Event(EventContext):
 
     @staticmethod
     def parse(unknown_object: dict) -> Self:
-        event_context = super().parse(unknown_object)
+        event_context = super(Event, Event).parse(unknown_object)
         data = unknown_object.get('data')
         if not isinstance(data, dict):
             raise ValidationError(

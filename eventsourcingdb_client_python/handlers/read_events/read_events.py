@@ -4,7 +4,7 @@ from http import HTTPStatus
 
 import requests
 
-from ...client import Client
+from ...abstract_base_client import AbstractBaseClient
 from ...errors.custom_error import CustomError
 from ...errors.internal_error import InternalError
 from ...errors.invalid_parameter_error import InvalidParameterError
@@ -20,7 +20,7 @@ from .read_events_options import ReadEventsOptions
 
 
 def read_events(
-    client: Client,
+    client: AbstractBaseClient,
     subject: str,
     options: ReadEventsOptions
 ) -> Generator[StoreItem, None, None]:

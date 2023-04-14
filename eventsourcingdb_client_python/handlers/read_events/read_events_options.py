@@ -10,10 +10,10 @@ from .read_from_latest_event import ReadFromLatestEvent
 @dataclass
 class ReadEventsOptions:
     recursive: bool
-    chronological: bool | None
-    lower_bound_id: str | None
-    upper_bound_id: str | None
-    from_latest_event: ReadFromLatestEvent | None
+    chronological: bool | None = None
+    lower_bound_id: str | None = None
+    upper_bound_id: str | None = None
+    from_latest_event: ReadFromLatestEvent | None = None
 
     def validate(self) -> None:
         if self.lower_bound_id is not None and not is_non_negative_integer(self.lower_bound_id):

@@ -5,6 +5,8 @@ from .client_configuration import ClientConfiguration
 from .client_options import ClientOptions
 from .event.event_candidate import EventCandidate
 from .event.event_context import EventContext
+from .handlers.read_events.read_events import read_events
+from .handlers.read_events.read_events_options import ReadEventsOptions
 from .http_client import HttpClient
 from .handlers.ping import ping
 from .handlers.read_subjects import read_subjects, ReadSubjectsOptions
@@ -39,6 +41,13 @@ class Client(AbstractBaseClient):
         options: ReadSubjectsOptions = ReadSubjectsOptions()
     ) -> Generator[str, None, None]:
         return read_subjects(self, options)
+
+    def read_events(
+        self,
+        subject: str,
+        options: ReadEventsOptions
+    ):
+        return read_events(self, subject, options)
 
     def write_events(
         self,
