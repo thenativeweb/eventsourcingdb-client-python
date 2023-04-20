@@ -5,10 +5,9 @@ from .client_configuration import ClientConfiguration
 from .client_options import ClientOptions
 from .event.event_candidate import EventCandidate
 from .event.event_context import EventContext
-from .handlers.read_events.read_events import read_events
-from .handlers.read_events.read_events_options import ReadEventsOptions
 from .http_client import HttpClient
 from .handlers.ping import ping
+from .handlers.read_events import read_events, ReadEventsOptions
 from .handlers.read_subjects import read_subjects, ReadSubjectsOptions
 from .handlers.write_events import Precondition, write_events
 
