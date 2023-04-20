@@ -1,5 +1,6 @@
 from http import HTTPStatus
 import json
+from typing import Any
 
 import requests
 
@@ -57,7 +58,13 @@ def write_events(
             f'{response.status_code} {HTTPStatus(response.status_code).phrase}.'
         )
 
-    response_data = response.json()
+    response_data: Any
+    try:
+        response_data = response.json()
+    except requests.exceptions.JSONDecodeError as decode_error:
+        raise ServerError(str(decode_error)) from decode_error
+    except Exception as other_error:
+        raise InternalError(str(other_error)) from other_error
 
     if not isinstance(response_data, list):
         raise ServerError(

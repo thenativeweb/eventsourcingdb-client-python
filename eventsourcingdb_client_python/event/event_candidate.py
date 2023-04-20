@@ -18,7 +18,7 @@ class EventCandidate:
     def to_json(self):
         return {
             'data': self.data,
-            'source': self.subject,
+            'source': self.source,
             'subject': self.subject,
             'type': self.type
         }
