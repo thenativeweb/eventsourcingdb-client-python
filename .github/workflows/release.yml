@@ -27,30 +27,30 @@ jobs:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
-    # - name: Use Node.js
-    # 	uses: actions/setup-node@v3
-    # 	with:
-    # 		node-version: 19.x
-    # - name: Install dependencies
-    # 	run: |
-    # 		npm ci
-    # - name: Run QA
-    # 	run: |
-    # 		npm run qa
-    # - name: Get next version
-    # 	id: get_next_version
-    # 	uses: thenativeweb/get-next-version@2.5.0
-    # - name: Create new version
-    # 	if: ${{ steps.get_next_version.outputs.hasNextVersion == 'true' }}
-    # 	run: |
-    # 		npm version --no-git-tag-version ${{ steps.get_next_version.outputs.version }}
-    # 		git config --global user.email "hello@thenativeweb.io"
-    # 		git config --global user.name "${{ github.actor }}"
-    # 		git add .
-    # 		git commit -m 'chore: Bump version to ${{ steps.get_next_version.outputs.version }}. [skip ci]'
-    # 		git push
-    # 		git tag ${{ steps.get_next_version.outputs.version }}
-    # 		git push origin ${{ steps.get_next_version.outputs.version }}
+    - name: Use Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.10
+    - name: Install dependencies
+      run: |
+        pip install poetry
+        poetry install
+    - name: Run QA
+      run: make qa
+    - name: Get next version
+      id: get_next_version
+      uses: thenativeweb/get-next-version@2.5.0
+    - name: Create new version
+      if: ${{ steps.get_next_version.outputs.hasNextVersion == 'true' }}
+      run: |
+        npm version --no-git-tag-version ${{ steps.get_next_version.outputs.version }}
+        git config --global user.email "hello@thenativeweb.io"
+        git config --global user.name "${{ github.actor }}"
+        git add .
+        git commit -m 'chore: Bump version to ${{ steps.get_next_version.outputs.version }}. [skip ci]'
+        git push
+        git tag ${{ steps.get_next_version.outputs.version }}
+        git push origin ${{ steps.get_next_version.outputs.version }}
     # - name: Build artifacts
     # 	if: ${{ steps.get_next_version.outputs.hasNextVersion == 'true' }}
     # 	run: |
