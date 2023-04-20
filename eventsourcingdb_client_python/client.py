@@ -5,6 +5,8 @@ from .client_configuration import ClientConfiguration
 from .client_options import ClientOptions
 from .event.event_candidate import EventCandidate
 from .event.event_context import EventContext
+from .handlers.observe_events.observe_events import observe_events
+from .handlers.observe_events.observe_events_options import ObserveEventsOptions
 from .http_client import HttpClient
 from .handlers.ping import ping
 from .handlers.read_events import read_events, ReadEventsOptions
@@ -48,6 +50,13 @@ class Client(AbstractBaseClient):
         options: ReadEventsOptions
     ) -> Generator[StoreItem, None, None]:
         return read_events(self, subject, options)
+
+    def observe_events(
+        self,
+        subject: str,
+        options: ObserveEventsOptions
+    ) -> Generator[StoreItem, None, None]:
+        return observe_events(self, subject, options)
 
     def write_events(
         self,
