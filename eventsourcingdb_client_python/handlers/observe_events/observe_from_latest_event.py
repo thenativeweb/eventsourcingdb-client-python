@@ -4,7 +4,7 @@ from ..if_event_is_missing import IfEventIsMissing
 
 
 @dataclass
-class ReadFromLatestEvent:
+class ObserveFromLatestEvent:
     subject: str
     type: str
     if_event_is_missing: IfEventIsMissing

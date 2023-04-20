@@ -9,6 +9,7 @@ from .http_client import HttpClient
 from .handlers.ping import ping
 from .handlers.read_events import read_events, ReadEventsOptions
 from .handlers.read_subjects import read_subjects, ReadSubjectsOptions
+from .handlers.store_item import StoreItem
 from .handlers.write_events import Precondition, write_events
 
 
@@ -45,7 +46,7 @@ class Client(AbstractBaseClient):
         self,
         subject: str,
         options: ReadEventsOptions
-    ):
+    ) -> Generator[StoreItem, None, None]:
         return read_events(self, subject, options)
 
     def write_events(
