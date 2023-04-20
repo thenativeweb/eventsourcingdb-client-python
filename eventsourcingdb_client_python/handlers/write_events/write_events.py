@@ -63,9 +63,8 @@ def write_events(
         response_data = response.json()
     except requests.exceptions.JSONDecodeError as decode_error:
         raise ServerError(str(decode_error)) from decode_error
-    except Exception as other_Error:
-        raise InternalError(str(other_Error)) from other_Error
-
+    except Exception as other_error:
+        raise InternalError(str(other_error)) from other_error
 
     if not isinstance(response_data, list):
         raise ServerError(

@@ -1,5 +1,4 @@
 from http import HTTPStatus
-from multiprocessing import Process
 
 import pytest
 
@@ -12,12 +11,15 @@ from eventsourcingdb_client_python.handlers.observe_events.observe_events_option
 from eventsourcingdb_client_python.handlers.observe_events.observe_from_latest_event import \
     ObserveFromLatestEvent
 from eventsourcingdb_client_python.handlers.if_event_is_missing import IfEventIsMissing
-from eventsourcingdb_client_python.handlers.read_events import ReadEventsOptions
 
 from .shared.build_database import build_database
 from .shared.database import Database
 from .shared.event.test_source import TEST_SOURCE
-from .shared.start_local_http_server import StopServer, AttachHandler, Response, start_local_http_server
+from .shared.start_local_http_server import \
+    StopServer,\
+    AttachHandler,\
+    Response,\
+    start_local_http_server
 
 
 class TestObserveEvents:
@@ -39,8 +41,11 @@ class TestObserveEvents:
     def setup_method():
         TestObserveEvents.database = Database()
 
-        for db in [TestObserveEvents.database.without_authorization, TestObserveEvents.database.with_authorization]:
-            db.client.write_events([
+        for database in (
+            TestObserveEvents.database.without_authorization,
+            TestObserveEvents.database.with_authorization
+        ):
+            database.client.write_events([
                 TestObserveEvents.source.new_event(
                     TestObserveEvents.REGISTERED_SUBJECT,
                     TestObserveEvents.REGISTERED_TYPE,

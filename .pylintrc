@@ -34,6 +34,7 @@ disable = missing-module-docstring,
 	too-few-public-methods,
 	too-many-instance-attributes,
 	too-many-arguments,
-	duplicate-code
+	duplicate-code,
+	too-many-branches
 
 include-naming-hint = y

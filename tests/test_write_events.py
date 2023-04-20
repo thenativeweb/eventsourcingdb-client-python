@@ -10,7 +10,11 @@ from eventsourcingdb_client_python.event.source import Source
 from .shared.build_database import build_database
 from .shared.database import Database
 from .shared.event.test_source import TEST_SOURCE
-from .shared.start_local_http_server import StopServer, AttachHandler, Response, start_local_http_server
+from .shared.start_local_http_server import \
+    StopServer,\
+    AttachHandler,\
+    Response,\
+    start_local_http_server
 
 
 class TestWriteSubjects:
@@ -136,8 +140,8 @@ class TestWriteEventsWithMockServer:
     def test_throws_error_if_server_responds_with_4xx_status_code():
         def attach_handlers(attach_handler: AttachHandler):
             def handle_write_events(response: Response) -> Response:
-                response.status_code = HTTPStatus.IM_A_TEAPOT
-                response.set_data(HTTPStatus.IM_A_TEAPOT.phrase)
+                response.status_code = HTTPStatus.NOT_FOUND
+                response.set_data(HTTPStatus.NOT_FOUND.phrase)
                 return response
 
             attach_handler('/api/write-events', 'POST', handle_write_events)
