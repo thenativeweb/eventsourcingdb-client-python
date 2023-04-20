@@ -275,7 +275,7 @@ class TestObserveEvents:
                     lower_bound_id='3',
                     from_latest_event=ObserveFromLatestEvent(
                         subject='/',
-                        type='com.foo',
+                        type='com.foo.bar',
                         if_event_is_missing=IfEventIsMissing.READ_EVERYTHING
                     )
                 )
@@ -321,7 +321,7 @@ class TestObserveEvents:
                     recursive=True,
                     from_latest_event=ObserveFromLatestEvent(
                         subject='',
-                        type='com.foo',
+                        type='com.foo.bar',
                         if_event_is_missing=IfEventIsMissing.READ_EVERYTHING
                     )
                 )
