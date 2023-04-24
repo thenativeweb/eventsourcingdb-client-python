@@ -140,7 +140,7 @@ class TestReadEvents:
         assert result[3].event.data == TestReadEvents.JOHN_DATA
 
     @staticmethod
-    def test_read_events_in_reverse_chronological_order():
+    def test_read_events_in_antichronological_order():
         client = TestReadEvents.database.without_authorization.client
 
         result = []
