@@ -10,6 +10,7 @@ from eventsourcingdb_client_python.handlers.read_events import \
     ReadEventsOptions, \
     ReadFromLatestEvent, \
     IfEventIsMissing
+from eventsourcingdb_client_python.handlers.read_events.order import Order
 
 from .shared.build_database import build_database
 from .shared.database import Database
@@ -146,12 +147,12 @@ class TestReadEvents:
         result = []
         for event in client.read_events(
             TestReadEvents.REGISTERED_SUBJECT,
-            ReadEventsOptions(recursive=False, chronological=False)
+            ReadEventsOptions(recursive=False, order=Order.ANTICHRONOLOGICAL)
         ):
             result.append(event)
 
-        registired_count = 2
-        assert len(result) == registired_count
+        registered_count = 2
+        assert len(result) == registered_count
         assert result[0].event.source == TEST_SOURCE
         assert result[0].event.subject == TestReadEvents.REGISTERED_SUBJECT
         assert result[0].event.type == TestReadEvents.REGISTERED_TYPE
