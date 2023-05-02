@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+from .order import Order
 from ...errors.validation_error import ValidationError
 from ...event.validate_subject import validate_subject
 from ...event.validate_type import validate_type
@@ -10,7 +11,7 @@ from .read_from_latest_event import ReadFromLatestEvent
 @dataclass
 class ReadEventsOptions:
     recursive: bool
-    chronological: bool | None = None
+    order: Order | None = None
     lower_bound_id: str | None = None
     upper_bound_id: str | None = None
     from_latest_event: ReadFromLatestEvent | None = None
@@ -53,8 +54,8 @@ class ReadEventsOptions:
             'recursive': self.recursive
         }
 
-        if self.chronological is not None:
-            json['chronological'] = self.chronological
+        if self.order is not None:
+            json['order'] = self.order.value
         if self.lower_bound_id is not None:
             json['lowerBoundId'] = self.lower_bound_id
         if self.upper_bound_id is not None:

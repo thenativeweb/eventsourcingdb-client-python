@@ -39,7 +39,7 @@ def retry_with_backoff(tries: int, operation: Callable[[], RetryResult]) -> Retu
     retry_error = RetryError()
 
     for tries_count in range(tries):
-        timeout = get_randomized_duration(100, 25) * tries_count
+        timeout = get_randomized_duration(200, 50) * tries_count
 
         time.sleep(timeout / 1_000)
 
