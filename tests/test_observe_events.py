@@ -6,11 +6,10 @@ from eventsourcingdb_client_python.errors.client_error import ClientError
 from eventsourcingdb_client_python.errors.invalid_parameter_error import InvalidParameterError
 from eventsourcingdb_client_python.errors.server_error import ServerError
 from eventsourcingdb_client_python.event.source import Source
-from eventsourcingdb_client_python.handlers.observe_events.observe_events_options import \
-    ObserveEventsOptions
-from eventsourcingdb_client_python.handlers.observe_events.observe_from_latest_event import \
-    ObserveFromLatestEvent
-from eventsourcingdb_client_python.handlers.if_event_is_missing import IfEventIsMissing
+from eventsourcingdb_client_python.handlers.observe_events import \
+    ObserveEventsOptions, \
+    ObserveFromLatestEvent, \
+    IfEventIsMissingDuringObserve
 
 from .shared.build_database import build_database
 from .shared.database import Database
@@ -199,7 +198,7 @@ class TestObserveEvents:
                 from_latest_event=ObserveFromLatestEvent(
                     subject=TestObserveEvents.LOGGED_IN_SUBJECT,
                     type=TestObserveEvents.LOGGED_IN_TYPE,
-                    if_event_is_missing=IfEventIsMissing.READ_EVERYTHING
+                    if_event_is_missing=IfEventIsMissingDuringObserve.READ_EVERYTHING
                 )
             )
         ):
@@ -281,7 +280,7 @@ class TestObserveEvents:
                     from_latest_event=ObserveFromLatestEvent(
                         subject='/',
                         type='com.foo.bar',
-                        if_event_is_missing=IfEventIsMissing.READ_EVERYTHING
+                        if_event_is_missing=IfEventIsMissingDuringObserve.READ_EVERYTHING
                     )
                 )
             ):
@@ -327,7 +326,7 @@ class TestObserveEvents:
                     from_latest_event=ObserveFromLatestEvent(
                         subject='',
                         type='com.foo.bar',
-                        if_event_is_missing=IfEventIsMissing.READ_EVERYTHING
+                        if_event_is_missing=IfEventIsMissingDuringObserve.READ_EVERYTHING
                     )
                 )
             ):
@@ -345,7 +344,7 @@ class TestObserveEvents:
                     from_latest_event=ObserveFromLatestEvent(
                         subject='/',
                         type='',
-                        if_event_is_missing=IfEventIsMissing.READ_EVERYTHING
+                        if_event_is_missing=IfEventIsMissingDuringObserve.READ_EVERYTHING
                     )
                 )
             ):
