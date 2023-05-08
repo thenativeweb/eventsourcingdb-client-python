@@ -9,7 +9,8 @@ from eventsourcingdb_client_python.event.source import Source
 from eventsourcingdb_client_python.handlers.read_events import \
     ReadEventsOptions, \
     ReadFromLatestEvent, \
-    IfEventIsMissing
+    IfEventIsMissingDuringRead
+from eventsourcingdb_client_python.handlers.read_events.order import Order
 
 from .shared.build_database import build_database
 from .shared.database import Database
@@ -140,18 +141,18 @@ class TestReadEvents:
         assert result[3].event.data == TestReadEvents.JOHN_DATA
 
     @staticmethod
-    def test_read_events_in_reverse_chronological_order():
+    def test_read_events_in_antichronological_order():
         client = TestReadEvents.database.without_authorization.client
 
         result = []
         for event in client.read_events(
             TestReadEvents.REGISTERED_SUBJECT,
-            ReadEventsOptions(recursive=False, chronological=False)
+            ReadEventsOptions(recursive=False, order=Order.ANTICHRONOLOGICAL)
         ):
             result.append(event)
 
-        registired_count = 2
-        assert len(result) == registired_count
+        registered_count = 2
+        assert len(result) == registered_count
         assert result[0].event.source == TEST_SOURCE
         assert result[0].event.subject == TestReadEvents.REGISTERED_SUBJECT
         assert result[0].event.type == TestReadEvents.REGISTERED_TYPE
@@ -173,7 +174,7 @@ class TestReadEvents:
                 from_latest_event=ReadFromLatestEvent(
                     subject=TestReadEvents.REGISTERED_SUBJECT,
                     type=TestReadEvents.REGISTERED_TYPE,
-                    if_event_is_missing=IfEventIsMissing.READ_EVERYTHING
+                    if_event_is_missing=IfEventIsMissingDuringRead.READ_EVERYTHING
                 )
             )
         ):
@@ -252,7 +253,7 @@ class TestReadEvents:
                     from_latest_event=ReadFromLatestEvent(
                         subject='/',
                         type='com.foo.bar',
-                        if_event_is_missing=IfEventIsMissing.READ_EVERYTHING
+                        if_event_is_missing=IfEventIsMissingDuringRead.READ_EVERYTHING
                     ),
                     lower_bound_id='0'
                 )
@@ -340,7 +341,7 @@ class TestReadEvents:
                     from_latest_event=ReadFromLatestEvent(
                         subject='',
                         type='com.foo.bar',
-                        if_event_is_missing=IfEventIsMissing.READ_EVERYTHING
+                        if_event_is_missing=IfEventIsMissingDuringRead.READ_EVERYTHING
                     )
                 )
             ):
@@ -358,7 +359,7 @@ class TestReadEvents:
                     from_latest_event=ReadFromLatestEvent(
                         subject='/',
                         type='',
-                        if_event_is_missing=IfEventIsMissing.READ_EVERYTHING
+                        if_event_is_missing=IfEventIsMissingDuringRead.READ_EVERYTHING
                     )
                 )
             ):

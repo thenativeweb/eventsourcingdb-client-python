@@ -15,13 +15,13 @@ class Database:
         access_token = str(uuid.uuid4())
         with_authorization = ContainerizedTestingDatabase(
             image,
-            ['server', '--dev', '--ui', '--access-token', f'{access_token}'],
+            ['run', '--dev', '--ui', '--access-token', f'{access_token}'],
             ClientOptions(access_token=access_token)
         )
 
         without_authorization = ContainerizedTestingDatabase(
             image,
-            ['server', '--dev', '--ui']
+            ['run', '--dev', '--ui']
         )
 
         with_invalid_url = TestingDatabase(Client('http://localhost.invalid'))

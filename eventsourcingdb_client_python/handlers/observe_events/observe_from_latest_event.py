@@ -1,13 +1,13 @@
 from dataclasses import dataclass
 
-from ..if_event_is_missing import IfEventIsMissing
+from .if_event_is_missing_during_observe import IfEventIsMissingDuringObserve
 
 
 @dataclass
 class ObserveFromLatestEvent:
     subject: str
     type: str
-    if_event_is_missing: IfEventIsMissing
+    if_event_is_missing: IfEventIsMissingDuringObserve
 
     def to_json(self):
         return {
