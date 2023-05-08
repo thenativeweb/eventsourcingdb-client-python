@@ -43,7 +43,7 @@ jobs:
     - name: Create new version
       if: ${{ steps.get_next_version.outputs.hasNextVersion == 'true' }}
       run: |
-        npm version --no-git-tag-version ${{ steps.get_next_version.outputs.version }}
+        sed -i -r "s/(version = \")([0-9]+\.[0-9]+\.[0-9]+)(\")/\1{{ steps.get_next_version.outputs.version }}\3/" pyproject.toml
         git config --global user.email "hello@thenativeweb.io"
         git config --global user.name "${{ github.actor }}"
         git add .
@@ -51,12 +51,3 @@ jobs:
         git push
         git tag ${{ steps.get_next_version.outputs.version }}
         git push origin ${{ steps.get_next_version.outputs.version }}
-    # - name: Build artifacts
-    # 	if: ${{ steps.get_next_version.outputs.hasNextVersion == 'true' }}
-    # 	run: |
-    # 		npm run build
-    # - name: Publish new version
-    # 	if: ${{ steps.get_next_version.outputs.hasNextVersion == 'true' }}
-    # 	run: |
-    # 		echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
-    # 		npm publish
