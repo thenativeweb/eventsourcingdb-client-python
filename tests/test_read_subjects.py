@@ -6,7 +6,6 @@ from eventsourcingdb_client_python.errors.client_error import ClientError
 from eventsourcingdb_client_python.errors.invalid_parameter_error import InvalidParameterError
 from eventsourcingdb_client_python.errors.server_error import ServerError
 from eventsourcingdb_client_python.event.event_candidate import EventCandidate
-from eventsourcingdb_client_python.handlers.read_subjects import ReadSubjectsOptions
 
 from .shared.build_database import build_database
 from .shared.database import Database
@@ -38,14 +37,14 @@ class TestReadSubjects:
         client = TestReadSubjects.database.with_invalid_url.client
 
         with pytest.raises(ServerError):
-            for _ in client.read_subjects():
+            for _ in client.read_subjects('/'):
                 pass
 
     @staticmethod
     def test_supports_authorization():
         client = TestReadSubjects.database.with_authorization.client
 
-        for _ in client.read_subjects():
+        for _ in client.read_subjects('/'):
             pass
 
     @staticmethod
@@ -57,7 +56,7 @@ class TestReadSubjects:
                            'io.thenativeweb.user.janeDoe.loggedIn', {})
         ])
 
-        actual_subjects = list(subject for subject in client.read_subjects())
+        actual_subjects = list(client.read_subjects('/'))
 
         assert actual_subjects == ['/', '/foo']
 
@@ -71,7 +70,7 @@ class TestReadSubjects:
         ])
 
         actual_subjects = list(
-            subject for subject in client.read_subjects(ReadSubjectsOptions('/foo'))
+            subject for subject in client.read_subjects('/foo')
         )
 
         assert actual_subjects == ['/foo', '/foo/bar']
@@ -86,7 +85,7 @@ class TestReadSubjects:
         ])
 
         with pytest.raises(InvalidParameterError):
-            for _ in client.read_subjects(ReadSubjectsOptions('')):
+            for _ in client.read_subjects(''):
                 pass
 
 
@@ -111,7 +110,7 @@ class TestReadSubjectsWithMockServer:
         TestReadSubjectsWithMockServer.stop_server = stop_server
 
         with pytest.raises(ServerError):
-            for _ in client.read_subjects():
+            for _ in client.read_subjects('/'):
                 pass
 
     @staticmethod
@@ -129,7 +128,7 @@ class TestReadSubjectsWithMockServer:
         TestReadSubjectsWithMockServer.stop_server = stop_server
 
         with pytest.raises(ClientError):
-            for _ in client.read_subjects():
+            for _ in client.read_subjects('/'):
                 pass
 
     @staticmethod
@@ -146,7 +145,7 @@ class TestReadSubjectsWithMockServer:
         TestReadSubjectsWithMockServer.stop_server = stop_server
 
         with pytest.raises(ClientError):
-            for _ in client.read_subjects():
+            for _ in client.read_subjects('/'):
                 pass
 
     @staticmethod
@@ -164,7 +163,7 @@ class TestReadSubjectsWithMockServer:
         TestReadSubjectsWithMockServer.stop_server = stop_server
 
         with pytest.raises(ServerError):
-            for _ in client.read_subjects():
+            for _ in client.read_subjects('/'):
                 pass
 
     @staticmethod
@@ -181,7 +180,7 @@ class TestReadSubjectsWithMockServer:
         TestReadSubjectsWithMockServer.stop_server = stop_server
 
         with pytest.raises(ServerError):
-            for _ in client.read_subjects():
+            for _ in client.read_subjects('/'):
                 pass
 
     @staticmethod
@@ -199,7 +198,7 @@ class TestReadSubjectsWithMockServer:
         TestReadSubjectsWithMockServer.stop_server = stop_server
 
         with pytest.raises(ServerError):
-            for _ in client.read_subjects():
+            for _ in client.read_subjects('/'):
                 pass
 
     @staticmethod
@@ -217,5 +216,5 @@ class TestReadSubjectsWithMockServer:
         TestReadSubjectsWithMockServer.stop_server = stop_server
 
         with pytest.raises(ServerError):
-            for _ in client.read_subjects():
+            for _ in client.read_subjects('/'):
                 pass

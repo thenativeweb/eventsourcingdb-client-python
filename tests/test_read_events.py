@@ -42,7 +42,7 @@ class TestReadEvents:
     def setup_method():
         TestReadEvents.database = Database()
 
-        TestReadEvents.database.without_authorization.client.write_events([
+        TestReadEvents.database.with_authorization.client.write_events([
             TestReadEvents.source.new_event(
                 TestReadEvents.REGISTERED_SUBJECT,
                 TestReadEvents.REGISTERED_TYPE,
@@ -88,7 +88,7 @@ class TestReadEvents:
 
     @staticmethod
     def test_read_events_from_a_single_subject():
-        client = TestReadEvents.database.without_authorization.client
+        client = TestReadEvents.database.with_authorization.client
 
         result = []
         for event in client.read_events(
@@ -112,7 +112,7 @@ class TestReadEvents:
 
     @staticmethod
     def test_read_events_from_a_subject_including_children():
-        client = TestReadEvents.database.without_authorization.client
+        client = TestReadEvents.database.with_authorization.client
 
         result = []
         for event in client.read_events(
@@ -142,7 +142,7 @@ class TestReadEvents:
 
     @staticmethod
     def test_read_events_in_antichronological_order():
-        client = TestReadEvents.database.without_authorization.client
+        client = TestReadEvents.database.with_authorization.client
 
         result = []
         for event in client.read_events(
@@ -164,7 +164,7 @@ class TestReadEvents:
 
     @staticmethod
     def test_read_events_matching_event_names():
-        client = TestReadEvents.database.without_authorization.client
+        client = TestReadEvents.database.with_authorization.client
 
         result = []
         for event in client.read_events(
@@ -193,7 +193,7 @@ class TestReadEvents:
 
     @staticmethod
     def test_read_events_starting_from_lower_bound_id():
-        client = TestReadEvents.database.without_authorization.client
+        client = TestReadEvents.database.with_authorization.client
 
         result = []
         for event in client.read_events(
@@ -218,7 +218,7 @@ class TestReadEvents:
 
     @staticmethod
     def test_read_events_up_to_the_upper_bound_id():
-        client = TestReadEvents.database.without_authorization.client
+        client = TestReadEvents.database.with_authorization.client
 
         result = []
         for event in client.read_events(
@@ -243,7 +243,7 @@ class TestReadEvents:
 
     @staticmethod
     def test_throws_error_for_exclusive_options():
-        client = TestReadEvents.database.without_authorization.client
+        client = TestReadEvents.database.with_authorization.client
 
         with pytest.raises(InvalidParameterError):
             for _ in client.read_events(
@@ -262,7 +262,7 @@ class TestReadEvents:
 
     @staticmethod
     def test_throws_error_for_invalid_subject():
-        client = TestReadEvents.database.without_authorization.client
+        client = TestReadEvents.database.with_authorization.client
 
         with pytest.raises(InvalidParameterError):
             for _ in client.read_events(
@@ -275,7 +275,7 @@ class TestReadEvents:
 
     @staticmethod
     def test_throws_error_for_invalid_lower_bound_id():
-        client = TestReadEvents.database.without_authorization.client
+        client = TestReadEvents.database.with_authorization.client
 
         with pytest.raises(InvalidParameterError):
             for _ in client.read_events(
@@ -289,7 +289,7 @@ class TestReadEvents:
 
     @staticmethod
     def test_throws_error_for_negative_lower_bound_id():
-        client = TestReadEvents.database.without_authorization.client
+        client = TestReadEvents.database.with_authorization.client
 
         with pytest.raises(InvalidParameterError):
             for _ in client.read_events(
@@ -303,7 +303,7 @@ class TestReadEvents:
 
     @staticmethod
     def test_throws_error_for_invalid_upper_bound_id():
-        client = TestReadEvents.database.without_authorization.client
+        client = TestReadEvents.database.with_authorization.client
 
         with pytest.raises(InvalidParameterError):
             for _ in client.read_events(
@@ -317,7 +317,7 @@ class TestReadEvents:
 
     @staticmethod
     def test_throws_error_for_negative_upper_bound_id():
-        client = TestReadEvents.database.without_authorization.client
+        client = TestReadEvents.database.with_authorization.client
 
         with pytest.raises(InvalidParameterError):
             for _ in client.read_events(
@@ -331,7 +331,7 @@ class TestReadEvents:
 
     @staticmethod
     def test_throws_error_for_invalid_subject_in_from_latest_event():
-        client = TestReadEvents.database.without_authorization.client
+        client = TestReadEvents.database.with_authorization.client
 
         with pytest.raises(InvalidParameterError):
             for _ in client.read_events(
@@ -349,7 +349,7 @@ class TestReadEvents:
 
     @staticmethod
     def test_throws_error_for_invalid_type_in_from_latest_event():
-        client = TestReadEvents.database.without_authorization.client
+        client = TestReadEvents.database.with_authorization.client
 
         with pytest.raises(InvalidParameterError):
             for _ in client.read_events(

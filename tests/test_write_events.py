@@ -6,14 +6,17 @@ from eventsourcingdb_client_python.errors.client_error import ClientError
 from eventsourcingdb_client_python.errors.invalid_parameter_error import InvalidParameterError
 from eventsourcingdb_client_python.errors.server_error import ServerError
 from eventsourcingdb_client_python.event.source import Source
+from eventsourcingdb_client_python.handlers.write_events import \
+    IsSubjectPristinePrecondition, \
+    IsSubjectOnEventIdPrecondition
 
 from .shared.build_database import build_database
 from .shared.database import Database
 from .shared.event.test_source import TEST_SOURCE
 from .shared.start_local_http_server import \
-    StopServer,\
-    AttachHandler,\
-    Response,\
+    StopServer, \
+    AttachHandler, \
+    Response, \
     start_local_http_server
 
 
@@ -48,14 +51,14 @@ class TestWriteSubjects:
 
     @staticmethod
     def test_throws_an_error_for_empty_event_candidates():
-        client = TestWriteSubjects.database.without_authorization.client
+        client = TestWriteSubjects.database.with_authorization.client
 
         with pytest.raises(InvalidParameterError):
             client.write_events([])
 
     @staticmethod
     def test_throws_an_error_for_malformed_subject():
-        client = TestWriteSubjects.database.without_authorization.client
+        client = TestWriteSubjects.database.with_authorization.client
 
         with pytest.raises(InvalidParameterError):
             client.write_events([
@@ -68,7 +71,7 @@ class TestWriteSubjects:
 
     @staticmethod
     def test_throws_an_error_for_malformed_type():
-        client = TestWriteSubjects.database.without_authorization.client
+        client = TestWriteSubjects.database.with_authorization.client
 
         with pytest.raises(InvalidParameterError):
             client.write_events([
@@ -90,6 +93,93 @@ class TestWriteSubjects:
                 data={}
             )
         ])
+
+    @staticmethod
+    def test_is_pristine_precondition_works_for_new_subject():
+        client = TestWriteSubjects.database.with_authorization.client
+
+        from eventsourcingdb_client_python.handlers.read_events import ReadEventsOptions
+        result = client.read_events('/', ReadEventsOptions(recursive=True))
+        precondition = IsSubjectPristinePrecondition('/')
+        print('\n\nRESULT:', list(result))
+        print('PRECONDTION:', precondition.to_json())
+
+        client.write_events([
+            TestWriteSubjects.test_source.new_event(
+                subject='/',
+                event_type='com.foo.bar',
+                data={}
+            )],
+            [precondition]
+        )
+
+    @staticmethod
+    def test_is_pristine_precondition_fails_for_existing_subject():
+        client = TestWriteSubjects.database.with_authorization.client
+
+        client.write_events([
+            TestWriteSubjects.test_source.new_event(
+                subject='/',
+                event_type='com.foo.bar',
+                data={}
+            )]
+        )
+
+        with pytest.raises(ClientError):
+            client.write_events([
+                TestWriteSubjects.test_source.new_event(
+                    subject='/',
+                    event_type='com.foo.bar',
+                    data={}
+                )],
+                [IsSubjectPristinePrecondition('/')]
+            )
+
+    @staticmethod
+    def test_is_on_event_id_precondition_works_for_correct_id():
+        client = TestWriteSubjects.database.with_authorization.client
+
+        result = client.write_events([
+            TestWriteSubjects.test_source.new_event(
+                subject='/',
+                event_type='com.foo.bar',
+                data={}
+            )]
+        )
+
+        print('###############################')
+        print(result)
+
+        client.write_events([
+            TestWriteSubjects.test_source.new_event(
+                subject='/',
+                event_type='com.foo.bar',
+                data={}
+            )],
+            [IsSubjectOnEventIdPrecondition('/', '0')]
+        )
+
+    @staticmethod
+    def test_is_subject_on_event_id_fails_for_wrong_id():
+        client = TestWriteSubjects.database.with_authorization.client
+
+        client.write_events([
+            TestWriteSubjects.test_source.new_event(
+                subject='/',
+                event_type='com.foo.bar',
+                data={}
+            )]
+        )
+
+        with pytest.raises(ClientError):
+            client.write_events([
+                TestWriteSubjects.test_source.new_event(
+                    subject='/',
+                    event_type='com.foo.bar',
+                    data={}
+                )],
+                [IsSubjectOnEventIdPrecondition('/', '2')]
+            )
 
 
 class TestWriteEventsWithMockServer:

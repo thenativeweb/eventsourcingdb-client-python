@@ -15,21 +15,14 @@ class Database:
         access_token = str(uuid.uuid4())
         with_authorization = ContainerizedTestingDatabase(
             image,
-            ['run', '--dev', '--ui', '--access-token', f'{access_token}'],
+            ['run', '--access-token', f'{access_token}', '--store-temporary'],
             ClientOptions(access_token=access_token)
-        )
-
-        without_authorization = ContainerizedTestingDatabase(
-            image,
-            ['run', '--dev', '--ui']
         )
 
         with_invalid_url = TestingDatabase(Client('http://localhost.invalid'))
 
         self.with_authorization: ContainerizedTestingDatabase = with_authorization
-        self.without_authorization: ContainerizedTestingDatabase = without_authorization
         self.with_invalid_url: TestingDatabase = with_invalid_url
 
     def stop(self):
         self.with_authorization.stop()
-        self.without_authorization.stop()
