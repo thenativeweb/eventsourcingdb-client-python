@@ -43,7 +43,7 @@ jobs:
     - name: Create new version
       if: ${{ steps.get_next_version.outputs.hasNextVersion == 'true' }}
       run: |
-        sed -i -r "s/(version = \")([0-9]+\.[0-9]+\.[0-9]+)(\")/\1{{ steps.get_next_version.outputs.version }}\3/" pyproject.toml
+        sed -i -r "s/(version = \")([0-9]+\.[0-9]+\.[0-9]+)(\")/\1${{ steps.get_next_version.outputs.version }}\3/" pyproject.toml
         git config --global user.email "hello@thenativeweb.io"
         git config --global user.name "${{ github.actor }}"
         git add .

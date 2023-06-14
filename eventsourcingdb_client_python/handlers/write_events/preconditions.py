@@ -14,7 +14,10 @@ class IsSubjectPristinePrecondition(Precondition):
 
     def to_json(self):
         return {
-            'subject': self.subject
+            'type': 'isSubjectPristine',
+            'payload': {
+                'subject': self.subject
+            }
         }
 
 
@@ -25,6 +28,9 @@ class IsSubjectOnEventIdPrecondition(Precondition):
 
     def to_json(self):
         return {
-            'subject': self.subject,
-            'eventId': self.event_id
+            'type': 'isSubjectOnEventId',
+            'payload': {
+                'subject': self.subject,
+                'eventId': self.event_id
+            }
         }

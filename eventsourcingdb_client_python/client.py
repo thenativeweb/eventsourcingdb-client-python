@@ -10,7 +10,7 @@ from .handlers.observe_events.observe_events_options import ObserveEventsOptions
 from .http_client import HttpClient
 from .handlers.ping import ping
 from .handlers.read_events import read_events, ReadEventsOptions
-from .handlers.read_subjects import read_subjects, ReadSubjectsOptions
+from .handlers.read_subjects import read_subjects
 from .handlers.store_item import StoreItem
 from .handlers.write_events import Precondition, write_events
 
@@ -40,9 +40,9 @@ class Client(AbstractBaseClient):
 
     def read_subjects(
         self,
-        options: ReadSubjectsOptions = ReadSubjectsOptions()
+        base_subject: str
     ) -> Generator[str, None, None]:
-        return read_subjects(self, options)
+        return read_subjects(self, base_subject)
 
     def read_events(
         self,

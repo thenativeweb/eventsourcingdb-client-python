@@ -13,21 +13,23 @@ from ...errors.validation_error import ValidationError
 from ..is_stream_error import is_stream_error
 from ..parse_raw_message import parse_raw_message
 from .is_subject import is_subject
-from .read_subjects_options import ReadSubjectsOptions
+from ...event.validate_subject import validate_subject
 
 
 def read_subjects(
     client: AbstractBaseClient,
-    options: ReadSubjectsOptions
+    base_subject: str
 ) -> Generator[str, None, None]:
     try:
-        options.validate()
+        validate_subject(base_subject)
     except ValidationError as validation_error:
-        raise InvalidParameterError('options', str(validation_error)) from validation_error
+        raise InvalidParameterError('base_subject', str(validation_error)) from validation_error
     except Exception as other_error:
         raise InternalError(str(other_error)) from other_error
 
-    request_body = json.dumps(options.to_json())
+    request_body = json.dumps({
+        'baseSubject': base_subject
+    })
 
     response: requests.Response
     try:

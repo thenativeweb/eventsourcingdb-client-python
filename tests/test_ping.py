@@ -30,7 +30,7 @@ class TestPing:
 
     @staticmethod
     def test_throws_no_error_if_server_is_reachable():
-        client = TestPing.database.without_authorization.client
+        client = TestPing.database.with_authorization.client
 
         client.ping()
 

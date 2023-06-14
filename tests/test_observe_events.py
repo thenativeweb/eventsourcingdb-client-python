@@ -40,32 +40,29 @@ class TestObserveEvents:
     def setup_method():
         TestObserveEvents.database = Database()
 
-        for database in (
-            TestObserveEvents.database.without_authorization,
-            TestObserveEvents.database.with_authorization
-        ):
-            database.client.write_events([
-                TestObserveEvents.source.new_event(
-                    TestObserveEvents.REGISTERED_SUBJECT,
-                    TestObserveEvents.REGISTERED_TYPE,
-                    TestObserveEvents.JANE_DATA
-                ),
-                TestObserveEvents.source.new_event(
-                    TestObserveEvents.LOGGED_IN_SUBJECT,
-                    TestObserveEvents.LOGGED_IN_TYPE,
-                    TestObserveEvents.JANE_DATA
-                ),
-                TestObserveEvents.source.new_event(
-                    TestObserveEvents.REGISTERED_SUBJECT,
-                    TestObserveEvents.REGISTERED_TYPE,
-                    TestObserveEvents.JOHN_DATA
-                ),
-                TestObserveEvents.source.new_event(
-                    TestObserveEvents.LOGGED_IN_SUBJECT,
-                    TestObserveEvents.LOGGED_IN_TYPE,
-                    TestObserveEvents.JOHN_DATA
-                ),
-            ])
+        database = TestObserveEvents.database.with_authorization
+        database.client.write_events([
+            TestObserveEvents.source.new_event(
+                TestObserveEvents.REGISTERED_SUBJECT,
+                TestObserveEvents.REGISTERED_TYPE,
+                TestObserveEvents.JANE_DATA
+            ),
+            TestObserveEvents.source.new_event(
+                TestObserveEvents.LOGGED_IN_SUBJECT,
+                TestObserveEvents.LOGGED_IN_TYPE,
+                TestObserveEvents.JANE_DATA
+            ),
+            TestObserveEvents.source.new_event(
+                TestObserveEvents.REGISTERED_SUBJECT,
+                TestObserveEvents.REGISTERED_TYPE,
+                TestObserveEvents.JOHN_DATA
+            ),
+            TestObserveEvents.source.new_event(
+                TestObserveEvents.LOGGED_IN_SUBJECT,
+                TestObserveEvents.LOGGED_IN_TYPE,
+                TestObserveEvents.JOHN_DATA
+            ),
+        ])
 
     @staticmethod
     def teardown_method():
@@ -83,7 +80,7 @@ class TestObserveEvents:
 
     @staticmethod
     def test_throws_error_if_subject_is_invalid():
-        client = TestObserveEvents.database.without_authorization.client
+        client = TestObserveEvents.database.with_authorization.client
 
         with pytest.raises(InvalidParameterError):
             for _ in client.observe_events('', ObserveEventsOptions(recursive=False)):
@@ -103,7 +100,7 @@ class TestObserveEvents:
 
     @staticmethod
     def test_observes_event_from_a_single_subject():
-        client = TestObserveEvents.database.without_authorization.client
+        client = TestObserveEvents.database.with_authorization.client
         observed_items = []
         did_push_intermediate_event = False
 
@@ -141,7 +138,7 @@ class TestObserveEvents:
 
     @staticmethod
     def test_observes_event_from_a_subject_including_child_subjects():
-        client = TestObserveEvents.database.without_authorization.client
+        client = TestObserveEvents.database.with_authorization.client
         observed_items = []
         did_push_intermediate_event = False
 
@@ -187,7 +184,7 @@ class TestObserveEvents:
 
     @staticmethod
     def test_observes_event_starting_from_given_event_name():
-        client = TestObserveEvents.database.without_authorization.client
+        client = TestObserveEvents.database.with_authorization.client
         observed_items = []
         did_push_intermediate_event = False
 
@@ -228,7 +225,7 @@ class TestObserveEvents:
 
     @staticmethod
     def test_observes_event_starting_from_given_lower_bound_id():
-        client = TestObserveEvents.database.without_authorization.client
+        client = TestObserveEvents.database.with_authorization.client
         observed_items = []
         did_push_intermediate_event = False
 
@@ -269,7 +266,7 @@ class TestObserveEvents:
 
     @staticmethod
     def test_throws_error_for_mutually_exclusive_options():
-        client = TestObserveEvents.database.without_authorization.client
+        client = TestObserveEvents.database.with_authorization.client
 
         with pytest.raises(InvalidParameterError):
             for _ in client.observe_events(
@@ -288,7 +285,7 @@ class TestObserveEvents:
 
     @staticmethod
     def test_throws_error_for_non_integer_lower_bound():
-        client = TestObserveEvents.database.without_authorization.client
+        client = TestObserveEvents.database.with_authorization.client
 
         with pytest.raises(InvalidParameterError):
             for _ in client.observe_events(
@@ -302,7 +299,7 @@ class TestObserveEvents:
 
     @staticmethod
     def test_throws_error_for_negative_lower_bound():
-        client = TestObserveEvents.database.without_authorization.client
+        client = TestObserveEvents.database.with_authorization.client
 
         with pytest.raises(InvalidParameterError):
             for _ in client.observe_events(
@@ -316,7 +313,7 @@ class TestObserveEvents:
 
     @staticmethod
     def test_throws_error_for_invalid_subject_in_from_latest_event():
-        client = TestObserveEvents.database.without_authorization.client
+        client = TestObserveEvents.database.with_authorization.client
 
         with pytest.raises(InvalidParameterError):
             for _ in client.observe_events(
@@ -334,7 +331,7 @@ class TestObserveEvents:
 
     @staticmethod
     def test_throws_error_for_invalid_type_in_from_latest_event():
-        client = TestObserveEvents.database.without_authorization.client
+        client = TestObserveEvents.database.with_authorization.client
 
         with pytest.raises(InvalidParameterError):
             for _ in client.observe_events(
