@@ -98,19 +98,13 @@ class TestWriteSubjects:
     def test_is_pristine_precondition_works_for_new_subject():
         client = TestWriteSubjects.database.with_authorization.client
 
-        from eventsourcingdb_client_python.handlers.read_events import ReadEventsOptions
-        result = client.read_events('/', ReadEventsOptions(recursive=True))
-        precondition = IsSubjectPristinePrecondition('/')
-        print('\n\nRESULT:', list(result))
-        print('PRECONDTION:', precondition.to_json())
-
         client.write_events([
             TestWriteSubjects.test_source.new_event(
                 subject='/',
                 event_type='com.foo.bar',
                 data={}
             )],
-            [precondition]
+            [IsSubjectPristinePrecondition('/')]
         )
 
     @staticmethod
