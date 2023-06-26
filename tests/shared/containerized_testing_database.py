@@ -15,7 +15,6 @@ class ContainerizedTestingDatabase:
     ):
         self.__command: [str] = command
         self.__image: Image = image
-        self.__access_token = 'test'
         container, client = self.__start(access_token, options)
         self.__client: Client = client
         self.__container: Container = container

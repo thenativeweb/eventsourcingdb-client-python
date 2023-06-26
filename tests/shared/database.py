@@ -20,7 +20,9 @@ class Database:
             ClientOptions()
         )
 
-        with_invalid_url = TestingDatabase(Client(base_url='http://localhost.invalid', access_token=access_token))
+        with_invalid_url = TestingDatabase(
+            Client(base_url='http://localhost.invalid', access_token=access_token)
+        )
 
         self.with_authorization: ContainerizedTestingDatabase = with_authorization
         self.with_invalid_url: TestingDatabase = with_invalid_url
