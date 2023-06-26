@@ -10,19 +10,21 @@ class ContainerizedTestingDatabase:
         self,
         image: Image,
         command: [str],
+        access_token: str,
         options: ClientOptions = ClientOptions(),
     ):
         self.__command: [str] = command
         self.__image: Image = image
-        container, client = self.__start(options)
+        self.__access_token = 'test'
+        container, client = self.__start(access_token, options)
         self.__client: Client = client
         self.__container: Container = container
 
-    def __start(self, options: ClientOptions) -> (Container, Client):
+    def __start(self, access_token: str, options: ClientOptions) -> (Container, Client):
         container = self.__image.run(self.__command, True, True)
         exposed_port = container.get_exposed_port(3_000)
         base_url = f'http://127.0.0.1:{exposed_port}'
-        client = Client(base_url, options)
+        client = Client(base_url, access_token=access_token, options=options)
 
         client.ping()
 

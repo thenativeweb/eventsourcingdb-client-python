@@ -19,12 +19,13 @@ class Client(AbstractBaseClient):
     def __init__(
         self,
         base_url: str,
+        access_token: str,
         options: ClientOptions = ClientOptions()
     ):
         self.configuration: ClientConfiguration = ClientConfiguration(
             base_url=base_url,
             timeout_seconds=options.timeout_seconds,
-            access_token=options.access_token,
+            access_token=access_token,
             protocol_version=options.protocol_version,
             max_tries=options.max_tries
         )
