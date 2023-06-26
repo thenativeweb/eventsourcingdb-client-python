@@ -16,10 +16,13 @@ class Database:
         with_authorization = ContainerizedTestingDatabase(
             image,
             ['run', '--access-token', f'{access_token}', '--store-temporary'],
-            ClientOptions(access_token=access_token)
+            access_token,
+            ClientOptions()
         )
 
-        with_invalid_url = TestingDatabase(Client('http://localhost.invalid'))
+        with_invalid_url = TestingDatabase(
+            Client(base_url='http://localhost.invalid', access_token=access_token)
+        )
 
         self.with_authorization: ContainerizedTestingDatabase = with_authorization
         self.with_invalid_url: TestingDatabase = with_invalid_url
