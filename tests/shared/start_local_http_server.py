@@ -1,15 +1,13 @@
 from collections.abc import Callable
 from multiprocessing import Process
 
-import requests
+import aiohttp
 from flask import Flask, Response, make_response
 
 from eventsourcingdb_client_python.client import Client
 from eventsourcingdb_client_python.client_options import ClientOptions
-from eventsourcingdb_client_python.util.retry.retry_with_backoff import \
-    Retry, \
-    Return, \
-    retry_with_backoff
+from eventsourcingdb_client_python.util.retry.retry_with_backoff import retry_with_backoff
+from eventsourcingdb_client_python.util.retry.retry_result import Retry, Return, RetryResult
 
 from .util.get_random_available_port import get_random_available_port
 
@@ -19,7 +17,7 @@ AttachHandlers = Callable[[AttachHandler], None]
 StopServer = Callable[[], None]
 
 
-def start_local_http_server(attach_handlers: AttachHandlers) -> (Client, StopServer):
+async def start_local_http_server(attach_handlers: AttachHandlers) -> tuple[Client, StopServer]:
     app = Flask('local')
     port = get_random_available_port()
 
@@ -35,28 +33,33 @@ def start_local_http_server(attach_handlers: AttachHandlers) -> (Client, StopSer
     def ping():
         return "OK"
 
-    def ping_app():
-        response: requests.Response
-        try:
-            response = requests.get(f'http://localhost:{port}/__python_test__/ping', timeout=1)
-        except requests.exceptions.RequestException as error:
-            return Retry(cause=error)
-        if not response.ok:
-            return Retry(cause=ValueError("Response is not OK."))
+    async def ping_app() -> RetryResult[None]:
+        session = aiohttp.ClientSession()
+
+        async with session:
+            response: aiohttp.ClientResponse
+            try:
+                response = await session.get(
+                    f'http://localhost:{port}/__python_test__/ping', timeout=1
+                )
+            except aiohttp.ClientError as error:
+                return Retry(cause=error)
+            if not response.ok:
+                return Retry(cause=ValueError("Response is not OK."))
 
         return Return(None)
 
-    def start():
+    def start() -> None:
         app.run(host='localhost', port=port)
 
     server = Process(target=start)
     server.start()
-    retry_with_backoff(10, ping_app)
+    await retry_with_backoff(10, ping_app)
 
     def stop_server():
         server.terminate()
         server.join()
 
-    client = Client(f'http://localhost:{port}', ClientOptions(max_tries=2))
+    client = Client(f'http://localhost:{port}', 'access-token', ClientOptions(max_tries=2))
 
     return client, stop_server
