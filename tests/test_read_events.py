@@ -21,6 +21,7 @@ from .shared.start_local_http_server import \
     AttachHandler,\
     start_local_http_server,\
     Response
+from .shared.tracing import new_tracing_context
 
 
 class TestReadEvents:
@@ -32,6 +33,10 @@ class TestReadEvents:
     LOGGED_IN_TYPE = 'io.thenativeweb.users.loggedIn'
     JANE_DATA = {'name': 'jane'}
     JOHN_DATA = {'name': 'john'}
+    TRACING_CONTEXT_1 = new_tracing_context("10000000000000000000000000000000", "1000000000000000")
+    TRACING_CONTEXT_2 = new_tracing_context("20000000000000000000000000000000", "2000000000000000")
+    TRACING_CONTEXT_3 = new_tracing_context("30000000000000000000000000000000", "3000000000000000")
+    TRACING_CONTEXT_4 = new_tracing_context("40000000000000000000000000000000", "4000000000000000")
 
 
     @classmethod
@@ -46,22 +51,26 @@ class TestReadEvents:
             TestReadEvents.source.new_event(
                 TestReadEvents.REGISTERED_SUBJECT,
                 TestReadEvents.REGISTERED_TYPE,
-                TestReadEvents.JANE_DATA
+                TestReadEvents.JANE_DATA,
+                TestReadEvents.TRACING_CONTEXT_1
             ),
             TestReadEvents.source.new_event(
                 TestReadEvents.LOGGED_IN_SUBJECT,
                 TestReadEvents.LOGGED_IN_TYPE,
-                TestReadEvents.JANE_DATA
+                TestReadEvents.JANE_DATA,
+                TestReadEvents.TRACING_CONTEXT_2
             ),
             TestReadEvents.source.new_event(
                 TestReadEvents.REGISTERED_SUBJECT,
                 TestReadEvents.REGISTERED_TYPE,
-                TestReadEvents.JOHN_DATA
+                TestReadEvents.JOHN_DATA,
+                TestReadEvents.TRACING_CONTEXT_3
             ),
             TestReadEvents.source.new_event(
                 TestReadEvents.LOGGED_IN_SUBJECT,
                 TestReadEvents.LOGGED_IN_TYPE,
-                TestReadEvents.JOHN_DATA
+                TestReadEvents.JOHN_DATA,
+                TestReadEvents.TRACING_CONTEXT_4
             ),
         ])
 
@@ -104,11 +113,17 @@ class TestReadEvents:
             TEST_SOURCE,
             TestReadEvents.REGISTERED_SUBJECT,
             TestReadEvents.REGISTERED_TYPE,
-            TestReadEvents.JANE_DATA
+            TestReadEvents.JANE_DATA,
+            TestReadEvents.TRACING_CONTEXT_1
         )
-        assert result[1].event.source == TEST_SOURCE
-        assert result[1].event.subject == TestReadEvents.REGISTERED_SUBJECT
-        assert result[1].event.type == TestReadEvents.REGISTERED_TYPE
+        assert_event(
+            result[1].event,
+            TEST_SOURCE,
+            TestReadEvents.REGISTERED_SUBJECT,
+            TestReadEvents.REGISTERED_TYPE,
+            TestReadEvents.JOHN_DATA,
+            TestReadEvents.TRACING_CONTEXT_3
+        )
 
     @staticmethod
     def test_read_events_from_a_subject_including_children():
@@ -123,22 +138,38 @@ class TestReadEvents:
 
         total_event_count = 4
         assert len(result) == total_event_count
-        assert result[0].event.source == TEST_SOURCE
-        assert result[0].event.subject == TestReadEvents.REGISTERED_SUBJECT
-        assert result[0].event.type == TestReadEvents.REGISTERED_TYPE
-        assert result[0].event.data == TestReadEvents.JANE_DATA
-        assert result[1].event.source == TEST_SOURCE
-        assert result[1].event.subject == TestReadEvents.LOGGED_IN_SUBJECT
-        assert result[1].event.type == TestReadEvents.LOGGED_IN_TYPE
-        assert result[1].event.data == TestReadEvents.JANE_DATA
-        assert result[2].event.source == TEST_SOURCE
-        assert result[2].event.subject == TestReadEvents.REGISTERED_SUBJECT
-        assert result[2].event.type == TestReadEvents.REGISTERED_TYPE
-        assert result[2].event.data == TestReadEvents.JOHN_DATA
-        assert result[3].event.source == TEST_SOURCE
-        assert result[3].event.subject == TestReadEvents.LOGGED_IN_SUBJECT
-        assert result[3].event.type == TestReadEvents.LOGGED_IN_TYPE
-        assert result[3].event.data == TestReadEvents.JOHN_DATA
+        assert_event(
+            result[0].event,
+            TEST_SOURCE,
+            TestReadEvents.REGISTERED_SUBJECT,
+            TestReadEvents.REGISTERED_TYPE,
+            TestReadEvents.JANE_DATA,
+            TestReadEvents.TRACING_CONTEXT_1
+        )
+        assert_event(
+            result[1].event,
+            TEST_SOURCE,
+            TestReadEvents.LOGGED_IN_SUBJECT,
+            TestReadEvents.LOGGED_IN_TYPE,
+            TestReadEvents.JANE_DATA,
+            TestReadEvents.TRACING_CONTEXT_2
+        )
+        assert_event(
+            result[2].event,
+            TEST_SOURCE,
+            TestReadEvents.REGISTERED_SUBJECT,
+            TestReadEvents.REGISTERED_TYPE,
+            TestReadEvents.JOHN_DATA,
+            TestReadEvents.TRACING_CONTEXT_3
+        )
+        assert_event(
+            result[3].event,
+            TEST_SOURCE,
+            TestReadEvents.LOGGED_IN_SUBJECT,
+            TestReadEvents.LOGGED_IN_TYPE,
+            TestReadEvents.JOHN_DATA,
+            TestReadEvents.TRACING_CONTEXT_4
+        )
 
     @staticmethod
     def test_read_events_in_antichronological_order():
@@ -153,14 +184,22 @@ class TestReadEvents:
 
         registered_count = 2
         assert len(result) == registered_count
-        assert result[0].event.source == TEST_SOURCE
-        assert result[0].event.subject == TestReadEvents.REGISTERED_SUBJECT
-        assert result[0].event.type == TestReadEvents.REGISTERED_TYPE
-        assert result[0].event.data == TestReadEvents.JOHN_DATA
-        assert result[1].event.source == TEST_SOURCE
-        assert result[1].event.subject == TestReadEvents.REGISTERED_SUBJECT
-        assert result[1].event.type == TestReadEvents.REGISTERED_TYPE
-        assert result[1].event.data == TestReadEvents.JANE_DATA
+        assert_event(
+            result[0].event,
+            TEST_SOURCE,
+            TestReadEvents.REGISTERED_SUBJECT,
+            TestReadEvents.REGISTERED_TYPE,
+            TestReadEvents.JOHN_DATA,
+            TestReadEvents.TRACING_CONTEXT_3
+        )
+        assert_event(
+            result[1].event,
+            TEST_SOURCE,
+            TestReadEvents.REGISTERED_SUBJECT,
+            TestReadEvents.REGISTERED_TYPE,
+            TestReadEvents.JANE_DATA,
+            TestReadEvents.TRACING_CONTEXT_1
+        )
 
     @staticmethod
     def test_read_events_matching_event_names():
@@ -182,14 +221,22 @@ class TestReadEvents:
 
         john_count = 2
         assert len(result) == john_count
-        assert result[0].event.source == TEST_SOURCE
-        assert result[0].event.subject == TestReadEvents.REGISTERED_SUBJECT
-        assert result[0].event.type == TestReadEvents.REGISTERED_TYPE
-        assert result[0].event.data == TestReadEvents.JOHN_DATA
-        assert result[1].event.source == TEST_SOURCE
-        assert result[1].event.subject == TestReadEvents.LOGGED_IN_SUBJECT
-        assert result[1].event.type == TestReadEvents.LOGGED_IN_TYPE
-        assert result[1].event.data == TestReadEvents.JOHN_DATA
+        assert_event(
+            result[0].event,
+            TEST_SOURCE,
+            TestReadEvents.REGISTERED_SUBJECT,
+            TestReadEvents.REGISTERED_TYPE,
+            TestReadEvents.JOHN_DATA,
+            TestReadEvents.TRACING_CONTEXT_3
+        )
+        assert_event(
+            result[1].event,
+            TEST_SOURCE,
+            TestReadEvents.LOGGED_IN_SUBJECT,
+            TestReadEvents.LOGGED_IN_TYPE,
+            TestReadEvents.JOHN_DATA,
+            TestReadEvents.TRACING_CONTEXT_4
+        )
 
     @staticmethod
     def test_read_events_starting_from_lower_bound_id():
@@ -207,14 +254,22 @@ class TestReadEvents:
 
         john_count = 2
         assert len(result) == john_count
-        assert result[0].event.source == TEST_SOURCE
-        assert result[0].event.subject == TestReadEvents.REGISTERED_SUBJECT
-        assert result[0].event.type == TestReadEvents.REGISTERED_TYPE
-        assert result[0].event.data == TestReadEvents.JOHN_DATA
-        assert result[1].event.source == TEST_SOURCE
-        assert result[1].event.subject == TestReadEvents.LOGGED_IN_SUBJECT
-        assert result[1].event.type == TestReadEvents.LOGGED_IN_TYPE
-        assert result[1].event.data == TestReadEvents.JOHN_DATA
+        assert_event(
+            result[0].event,
+            TEST_SOURCE,
+            TestReadEvents.REGISTERED_SUBJECT,
+            TestReadEvents.REGISTERED_TYPE,
+            TestReadEvents.JOHN_DATA,
+            TestReadEvents.TRACING_CONTEXT_3
+        )
+        assert_event(
+            result[1].event,
+            TEST_SOURCE,
+            TestReadEvents.LOGGED_IN_SUBJECT,
+            TestReadEvents.LOGGED_IN_TYPE,
+            TestReadEvents.JOHN_DATA,
+            TestReadEvents.TRACING_CONTEXT_4
+        )
 
     @staticmethod
     def test_read_events_up_to_the_upper_bound_id():
@@ -232,14 +287,22 @@ class TestReadEvents:
 
         jane_count = 2
         assert len(result) == jane_count
-        assert result[0].event.source == TEST_SOURCE
-        assert result[0].event.subject == TestReadEvents.REGISTERED_SUBJECT
-        assert result[0].event.type == TestReadEvents.REGISTERED_TYPE
-        assert result[0].event.data == TestReadEvents.JANE_DATA
-        assert result[1].event.source == TEST_SOURCE
-        assert result[1].event.subject == TestReadEvents.LOGGED_IN_SUBJECT
-        assert result[1].event.type == TestReadEvents.LOGGED_IN_TYPE
-        assert result[1].event.data == TestReadEvents.JANE_DATA
+        assert_event(
+            result[0].event,
+            TEST_SOURCE,
+            TestReadEvents.REGISTERED_SUBJECT,
+            TestReadEvents.REGISTERED_TYPE,
+            TestReadEvents.JANE_DATA,
+            TestReadEvents.TRACING_CONTEXT_1
+        )
+        assert_event(
+            result[1].event,
+            TEST_SOURCE,
+            TestReadEvents.LOGGED_IN_SUBJECT,
+            TestReadEvents.LOGGED_IN_TYPE,
+            TestReadEvents.JANE_DATA,
+            TestReadEvents.TRACING_CONTEXT_2
+        )
 
     @staticmethod
     def test_throws_error_for_exclusive_options():

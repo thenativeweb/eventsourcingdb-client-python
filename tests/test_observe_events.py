@@ -11,6 +11,7 @@ from eventsourcingdb_client_python.handlers.observe_events import \
     ObserveFromLatestEvent, \
     IfEventIsMissingDuringObserve
 
+from .shared.event.assert_event import assert_event
 from .shared.build_database import build_database
 from .shared.database import Database
 from .shared.event.test_source import TEST_SOURCE
@@ -19,6 +20,7 @@ from .shared.start_local_http_server import \
     AttachHandler,\
     Response,\
     start_local_http_server
+from .shared.tracing import new_tracing_context
 
 
 class TestObserveEvents:
@@ -31,6 +33,11 @@ class TestObserveEvents:
     JANE_DATA = {'name': 'jane'}
     JOHN_DATA = {'name': 'john'}
     APFEL_FRED_DATA = {'name': 'apfel fred'}
+    TRACING_CONTEXT_1 = new_tracing_context("10000000000000000000000000000000", "1000000000000000")
+    TRACING_CONTEXT_2 = new_tracing_context("20000000000000000000000000000000", "2000000000000000")
+    TRACING_CONTEXT_3 = new_tracing_context("30000000000000000000000000000000", "3000000000000000")
+    TRACING_CONTEXT_4 = new_tracing_context("40000000000000000000000000000000", "4000000000000000")
+    TRACING_CONTEXT_5 = new_tracing_context("50000000000000000000000000000000", "5000000000000000")
 
     @classmethod
     def setup_class(cls):
@@ -45,22 +52,26 @@ class TestObserveEvents:
             TestObserveEvents.source.new_event(
                 TestObserveEvents.REGISTERED_SUBJECT,
                 TestObserveEvents.REGISTERED_TYPE,
-                TestObserveEvents.JANE_DATA
+                TestObserveEvents.JANE_DATA,
+                TestObserveEvents.TRACING_CONTEXT_1
             ),
             TestObserveEvents.source.new_event(
                 TestObserveEvents.LOGGED_IN_SUBJECT,
                 TestObserveEvents.LOGGED_IN_TYPE,
-                TestObserveEvents.JANE_DATA
+                TestObserveEvents.JANE_DATA,
+                TestObserveEvents.TRACING_CONTEXT_2
             ),
             TestObserveEvents.source.new_event(
                 TestObserveEvents.REGISTERED_SUBJECT,
                 TestObserveEvents.REGISTERED_TYPE,
-                TestObserveEvents.JOHN_DATA
+                TestObserveEvents.JOHN_DATA,
+                TestObserveEvents.TRACING_CONTEXT_3
             ),
             TestObserveEvents.source.new_event(
                 TestObserveEvents.LOGGED_IN_SUBJECT,
                 TestObserveEvents.LOGGED_IN_TYPE,
-                TestObserveEvents.JOHN_DATA
+                TestObserveEvents.JOHN_DATA,
+                TestObserveEvents.TRACING_CONTEXT_4
             ),
         ])
 
@@ -114,7 +125,8 @@ class TestObserveEvents:
                 client.write_events([TestObserveEvents.source.new_event(
                     subject=TestObserveEvents.REGISTERED_SUBJECT,
                     event_type=TestObserveEvents.REGISTERED_TYPE,
-                    data=TestObserveEvents.APFEL_FRED_DATA
+                    data=TestObserveEvents.APFEL_FRED_DATA,
+                    tracing_context=TestObserveEvents.TRACING_CONTEXT_5
                 )])
 
                 did_push_intermediate_event = True
@@ -123,18 +135,30 @@ class TestObserveEvents:
             if len(observed_items) == registered_events_count:
                 break
 
-        assert observed_items[0].event.source == TEST_SOURCE
-        assert observed_items[0].event.subject == TestObserveEvents.REGISTERED_SUBJECT
-        assert observed_items[0].event.type == TestObserveEvents.REGISTERED_TYPE
-        assert observed_items[0].event.data == TestObserveEvents.JANE_DATA
-        assert observed_items[1].event.source == TEST_SOURCE
-        assert observed_items[1].event.subject == TestObserveEvents.REGISTERED_SUBJECT
-        assert observed_items[1].event.type == TestObserveEvents.REGISTERED_TYPE
-        assert observed_items[1].event.data == TestObserveEvents.JOHN_DATA
-        assert observed_items[2].event.source == TEST_SOURCE
-        assert observed_items[2].event.subject == TestObserveEvents.REGISTERED_SUBJECT
-        assert observed_items[2].event.type == TestObserveEvents.REGISTERED_TYPE
-        assert observed_items[2].event.data == TestObserveEvents.APFEL_FRED_DATA
+        assert_event(
+            observed_items[0].event,
+            TEST_SOURCE,
+            TestObserveEvents.REGISTERED_SUBJECT,
+            TestObserveEvents.REGISTERED_TYPE,
+            TestObserveEvents.JANE_DATA,
+            TestObserveEvents.TRACING_CONTEXT_1
+        )
+        assert_event(
+            observed_items[1].event,
+            TEST_SOURCE,
+            TestObserveEvents.REGISTERED_SUBJECT,
+            TestObserveEvents.REGISTERED_TYPE,
+            TestObserveEvents.JOHN_DATA,
+            TestObserveEvents.TRACING_CONTEXT_3
+        )
+        assert_event(
+            observed_items[2].event,
+            TEST_SOURCE,
+            TestObserveEvents.REGISTERED_SUBJECT,
+            TestObserveEvents.REGISTERED_TYPE,
+            TestObserveEvents.APFEL_FRED_DATA,
+            TestObserveEvents.TRACING_CONTEXT_5
+        )
 
     @staticmethod
     def test_observes_event_from_a_subject_including_child_subjects():
@@ -152,7 +176,8 @@ class TestObserveEvents:
                 client.write_events([TestObserveEvents.source.new_event(
                     subject=TestObserveEvents.REGISTERED_SUBJECT,
                     event_type=TestObserveEvents.REGISTERED_TYPE,
-                    data=TestObserveEvents.APFEL_FRED_DATA
+                    data=TestObserveEvents.APFEL_FRED_DATA,
+                    tracing_context=TestObserveEvents.TRACING_CONTEXT_5
                 )])
 
                 did_push_intermediate_event = True
@@ -161,26 +186,46 @@ class TestObserveEvents:
             if len(observed_items) == total_events_count:
                 break
 
-        assert observed_items[0].event.source == TEST_SOURCE
-        assert observed_items[0].event.subject == TestObserveEvents.REGISTERED_SUBJECT
-        assert observed_items[0].event.type == TestObserveEvents.REGISTERED_TYPE
-        assert observed_items[0].event.data == TestObserveEvents.JANE_DATA
-        assert observed_items[1].event.source == TEST_SOURCE
-        assert observed_items[1].event.subject == TestObserveEvents.LOGGED_IN_SUBJECT
-        assert observed_items[1].event.type == TestObserveEvents.LOGGED_IN_TYPE
-        assert observed_items[1].event.data == TestObserveEvents.JANE_DATA
-        assert observed_items[2].event.source == TEST_SOURCE
-        assert observed_items[2].event.subject == TestObserveEvents.REGISTERED_SUBJECT
-        assert observed_items[2].event.type == TestObserveEvents.REGISTERED_TYPE
-        assert observed_items[2].event.data == TestObserveEvents.JOHN_DATA
-        assert observed_items[3].event.source == TEST_SOURCE
-        assert observed_items[3].event.subject == TestObserveEvents.LOGGED_IN_SUBJECT
-        assert observed_items[3].event.type == TestObserveEvents.LOGGED_IN_TYPE
-        assert observed_items[3].event.data == TestObserveEvents.JOHN_DATA
-        assert observed_items[4].event.source == TEST_SOURCE
-        assert observed_items[4].event.subject == TestObserveEvents.REGISTERED_SUBJECT
-        assert observed_items[4].event.type == TestObserveEvents.REGISTERED_TYPE
-        assert observed_items[4].event.data == TestObserveEvents.APFEL_FRED_DATA
+        assert_event(
+            observed_items[0].event,
+            TEST_SOURCE,
+            TestObserveEvents.REGISTERED_SUBJECT,
+            TestObserveEvents.REGISTERED_TYPE,
+            TestObserveEvents.JANE_DATA,
+            TestObserveEvents.TRACING_CONTEXT_1
+        )
+        assert_event(
+            observed_items[1].event,
+            TEST_SOURCE,
+            TestObserveEvents.LOGGED_IN_SUBJECT,
+            TestObserveEvents.LOGGED_IN_TYPE,
+            TestObserveEvents.JANE_DATA,
+            TestObserveEvents.TRACING_CONTEXT_2
+        )
+        assert_event(
+            observed_items[2].event,
+            TEST_SOURCE,
+            TestObserveEvents.REGISTERED_SUBJECT,
+            TestObserveEvents.REGISTERED_TYPE,
+            TestObserveEvents.JOHN_DATA,
+            TestObserveEvents.TRACING_CONTEXT_3
+        )
+        assert_event(
+            observed_items[3].event,
+            TEST_SOURCE,
+            TestObserveEvents.LOGGED_IN_SUBJECT,
+            TestObserveEvents.LOGGED_IN_TYPE,
+            TestObserveEvents.JOHN_DATA,
+            TestObserveEvents.TRACING_CONTEXT_4
+        )
+        assert_event(
+            observed_items[4].event,
+            TEST_SOURCE,
+            TestObserveEvents.REGISTERED_SUBJECT,
+            TestObserveEvents.REGISTERED_TYPE,
+            TestObserveEvents.APFEL_FRED_DATA,
+            TestObserveEvents.TRACING_CONTEXT_5
+        )
 
     @staticmethod
     def test_observes_event_starting_from_given_event_name():
@@ -205,7 +250,8 @@ class TestObserveEvents:
                 client.write_events([TestObserveEvents.source.new_event(
                     subject=TestObserveEvents.REGISTERED_SUBJECT,
                     event_type=TestObserveEvents.REGISTERED_TYPE,
-                    data=TestObserveEvents.APFEL_FRED_DATA
+                    data=TestObserveEvents.APFEL_FRED_DATA,
+                    tracing_context=TestObserveEvents.TRACING_CONTEXT_5
                 )])
 
                 did_push_intermediate_event = True
@@ -214,14 +260,22 @@ class TestObserveEvents:
             if len(observed_items) == event_count_after_last_login:
                 break
 
-        assert observed_items[0].event.source == TEST_SOURCE
-        assert observed_items[0].event.subject == TestObserveEvents.LOGGED_IN_SUBJECT
-        assert observed_items[0].event.type == TestObserveEvents.LOGGED_IN_TYPE
-        assert observed_items[0].event.data == TestObserveEvents.JOHN_DATA
-        assert observed_items[1].event.source == TEST_SOURCE
-        assert observed_items[1].event.subject == TestObserveEvents.REGISTERED_SUBJECT
-        assert observed_items[1].event.type == TestObserveEvents.REGISTERED_TYPE
-        assert observed_items[1].event.data == TestObserveEvents.APFEL_FRED_DATA
+        assert_event(
+            observed_items[0].event,
+            TEST_SOURCE,
+            TestObserveEvents.LOGGED_IN_SUBJECT,
+            TestObserveEvents.LOGGED_IN_TYPE,
+            TestObserveEvents.JOHN_DATA,
+            TestObserveEvents.TRACING_CONTEXT_4
+        )
+        assert_event(
+            observed_items[1].event,
+            TEST_SOURCE,
+            TestObserveEvents.REGISTERED_SUBJECT,
+            TestObserveEvents.REGISTERED_TYPE,
+            TestObserveEvents.APFEL_FRED_DATA,
+            TestObserveEvents.TRACING_CONTEXT_5
+        )
 
     @staticmethod
     def test_observes_event_starting_from_given_lower_bound_id():
@@ -242,7 +296,8 @@ class TestObserveEvents:
                 client.write_events([TestObserveEvents.source.new_event(
                     subject=TestObserveEvents.REGISTERED_SUBJECT,
                     event_type=TestObserveEvents.REGISTERED_TYPE,
-                    data=TestObserveEvents.APFEL_FRED_DATA
+                    data=TestObserveEvents.APFEL_FRED_DATA,
+                    tracing_context=TestObserveEvents.TRACING_CONTEXT_5
                 )])
 
                 did_push_intermediate_event = True
@@ -251,18 +306,30 @@ class TestObserveEvents:
             if len(observed_items) == event_count_after_given_id:
                 break
 
-        assert observed_items[0].event.source == TEST_SOURCE
-        assert observed_items[0].event.subject == TestObserveEvents.REGISTERED_SUBJECT
-        assert observed_items[0].event.type == TestObserveEvents.REGISTERED_TYPE
-        assert observed_items[0].event.data == TestObserveEvents.JOHN_DATA
-        assert observed_items[1].event.source == TEST_SOURCE
-        assert observed_items[1].event.subject == TestObserveEvents.LOGGED_IN_SUBJECT
-        assert observed_items[1].event.type == TestObserveEvents.LOGGED_IN_TYPE
-        assert observed_items[1].event.data == TestObserveEvents.JOHN_DATA
-        assert observed_items[2].event.source == TEST_SOURCE
-        assert observed_items[2].event.subject == TestObserveEvents.REGISTERED_SUBJECT
-        assert observed_items[2].event.type == TestObserveEvents.REGISTERED_TYPE
-        assert observed_items[2].event.data == TestObserveEvents.APFEL_FRED_DATA
+        assert_event(
+            observed_items[0].event,
+            TEST_SOURCE,
+            TestObserveEvents.REGISTERED_SUBJECT,
+            TestObserveEvents.REGISTERED_TYPE,
+            TestObserveEvents.JOHN_DATA,
+            TestObserveEvents.TRACING_CONTEXT_3
+        )
+        assert_event(
+            observed_items[1].event,
+            TEST_SOURCE,
+            TestObserveEvents.LOGGED_IN_SUBJECT,
+            TestObserveEvents.LOGGED_IN_TYPE,
+            TestObserveEvents.JOHN_DATA,
+            TestObserveEvents.TRACING_CONTEXT_4
+        )
+        assert_event(
+            observed_items[2].event,
+            TEST_SOURCE,
+            TestObserveEvents.REGISTERED_SUBJECT,
+            TestObserveEvents.REGISTERED_TYPE,
+            TestObserveEvents.APFEL_FRED_DATA,
+            TestObserveEvents.TRACING_CONTEXT_5
+        )
 
     @staticmethod
     def test_throws_error_for_mutually_exclusive_options():

@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 from eventsourcingdb_client_python.event.event_candidate import EventCandidate
+from eventsourcingdb_client_python.event.tracing import TracingContext
 
 
 @dataclass
@@ -11,6 +12,7 @@ class Source:
         self,
         subject: str,
         event_type: str,
-        data: dict
+        data: dict,
+        tracing_context: TracingContext | None
     ) -> EventCandidate:
-        return EventCandidate(self.source, subject, event_type, data)
+        return EventCandidate(self.source, subject, event_type, data, tracing_context)

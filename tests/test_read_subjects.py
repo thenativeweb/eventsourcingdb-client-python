@@ -52,8 +52,7 @@ class TestReadSubjects:
         client = TestReadSubjects.database.with_authorization.client
 
         client.write_events([
-            EventCandidate(TEST_SOURCE, '/foo',
-                           'io.thenativeweb.user.janeDoe.loggedIn', {})
+            EventCandidate(TEST_SOURCE, '/foo', 'io.thenativeweb.user.janeDoe.loggedIn', {}, None)
         ])
 
         actual_subjects = list(client.read_subjects('/'))
@@ -65,8 +64,13 @@ class TestReadSubjects:
         client = TestReadSubjects.database.with_authorization.client
 
         client.write_events([
-            EventCandidate(TEST_SOURCE, '/foo/bar',
-                           'io.thenativeweb.user.janeDoe.loggedIn', {})
+            EventCandidate(
+                TEST_SOURCE,
+                '/foo/bar',
+                'io.thenativeweb.user.janeDoe.loggedIn',
+                {},
+                None
+            )
         ])
 
         actual_subjects = list(
@@ -80,8 +84,13 @@ class TestReadSubjects:
         client = TestReadSubjects.database.with_authorization.client
 
         client.write_events([
-            EventCandidate(TEST_SOURCE, '/foo/bar',
-                           'io.thenativeweb.user.janeDoe.loggedIn', {})
+            EventCandidate(
+                TEST_SOURCE,
+                '/foo/bar',
+                'io.thenativeweb.user.janeDoe.loggedIn',
+                {},
+                None
+            )
         ])
 
         with pytest.raises(InvalidParameterError):

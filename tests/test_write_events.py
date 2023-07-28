@@ -18,6 +18,7 @@ from .shared.start_local_http_server import \
     AttachHandler, \
     Response, \
     start_local_http_server
+from .shared.tracing import new_tracing_context
 
 
 class TestWriteSubjects:
@@ -45,7 +46,11 @@ class TestWriteSubjects:
                 TestWriteSubjects.test_source.new_event(
                     subject='/',
                     event_type='com.foo.bar',
-                    data={}
+                    data={},
+                    tracing_context=new_tracing_context(
+                        "10000000000000000000000000000000",
+                        "1000000000000000"
+                    )
                 )
             ])
 
@@ -65,7 +70,11 @@ class TestWriteSubjects:
                 TestWriteSubjects.test_source.new_event(
                     subject='',
                     event_type='com.foo.bar',
-                    data={}
+                    data={},
+                    tracing_context=new_tracing_context(
+                        "10000000000000000000000000000000",
+                        "1000000000000000"
+                    )
                 )
             ])
 
@@ -78,7 +87,11 @@ class TestWriteSubjects:
                 TestWriteSubjects.test_source.new_event(
                     subject='/',
                     event_type='',
-                    data={}
+                    data={},
+                    tracing_context=new_tracing_context(
+                        "10000000000000000000000000000000",
+                        "1000000000000000"
+                    )
                 )
             ])
 
@@ -90,7 +103,11 @@ class TestWriteSubjects:
             TestWriteSubjects.test_source.new_event(
                 subject='/',
                 event_type='com.foo.bar',
-                data={}
+                data={},
+                tracing_context=new_tracing_context(
+                    "10000000000000000000000000000000",
+                    "1000000000000000"
+                )
             )
         ])
 
@@ -102,7 +119,11 @@ class TestWriteSubjects:
             TestWriteSubjects.test_source.new_event(
                 subject='/',
                 event_type='com.foo.bar',
-                data={}
+                data={},
+                tracing_context=new_tracing_context(
+                    "10000000000000000000000000000000",
+                    "1000000000000000"
+                )
             )],
             [IsSubjectPristinePrecondition('/')]
         )
@@ -115,7 +136,11 @@ class TestWriteSubjects:
             TestWriteSubjects.test_source.new_event(
                 subject='/',
                 event_type='com.foo.bar',
-                data={}
+                data={},
+                tracing_context=new_tracing_context(
+                    "10000000000000000000000000000000",
+                    "1000000000000000"
+                )
             )]
         )
 
@@ -124,7 +149,11 @@ class TestWriteSubjects:
                 TestWriteSubjects.test_source.new_event(
                     subject='/',
                     event_type='com.foo.bar',
-                    data={}
+                    data={},
+                    tracing_context=new_tracing_context(
+                        "20000000000000000000000000000000",
+                        "2000000000000000"
+                    )
                 )],
                 [IsSubjectPristinePrecondition('/')]
             )
@@ -137,7 +166,11 @@ class TestWriteSubjects:
             TestWriteSubjects.test_source.new_event(
                 subject='/',
                 event_type='com.foo.bar',
-                data={}
+                data={},
+                tracing_context=new_tracing_context(
+                    "10000000000000000000000000000000",
+                    "1000000000000000"
+                )
             )]
         )
 
@@ -148,7 +181,11 @@ class TestWriteSubjects:
             TestWriteSubjects.test_source.new_event(
                 subject='/',
                 event_type='com.foo.bar',
-                data={}
+                data={},
+                tracing_context=new_tracing_context(
+                    "20000000000000000000000000000000",
+                    "2000000000000000"
+                )
             )],
             [IsSubjectOnEventIdPrecondition('/', '0')]
         )
@@ -161,7 +198,11 @@ class TestWriteSubjects:
             TestWriteSubjects.test_source.new_event(
                 subject='/',
                 event_type='com.foo.bar',
-                data={}
+                data={},
+                tracing_context=new_tracing_context(
+                    "10000000000000000000000000000000",
+                    "1000000000000000"
+                )
             )]
         )
 
@@ -170,7 +211,11 @@ class TestWriteSubjects:
                 TestWriteSubjects.test_source.new_event(
                     subject='/',
                     event_type='com.foo.bar',
-                    data={}
+                    data={},
+                    tracing_context=new_tracing_context(
+                        "20000000000000000000000000000000",
+                        "2000000000000000"
+                    )
                 )],
                 [IsSubjectOnEventIdPrecondition('/', '2')]
             )
@@ -179,7 +224,12 @@ class TestWriteSubjects:
 class TestWriteEventsWithMockServer:
     stop_server: StopServer = lambda: None
     test_source = Source(TEST_SOURCE)
-    events = [test_source.new_event('/', 'com.foo.bar', {})]
+    events = [test_source.new_event(
+        '/',
+        'com.foo.bar',
+        {},
+        new_tracing_context("10000000000000000000000000000000", "1000000000000000"))
+    ]
 
     @staticmethod
     def teardown_method():

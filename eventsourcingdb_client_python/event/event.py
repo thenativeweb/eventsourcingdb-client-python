@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import TypeVar
 
+from .tracing import TracingContext
 from ..errors.validation_error import ValidationError
 from .event_context import EventContext
 
@@ -18,7 +19,8 @@ class Event(EventContext):
         event_id: str,
         time: datetime,
         data_content_type: str,
-        predecessor_hash: str
+        predecessor_hash: str,
+        tracing_context: TracingContext | None
     ):
         super().__init__(
             source,
@@ -28,7 +30,8 @@ class Event(EventContext):
             event_id,
             time,
             data_content_type,
-            predecessor_hash
+            predecessor_hash,
+            tracing_context
         )
         self.data = data
 
@@ -50,7 +53,8 @@ class Event(EventContext):
             event_context.event_id,
             event_context.time,
             event_context.data_content_type,
-            event_context.predecessor_hash
+            event_context.predecessor_hash,
+            event_context.tracing_context
         )
 
     def to_json(self):
