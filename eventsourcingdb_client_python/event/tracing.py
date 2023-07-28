@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import TypeVar
 
-from opentelemetry.trace import TraceState, TraceFlags
+from opentelemetry.trace import TraceState, TraceFlags, SpanContext, format_trace_id, format_span_id
 
 from ..errors.validation_error import ValidationError
 
@@ -14,6 +14,27 @@ class TracingContext:
     span_id: str
     trace_flags: TraceFlags
     trace_state: TraceState
+
+    @staticmethod
+    def from_span_context(span_context: SpanContext) -> Self:
+        return TracingContext(
+            trace_id=format_trace_id(span_context.trace_id),
+            span_id=format_span_id(span_context.span_id),
+            trace_flags=span_context.trace_flags,
+            trace_state=span_context.trace_state
+        )
+
+    def trace_flags_to_string(self) -> str:
+        return format(self.trace_flags, "02x")
+
+    def trace_parent(self) -> str:
+        return f'00-{self.trace_id}-{self.span_id}-{self.trace_flags_to_string()}'
+
+    def to_opentelemetry_context_carrier(self):
+        return {
+            'traceparent': self.trace_parent(),
+            'tracestate': self.trace_state.to_header()
+        }
 
     @staticmethod
     def parse(unknown_object: dict) -> Self:
@@ -56,6 +77,6 @@ class TracingContext:
         return {
             'traceId': self.trace_id,
             'spanId': self.span_id,
-            'traceFlags': format(self.trace_flags, "02x"),
+            'traceFlags': self.trace_flags_to_string(),
             'traceState': self.trace_state.to_header()
         }
