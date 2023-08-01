@@ -417,7 +417,6 @@ class TestReadEventsWithMockServer:
     @pytest.mark.asyncio
     async def test_throws_error_if_server_responds_with_5xx_status_code(
         get_client: Callable[[AttachHandlers], Awaitable[Client]]
-
     ):
         def attach_handlers(attach_handler: AttachHandler):
             def handle_read_events(response: Response) -> Response:

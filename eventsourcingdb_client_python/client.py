@@ -77,10 +77,8 @@ class Client(AbstractBaseClient):
         subject: str,
         options: ObserveEventsOptions
     ) -> AsyncGenerator[StoreItem, None]:
-        events = observe_events(self, subject, options)
-        async for event in events:
+        async for event in observe_events(self, subject, options):
             yield event
-        await events.aclose()
 
     async def write_events(
         self,
