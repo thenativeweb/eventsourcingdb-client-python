@@ -4,6 +4,7 @@ from collections.abc import Awaitable, Callable
 import pytest
 import pytest_asyncio
 
+from eventsourcingdb_client_python.client import Client
 from eventsourcingdb_client_python.errors.client_error import ClientError
 from eventsourcingdb_client_python.errors.server_error import ServerError
 from eventsourcingdb_client_python.http_client.http_client import HttpClient
@@ -17,22 +18,21 @@ from .shared.start_local_http_server import \
 @pytest_asyncio.fixture
 async def get_http_client():
     stop_server: StopServer | None = None
-    http_client: HttpClient | None = None
+    client: Client | None = None
 
     async def getter(attach_handlers) -> HttpClient:
         nonlocal stop_server
-        nonlocal http_client
+        nonlocal client
         client, stop_server = await start_local_http_server(attach_handlers)
-        http_client = client.http_client
-        return http_client
+        return client.http_client
 
     yield getter
 
     if stop_server is not None:
         stop_server()
 
-    if http_client is not None:
-        await http_client.close()
+    if client is not None:
+        await client.close()
 
 
 class TestHttpClient:

@@ -47,6 +47,9 @@ class Client(AbstractBaseClient):
 
         self.__http_client = http_client
 
+    async def close(self):
+        await self.__http_client.close()
+
     @property
     def http_client(self) -> HttpClient:
         return self.__http_client
