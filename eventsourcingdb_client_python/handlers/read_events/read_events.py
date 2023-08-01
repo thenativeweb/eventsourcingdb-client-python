@@ -53,7 +53,7 @@ async def read_events(
     except Exception as other_error:
         raise InternalError(str(other_error)) from other_error
 
-    async with response:
+    with response:
         if response.status_code != HTTPStatus.OK:
             raise ServerError(
                 f'Unexpected response status: '
