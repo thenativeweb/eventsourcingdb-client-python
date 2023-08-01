@@ -14,14 +14,11 @@ from .shared.database import Database
 from .shared.event.test_source import TEST_SOURCE
 from .shared.start_local_http_server import \
     AttachHandler, \
-    StopServer, \
     Response, \
-    start_local_http_server, AttachHandlers
+    AttachHandlers
 
 
 class TestReadSubjects:
-    database: Database
-
     @classmethod
     def setup_class(cls):
         build_database('tests/shared/docker/eventsourcingdb')
