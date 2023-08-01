@@ -37,7 +37,6 @@ async def start_local_http_server(attach_handlers: AttachHandlers) -> tuple[Clie
         session = aiohttp.ClientSession()
 
         async with session:
-            response: aiohttp.ClientResponse
             try:
                 response = await session.get(
                     f'http://localhost:{port}/__python_test__/ping', timeout=1
@@ -60,6 +59,10 @@ async def start_local_http_server(attach_handlers: AttachHandlers) -> tuple[Clie
         server.terminate()
         server.join()
 
-    client = Client(f'http://localhost:{port}', 'access-token', ClientOptions(max_tries=2))
+    client = await Client.create(
+        f'http://localhost:{port}',
+        'access-token',
+        ClientOptions(max_tries=2)
+    )
 
     return client, stop_server

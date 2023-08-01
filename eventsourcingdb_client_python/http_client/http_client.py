@@ -19,19 +19,57 @@ from ..util.retry.retry_error import RetryError
 Range = namedtuple('Range', 'lower, upper')
 
 
-class HttpClient:
-    def __init__(self, client_configuration: ClientConfiguration):
-        self.__client_configuration: ClientConfiguration = client_configuration
+class UninitializedError(CustomError):
+    pass
 
-    def __create_session(self) -> ClientSession:
+
+class HttpClient:
+    __create_key = object()
+
+    @classmethod
+    async def create(cls, client_configuration: ClientConfiguration) -> 'HttpClient':
         session = aiohttp.ClientSession(
             timeout=aiohttp.ClientTimeout(
-                connect=self.__client_configuration.timeout_seconds,
-                sock_read=self.__client_configuration.timeout_seconds
+                connect=client_configuration.timeout_seconds,
+                sock_read=client_configuration.timeout_seconds
             )
         )
 
-        return session
+        return cls(HttpClient.__create_key, client_configuration, session)
+
+    def __init__(
+        self,
+        create_key,
+        client_configuration: ClientConfiguration,
+        session: aiohttp.ClientSession
+    ):
+        assert create_key == HttpClient.__create_key, \
+            'HttpClient objects must be created using HttpClient.create.'
+
+        self.__client_configuration: ClientConfiguration = client_configuration
+        self.__session: ClientSession = session
+
+    async def close(self):
+        if self.__session is not None:
+            await self.__session.close()
+
+    async def __execute_request(
+        self,
+        execute_request: Callable[[], Coroutine[None, None, RetryResult[Response]]]
+    ) -> Response:
+        try:
+            return await retry_with_backoff(
+                self.__client_configuration.max_tries,
+                execute_request
+            )
+        except RetryError as retry_error:
+            raise ServerError(str(retry_error)) from retry_error
+        except CustomError as custom_error:
+            raise custom_error
+        except aiohttp.ClientError as request_error:
+            raise ServerError(str(request_error)) from request_error
+        except Exception as other_error:
+            raise InternalError(str(other_error)) from other_error
 
     def __validate_protocol_version(self, http_status_code: int, headers: Headers) -> None:
         if http_status_code != HTTPStatus.UNPROCESSABLE_ENTITY:
@@ -62,29 +100,12 @@ class HttpClient:
         client_failure_range = Range(400, 500)
         if client_failure_range.lower <= response.status_code < client_failure_range.upper:
             raise ClientError(
-                f'Request failed with status code \'{response.status_code}\'.')
+                f'Request failed with status code \'{response.status_code}\'.'
+            )
 
         self.__validate_protocol_version(response.status_code, response.headers)
 
         return Return(response)
-
-    async def __execute_request(
-        self,
-        execute_request: Callable[[], Coroutine[None, None, RetryResult[Response]]]
-    ) -> Response:
-        try:
-            return await retry_with_backoff(
-                self.__client_configuration.max_tries,
-                execute_request
-            )
-        except RetryError as retry_error:
-            raise ServerError(str(retry_error)) from retry_error
-        except CustomError as custom_error:
-            raise custom_error
-        except aiohttp.ClientError as request_error:
-            raise ServerError(str(request_error)) from request_error
-        except Exception as other_error:
-            raise InternalError(str(other_error)) from other_error
 
     def __get_post_request_headers(self) -> dict[str, str]:
         headers = {
@@ -96,22 +117,30 @@ class HttpClient:
         return headers
 
     async def post(self, path: str, request_body: str) -> Response:
-        session = self.__create_session()
+        if self.__session is None:
+            raise UninitializedError()
 
         async def execute_request() -> RetryResult[Response]:
+            response = await self.__session.post(
+                url.join_segments(
+                    self.__client_configuration.base_url,
+                    path
+                ),
+                data=request_body,
+                headers=self.__get_post_request_headers(),
+            )
+
+            response = Response(response)
             try:
-                response = await session.post(
-                    url.join_segments(
-                        self.__client_configuration.base_url, path),
-                    data=request_body,
-                    headers=self.__get_post_request_headers(),
-                )
+                result = self.__validate_response(response)
             except Exception as error:
-                await session.close()
+                response.close()
                 raise error
 
-            response = Response(response, session)
-            return self.__validate_response(response)
+            if isinstance(result, Retry):
+                response.close()
+
+            return result
 
         return await self.__execute_request(execute_request)
 
@@ -130,21 +159,26 @@ class HttpClient:
         path: str,
         with_authorization: bool = True,
     ) -> Response:
-        session = self.__create_session()
+        if self.__session is None:
+            raise UninitializedError()
 
         async def execute_request() -> RetryResult[Response]:
+            response = await self.__session.get(
+                url.join_segments(
+                    self.__client_configuration.base_url, path),
+                headers=self.__get_get_request_headers(with_authorization),
+            )
+
+            response = Response(response)
             try:
-                response = await session.get(
-                    url.join_segments(
-                        self.__client_configuration.base_url, path),
-                    headers=self.__get_get_request_headers(with_authorization),
-                )
+                result = self.__validate_response(response)
             except Exception as error:
-                await session.close()
+                response.close()
                 raise error
 
-            response = Response(response, session)
+            if isinstance(result, Retry):
+                response.close()
 
-            return self.__validate_response(response)
+            return result
 
         return await self.__execute_request(execute_request)

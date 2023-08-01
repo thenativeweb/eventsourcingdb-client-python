@@ -8,20 +8,18 @@ Headers = Mapping[str, str]
 
 
 class Response:
-    def __init__(self, response: aiohttp.ClientResponse, session: aiohttp.ClientSession):
+    def __init__(self, response: aiohttp.ClientResponse):
         self.__response: aiohttp.ClientResponse = response
-        self.__session: aiohttp.ClientSession = session
 
-    async def __aenter__(self):
+    def __enter__(self):
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        await self.close()
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
         return True
 
-    async def close(self):
+    def close(self):
         self.__response.close()
-        await self.__session.close()
 
     @property
     def status_code(self) -> HTTPStatus:

@@ -16,12 +16,15 @@ from .handlers.write_events import Precondition, write_events
 
 
 class Client(AbstractBaseClient):
-    def __init__(
-        self,
+    __create_key = object()
+
+    @classmethod
+    async def create(
+        cls,
         base_url: str,
         access_token: str,
-        options: ClientOptions = ClientOptions(),
-    ):
+        options: ClientOptions = ClientOptions()
+    ) -> 'Client':
         configuration = ClientConfiguration(
             base_url=base_url,
             timeout_seconds=options.timeout_seconds,
@@ -30,7 +33,19 @@ class Client(AbstractBaseClient):
             max_tries=options.max_tries
         )
 
-        self.__http_client = HttpClient(configuration)
+        http_client = await HttpClient.create(configuration)
+
+        return cls(Client.__create_key, http_client)
+
+    def __init__(
+        self,
+        create_key,
+        http_client: HttpClient
+    ):
+        assert create_key == Client.__create_key, \
+            'Client objects must be created using Client.create.'
+
+        self.__http_client = http_client
 
     @property
     def http_client(self) -> HttpClient:
@@ -62,9 +77,7 @@ class Client(AbstractBaseClient):
         events = observe_events(self, subject, options)
         async for event in events:
             yield event
-        print("calling close")
         await events.aclose()
-
 
     async def write_events(
         self,
