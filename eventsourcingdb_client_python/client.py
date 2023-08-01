@@ -86,8 +86,7 @@ class Client(AbstractBaseClient):
         self,
         event_candidates: list[EventCandidate],
         preconditions: list[Precondition] = None
-    ) -> AsyncGenerator[EventContext, None]:
+    ) -> list[EventContext]:
         if preconditions is None:
             preconditions = []
-        async for context in write_events(self, event_candidates, preconditions):
-            yield context
+        return await write_events(self, event_candidates, preconditions)

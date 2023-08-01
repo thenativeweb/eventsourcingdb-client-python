@@ -18,7 +18,7 @@ async def write_events(
     client: AbstractBaseClient,
     event_candidates: list[EventCandidate],
     preconditions: list[Precondition]
-) -> AsyncGenerator[EventContext, None]:
+) -> list[EventContext]:
     if len(event_candidates) < 1:
         raise InvalidParameterError(
             'event_candidates',
@@ -70,10 +70,13 @@ async def write_events(
         raise ServerError(
             f'Failed to parse response \'{response_data}\' to list.')
 
+    result = []
     for unparsed_event_context in response_data:
         try:
-            yield EventContext.parse(unparsed_event_context)
+            result.append(EventContext.parse(unparsed_event_context))
         except ValidationError as validation_error:
             raise ServerError(str(validation_error)) from validation_error
         except Exception as other_error:
             raise InternalError(str(other_error)) from other_error
+
+    return result
