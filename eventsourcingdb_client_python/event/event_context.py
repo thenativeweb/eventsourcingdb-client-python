@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import TypeVar
 
+from .tracing import TracingContext
 from ..errors.internal_error import InternalError
 from ..errors.validation_error import ValidationError
 from .validate_subject import validate_subject
@@ -20,6 +21,7 @@ class EventContext:
     time: datetime
     data_content_type: str
     predecessor_hash: str
+    tracing_context: TracingContext | None = None
 
     @staticmethod
     def parse(unknown_object: dict) -> Self:
@@ -75,6 +77,11 @@ class EventContext:
             raise ValidationError(
                 f'Failed to parse predecessor_hash \'{predecessor_hash}\' to string.')
 
+        raw_tracing_context = unknown_object.get("tracingContext")
+        tracing_context = TracingContext.parse(raw_tracing_context) \
+            if raw_tracing_context is not None \
+            else None
+
         return EventContext(
             source=source,
             subject=subject,
@@ -83,7 +90,8 @@ class EventContext:
             event_id=event_id,
             time=time,
             data_content_type=data_content_type,
-            predecessor_hash=predecessor_hash
+            predecessor_hash=predecessor_hash,
+            tracing_context=tracing_context
         )
 
     def to_json(self):

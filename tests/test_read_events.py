@@ -17,7 +17,6 @@ from .conftest import TestData
 from .shared.build_database import build_database
 from .shared.database import Database
 from .shared.event.assert_event import assert_event
-from .shared.event.test_source import TEST_SOURCE
 from .shared.start_local_http_server import \
     AttachHandler, \
     Response, \
@@ -69,14 +68,20 @@ class TestReadEvents:
         assert len(result) == registered_count
         assert_event(
             result[0].event,
-            TEST_SOURCE,
+            test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
-            test_data.JANE_DATA
+            test_data.JANE_DATA,
+            test_data.TRACING_CONTEXT_1,
         )
-        assert result[1].event.source == TEST_SOURCE
-        assert result[1].event.subject == test_data.REGISTERED_SUBJECT
-        assert result[1].event.type == test_data.REGISTERED_TYPE
+        assert_event(
+            result[1].event,
+            test_data.TEST_SOURCE_STRING,
+            test_data.REGISTERED_SUBJECT,
+            test_data.REGISTERED_TYPE,
+            test_data.JOHN_DATA,
+            test_data.TRACING_CONTEXT_3,
+        )
 
     @staticmethod
     @pytest.mark.asyncio
@@ -95,22 +100,39 @@ class TestReadEvents:
 
         total_event_count = 4
         assert len(result) == total_event_count
-        assert result[0].event.source == TEST_SOURCE
-        assert result[0].event.subject == test_data.REGISTERED_SUBJECT
-        assert result[0].event.type == test_data.REGISTERED_TYPE
-        assert result[0].event.data == test_data.JANE_DATA
-        assert result[1].event.source == TEST_SOURCE
-        assert result[1].event.subject == test_data.LOGGED_IN_SUBJECT
-        assert result[1].event.type == test_data.LOGGED_IN_TYPE
-        assert result[1].event.data == test_data.JANE_DATA
-        assert result[2].event.source == TEST_SOURCE
-        assert result[2].event.subject == test_data.REGISTERED_SUBJECT
-        assert result[2].event.type == test_data.REGISTERED_TYPE
-        assert result[2].event.data == test_data.JOHN_DATA
-        assert result[3].event.source == TEST_SOURCE
-        assert result[3].event.subject == test_data.LOGGED_IN_SUBJECT
-        assert result[3].event.type == test_data.LOGGED_IN_TYPE
-        assert result[3].event.data == test_data.JOHN_DATA
+        assert_event(
+            result[0].event,
+            test_data.TEST_SOURCE_STRING,
+            test_data.REGISTERED_SUBJECT,
+            test_data.REGISTERED_TYPE,
+            test_data.JANE_DATA,
+            test_data.TRACING_CONTEXT_1,
+        )
+        assert_event(
+            result[1].event,
+            test_data.TEST_SOURCE_STRING,
+            test_data.LOGGED_IN_SUBJECT,
+            test_data.LOGGED_IN_TYPE,
+            test_data.JANE_DATA,
+            test_data.TRACING_CONTEXT_2,
+        )
+        assert_event(
+            result[2].event,
+            test_data.TEST_SOURCE_STRING,
+            test_data.REGISTERED_SUBJECT,
+            test_data.REGISTERED_TYPE,
+            test_data.JOHN_DATA,
+            test_data.TRACING_CONTEXT_3,
+        )
+        assert_event(
+            result[3].event,
+            test_data.TEST_SOURCE_STRING,
+            test_data.LOGGED_IN_SUBJECT,
+            test_data.LOGGED_IN_TYPE,
+            test_data.JOHN_DATA,
+            test_data.TRACING_CONTEXT_4,
+        )
+
 
     @staticmethod
     @pytest.mark.asyncio
@@ -129,18 +151,26 @@ class TestReadEvents:
 
         registered_count = 2
         assert len(result) == registered_count
-        assert result[0].event.source == TEST_SOURCE
-        assert result[0].event.subject == test_data.REGISTERED_SUBJECT
-        assert result[0].event.type == test_data.REGISTERED_TYPE
-        assert result[0].event.data == test_data.JOHN_DATA
-        assert result[1].event.source == TEST_SOURCE
-        assert result[1].event.subject == test_data.REGISTERED_SUBJECT
-        assert result[1].event.type == test_data.REGISTERED_TYPE
-        assert result[1].event.data == test_data.JANE_DATA
+        assert_event(
+            result[0].event,
+            test_data.TEST_SOURCE_STRING,
+            test_data.REGISTERED_SUBJECT,
+            test_data.REGISTERED_TYPE,
+            test_data.JOHN_DATA,
+            test_data.TRACING_CONTEXT_3,
+        )
+        assert_event(
+            result[1].event,
+            test_data.TEST_SOURCE_STRING,
+            test_data.REGISTERED_SUBJECT,
+            test_data.REGISTERED_TYPE,
+            test_data.JANE_DATA,
+            test_data.TRACING_CONTEXT_1,
+        )
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_read_events_matching_event_names(
+    async def test_read_events_recursive_from_latest_event_in_child_subject(
         prepared_database: Database,
         test_data: TestData
     ):
@@ -162,14 +192,22 @@ class TestReadEvents:
 
         john_count = 2
         assert len(result) == john_count
-        assert result[0].event.source == TEST_SOURCE
-        assert result[0].event.subject == test_data.REGISTERED_SUBJECT
-        assert result[0].event.type == test_data.REGISTERED_TYPE
-        assert result[0].event.data == test_data.JOHN_DATA
-        assert result[1].event.source == TEST_SOURCE
-        assert result[1].event.subject == test_data.LOGGED_IN_SUBJECT
-        assert result[1].event.type == test_data.LOGGED_IN_TYPE
-        assert result[1].event.data == test_data.JOHN_DATA
+        assert_event(
+            result[0].event,
+            test_data.TEST_SOURCE_STRING,
+            test_data.REGISTERED_SUBJECT,
+            test_data.REGISTERED_TYPE,
+            test_data.JOHN_DATA,
+            test_data.TRACING_CONTEXT_3,
+        )
+        assert_event(
+            result[1].event,
+            test_data.TEST_SOURCE_STRING,
+            test_data.LOGGED_IN_SUBJECT,
+            test_data.LOGGED_IN_TYPE,
+            test_data.JOHN_DATA,
+            test_data.TRACING_CONTEXT_4,
+        )
 
     @staticmethod
     @pytest.mark.asyncio
@@ -191,14 +229,22 @@ class TestReadEvents:
 
         john_count = 2
         assert len(result) == john_count
-        assert result[0].event.source == TEST_SOURCE
-        assert result[0].event.subject == test_data.REGISTERED_SUBJECT
-        assert result[0].event.type == test_data.REGISTERED_TYPE
-        assert result[0].event.data == test_data.JOHN_DATA
-        assert result[1].event.source == TEST_SOURCE
-        assert result[1].event.subject == test_data.LOGGED_IN_SUBJECT
-        assert result[1].event.type == test_data.LOGGED_IN_TYPE
-        assert result[1].event.data == test_data.JOHN_DATA
+        assert_event(
+            result[0].event,
+            test_data.TEST_SOURCE_STRING,
+            test_data.REGISTERED_SUBJECT,
+            test_data.REGISTERED_TYPE,
+            test_data.JOHN_DATA,
+            test_data.TRACING_CONTEXT_3,
+        )
+        assert_event(
+            result[1].event,
+            test_data.TEST_SOURCE_STRING,
+            test_data.LOGGED_IN_SUBJECT,
+            test_data.LOGGED_IN_TYPE,
+            test_data.JOHN_DATA,
+            test_data.TRACING_CONTEXT_4,
+        )
 
     @staticmethod
     @pytest.mark.asyncio
@@ -220,14 +266,22 @@ class TestReadEvents:
 
         jane_count = 2
         assert len(result) == jane_count
-        assert result[0].event.source == TEST_SOURCE
-        assert result[0].event.subject == test_data.REGISTERED_SUBJECT
-        assert result[0].event.type == test_data.REGISTERED_TYPE
-        assert result[0].event.data == test_data.JANE_DATA
-        assert result[1].event.source == TEST_SOURCE
-        assert result[1].event.subject == test_data.LOGGED_IN_SUBJECT
-        assert result[1].event.type == test_data.LOGGED_IN_TYPE
-        assert result[1].event.data == test_data.JANE_DATA
+        assert_event(
+            result[0].event,
+            test_data.TEST_SOURCE_STRING,
+            test_data.REGISTERED_SUBJECT,
+            test_data.REGISTERED_TYPE,
+            test_data.JANE_DATA,
+            test_data.TRACING_CONTEXT_1,
+        )
+        assert_event(
+            result[1].event,
+            test_data.TEST_SOURCE_STRING,
+            test_data.LOGGED_IN_SUBJECT,
+            test_data.LOGGED_IN_TYPE,
+            test_data.JANE_DATA,
+            test_data.TRACING_CONTEXT_2,
+        )
 
     @staticmethod
     @pytest.mark.asyncio
