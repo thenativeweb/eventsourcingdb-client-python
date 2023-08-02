@@ -14,57 +14,19 @@ from eventsourcingdb_client_python.handlers.read_events import \
     ReadFromLatestEvent, \
     IfEventIsMissingDuringRead
 from eventsourcingdb_client_python.handlers.read_events.order import Order
+from .conftest import TestData
 
 from .shared.build_database import build_database
 from .shared.database import Database
 from .shared.event.assert_event import assert_event
 from .shared.event.test_source import TEST_SOURCE
 from .shared.start_local_http_server import \
-    StopServer, \
     AttachHandler, \
-    start_local_http_server, \
-    Response, AttachHandlers
-
-
-@pytest_asyncio.fixture
-async def prepared_database(
-    database: Database
-) -> Database:
-    await database.with_authorization.client.write_events([
-        TestReadEvents.source.new_event(
-            TestReadEvents.REGISTERED_SUBJECT,
-            TestReadEvents.REGISTERED_TYPE,
-            TestReadEvents.JANE_DATA
-        ),
-        TestReadEvents.source.new_event(
-            TestReadEvents.LOGGED_IN_SUBJECT,
-            TestReadEvents.LOGGED_IN_TYPE,
-            TestReadEvents.JANE_DATA
-        ),
-        TestReadEvents.source.new_event(
-            TestReadEvents.REGISTERED_SUBJECT,
-            TestReadEvents.REGISTERED_TYPE,
-            TestReadEvents.JOHN_DATA
-        ),
-        TestReadEvents.source.new_event(
-            TestReadEvents.LOGGED_IN_SUBJECT,
-            TestReadEvents.LOGGED_IN_TYPE,
-            TestReadEvents.JOHN_DATA
-        ),
-    ])
-
-    return database
+    Response, \
+    AttachHandlers
 
 
 class TestReadEvents:
-    source = Source(TEST_SOURCE)
-    REGISTERED_SUBJECT = '/users/registered'
-    LOGGED_IN_SUBJECT = '/users/loggedIn'
-    REGISTERED_TYPE = 'io.thenativeweb.users.registered'
-    LOGGED_IN_TYPE = 'io.thenativeweb.users.loggedIn'
-    JANE_DATA = {'name': 'jane'}
-    JOHN_DATA = {'name': 'john'}
-
     @classmethod
     def setup_class(cls):
         build_database('tests/shared/docker/eventsourcingdb')
@@ -93,13 +55,14 @@ class TestReadEvents:
     @staticmethod
     @pytest.mark.asyncio
     async def test_read_events_from_a_single_subject(
-        prepared_database: Database
+        prepared_database: Database,
+        test_data: TestData
     ):
         client = prepared_database.with_authorization.client
 
         result = []
         async for event in client.read_events(
-            TestReadEvents.REGISTERED_SUBJECT,
+            test_data.REGISTERED_SUBJECT,
             ReadEventsOptions(recursive=False)
         ):
             result.append(event)
@@ -109,18 +72,19 @@ class TestReadEvents:
         assert_event(
             result[0].event,
             TEST_SOURCE,
-            TestReadEvents.REGISTERED_SUBJECT,
-            TestReadEvents.REGISTERED_TYPE,
-            TestReadEvents.JANE_DATA
+            test_data.REGISTERED_SUBJECT,
+            test_data.REGISTERED_TYPE,
+            test_data.JANE_DATA
         )
         assert result[1].event.source == TEST_SOURCE
-        assert result[1].event.subject == TestReadEvents.REGISTERED_SUBJECT
-        assert result[1].event.type == TestReadEvents.REGISTERED_TYPE
+        assert result[1].event.subject == test_data.REGISTERED_SUBJECT
+        assert result[1].event.type == test_data.REGISTERED_TYPE
 
     @staticmethod
     @pytest.mark.asyncio
     async def test_read_events_from_a_subject_including_children(
-        prepared_database: Database
+        prepared_database: Database,
+        test_data: TestData
     ):
         client = prepared_database.with_authorization.client
 
@@ -134,32 +98,33 @@ class TestReadEvents:
         total_event_count = 4
         assert len(result) == total_event_count
         assert result[0].event.source == TEST_SOURCE
-        assert result[0].event.subject == TestReadEvents.REGISTERED_SUBJECT
-        assert result[0].event.type == TestReadEvents.REGISTERED_TYPE
-        assert result[0].event.data == TestReadEvents.JANE_DATA
+        assert result[0].event.subject == test_data.REGISTERED_SUBJECT
+        assert result[0].event.type == test_data.REGISTERED_TYPE
+        assert result[0].event.data == test_data.JANE_DATA
         assert result[1].event.source == TEST_SOURCE
-        assert result[1].event.subject == TestReadEvents.LOGGED_IN_SUBJECT
-        assert result[1].event.type == TestReadEvents.LOGGED_IN_TYPE
-        assert result[1].event.data == TestReadEvents.JANE_DATA
+        assert result[1].event.subject == test_data.LOGGED_IN_SUBJECT
+        assert result[1].event.type == test_data.LOGGED_IN_TYPE
+        assert result[1].event.data == test_data.JANE_DATA
         assert result[2].event.source == TEST_SOURCE
-        assert result[2].event.subject == TestReadEvents.REGISTERED_SUBJECT
-        assert result[2].event.type == TestReadEvents.REGISTERED_TYPE
-        assert result[2].event.data == TestReadEvents.JOHN_DATA
+        assert result[2].event.subject == test_data.REGISTERED_SUBJECT
+        assert result[2].event.type == test_data.REGISTERED_TYPE
+        assert result[2].event.data == test_data.JOHN_DATA
         assert result[3].event.source == TEST_SOURCE
-        assert result[3].event.subject == TestReadEvents.LOGGED_IN_SUBJECT
-        assert result[3].event.type == TestReadEvents.LOGGED_IN_TYPE
-        assert result[3].event.data == TestReadEvents.JOHN_DATA
+        assert result[3].event.subject == test_data.LOGGED_IN_SUBJECT
+        assert result[3].event.type == test_data.LOGGED_IN_TYPE
+        assert result[3].event.data == test_data.JOHN_DATA
 
     @staticmethod
     @pytest.mark.asyncio
     async def test_read_events_in_antichronological_order(
-        prepared_database: Database
+        prepared_database: Database,
+        test_data: TestData
     ):
         client = prepared_database.with_authorization.client
 
         result = []
         async for event in client.read_events(
-            TestReadEvents.REGISTERED_SUBJECT,
+            test_data.REGISTERED_SUBJECT,
             ReadEventsOptions(recursive=False, order=Order.ANTICHRONOLOGICAL)
         ):
             result.append(event)
@@ -167,18 +132,19 @@ class TestReadEvents:
         registered_count = 2
         assert len(result) == registered_count
         assert result[0].event.source == TEST_SOURCE
-        assert result[0].event.subject == TestReadEvents.REGISTERED_SUBJECT
-        assert result[0].event.type == TestReadEvents.REGISTERED_TYPE
-        assert result[0].event.data == TestReadEvents.JOHN_DATA
+        assert result[0].event.subject == test_data.REGISTERED_SUBJECT
+        assert result[0].event.type == test_data.REGISTERED_TYPE
+        assert result[0].event.data == test_data.JOHN_DATA
         assert result[1].event.source == TEST_SOURCE
-        assert result[1].event.subject == TestReadEvents.REGISTERED_SUBJECT
-        assert result[1].event.type == TestReadEvents.REGISTERED_TYPE
-        assert result[1].event.data == TestReadEvents.JANE_DATA
+        assert result[1].event.subject == test_data.REGISTERED_SUBJECT
+        assert result[1].event.type == test_data.REGISTERED_TYPE
+        assert result[1].event.data == test_data.JANE_DATA
 
     @staticmethod
     @pytest.mark.asyncio
     async def test_read_events_matching_event_names(
-        prepared_database: Database
+        prepared_database: Database,
+        test_data: TestData
     ):
         client = prepared_database.with_authorization.client
 
@@ -188,8 +154,8 @@ class TestReadEvents:
             ReadEventsOptions(
                 recursive=True,
                 from_latest_event=ReadFromLatestEvent(
-                    subject=TestReadEvents.REGISTERED_SUBJECT,
-                    type=TestReadEvents.REGISTERED_TYPE,
+                    subject=test_data.REGISTERED_SUBJECT,
+                    type=test_data.REGISTERED_TYPE,
                     if_event_is_missing=IfEventIsMissingDuringRead.READ_EVERYTHING
                 )
             )
@@ -199,18 +165,19 @@ class TestReadEvents:
         john_count = 2
         assert len(result) == john_count
         assert result[0].event.source == TEST_SOURCE
-        assert result[0].event.subject == TestReadEvents.REGISTERED_SUBJECT
-        assert result[0].event.type == TestReadEvents.REGISTERED_TYPE
-        assert result[0].event.data == TestReadEvents.JOHN_DATA
+        assert result[0].event.subject == test_data.REGISTERED_SUBJECT
+        assert result[0].event.type == test_data.REGISTERED_TYPE
+        assert result[0].event.data == test_data.JOHN_DATA
         assert result[1].event.source == TEST_SOURCE
-        assert result[1].event.subject == TestReadEvents.LOGGED_IN_SUBJECT
-        assert result[1].event.type == TestReadEvents.LOGGED_IN_TYPE
-        assert result[1].event.data == TestReadEvents.JOHN_DATA
+        assert result[1].event.subject == test_data.LOGGED_IN_SUBJECT
+        assert result[1].event.type == test_data.LOGGED_IN_TYPE
+        assert result[1].event.data == test_data.JOHN_DATA
 
     @staticmethod
     @pytest.mark.asyncio
     async def test_read_events_starting_from_lower_bound_id(
-        prepared_database: Database
+        prepared_database: Database,
+        test_data: TestData
     ):
         client = prepared_database.with_authorization.client
 
@@ -227,18 +194,19 @@ class TestReadEvents:
         john_count = 2
         assert len(result) == john_count
         assert result[0].event.source == TEST_SOURCE
-        assert result[0].event.subject == TestReadEvents.REGISTERED_SUBJECT
-        assert result[0].event.type == TestReadEvents.REGISTERED_TYPE
-        assert result[0].event.data == TestReadEvents.JOHN_DATA
+        assert result[0].event.subject == test_data.REGISTERED_SUBJECT
+        assert result[0].event.type == test_data.REGISTERED_TYPE
+        assert result[0].event.data == test_data.JOHN_DATA
         assert result[1].event.source == TEST_SOURCE
-        assert result[1].event.subject == TestReadEvents.LOGGED_IN_SUBJECT
-        assert result[1].event.type == TestReadEvents.LOGGED_IN_TYPE
-        assert result[1].event.data == TestReadEvents.JOHN_DATA
+        assert result[1].event.subject == test_data.LOGGED_IN_SUBJECT
+        assert result[1].event.type == test_data.LOGGED_IN_TYPE
+        assert result[1].event.data == test_data.JOHN_DATA
 
     @staticmethod
     @pytest.mark.asyncio
     async def test_read_events_up_to_the_upper_bound_id(
-        prepared_database: Database
+        prepared_database: Database,
+        test_data: TestData
     ):
         client = prepared_database.with_authorization.client
 
@@ -255,13 +223,13 @@ class TestReadEvents:
         jane_count = 2
         assert len(result) == jane_count
         assert result[0].event.source == TEST_SOURCE
-        assert result[0].event.subject == TestReadEvents.REGISTERED_SUBJECT
-        assert result[0].event.type == TestReadEvents.REGISTERED_TYPE
-        assert result[0].event.data == TestReadEvents.JANE_DATA
+        assert result[0].event.subject == test_data.REGISTERED_SUBJECT
+        assert result[0].event.type == test_data.REGISTERED_TYPE
+        assert result[0].event.data == test_data.JANE_DATA
         assert result[1].event.source == TEST_SOURCE
-        assert result[1].event.subject == TestReadEvents.LOGGED_IN_SUBJECT
-        assert result[1].event.type == TestReadEvents.LOGGED_IN_TYPE
-        assert result[1].event.data == TestReadEvents.JANE_DATA
+        assert result[1].event.subject == test_data.LOGGED_IN_SUBJECT
+        assert result[1].event.type == test_data.LOGGED_IN_TYPE
+        assert result[1].event.data == test_data.JANE_DATA
 
     @staticmethod
     @pytest.mark.asyncio
