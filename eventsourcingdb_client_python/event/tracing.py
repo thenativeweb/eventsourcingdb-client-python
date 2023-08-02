@@ -12,8 +12,8 @@ Self = TypeVar("Self", bound="TracingContext")
 class TracingContext:
     trace_id: str
     span_id: str
-    trace_flags: TraceFlags
-    trace_state: TraceState
+    trace_flags: TraceFlags = TraceFlags.DEFAULT
+    trace_state: TraceState = TraceState()
 
     @staticmethod
     def from_span_context(span_context: SpanContext) -> Self:

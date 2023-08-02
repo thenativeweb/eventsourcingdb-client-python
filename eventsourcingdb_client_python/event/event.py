@@ -20,7 +20,7 @@ class Event(EventContext):
         time: datetime,
         data_content_type: str,
         predecessor_hash: str,
-        tracing_context: TracingContext | None
+        tracing_context: TracingContext = None
     ):
         super().__init__(
             source,

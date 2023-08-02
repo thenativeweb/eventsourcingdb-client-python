@@ -13,6 +13,6 @@ class Source:
         subject: str,
         event_type: str,
         data: dict,
-        tracing_context: TracingContext | None
+        tracing_context: TracingContext = None
     ) -> EventCandidate:
         return EventCandidate(self.source, subject, event_type, data, tracing_context)

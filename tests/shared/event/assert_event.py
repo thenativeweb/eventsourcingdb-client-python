@@ -8,7 +8,7 @@ def assert_event(
         subject: str,
         type_: str,
         data: dict,
-        tracing_context: TracingContext | None
+        tracing_context: TracingContext = None
 ):
     assert event.source == source
     assert event.subject == subject

@@ -21,7 +21,7 @@ class EventContext:
     time: datetime
     data_content_type: str
     predecessor_hash: str
-    tracing_context: TracingContext | None
+    tracing_context: TracingContext | None = None
 
     @staticmethod
     def parse(unknown_object: dict) -> Self:

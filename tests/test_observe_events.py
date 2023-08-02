@@ -15,7 +15,7 @@ from .conftest import TestData
 
 from .shared.build_database import build_database
 from .shared.database import Database
-from .shared.event.test_source import TEST_SOURCE
+from .shared.event.assert_event import assert_event
 from .shared.start_local_http_server import \
     AttachHandler, \
     Response, \
@@ -70,7 +70,7 @@ class TestObserveEvents:
     async def test_observes_event_from_a_single_subject(
         prepared_database: Database,
         test_data: TestData
-     ):
+    ):
         client = prepared_database.with_authorization.client
         registered_events_count = 3
 
@@ -81,10 +81,11 @@ class TestObserveEvents:
             ObserveEventsOptions(recursive=False)
         )
 
-        await client.write_events([test_data.test_source.new_event(
+        await client.write_events([test_data.TEST_SOURCE.new_event(
             subject=test_data.REGISTERED_SUBJECT,
             event_type=test_data.REGISTERED_TYPE,
-            data=test_data.APFEL_FRED_DATA
+            data=test_data.APFEL_FRED_DATA,
+            tracing_context=test_data.TRACING_CONTEXT_5,
         )])
 
         async for event in events:
@@ -93,18 +94,30 @@ class TestObserveEvents:
             if len(observed_items) == registered_events_count:
                 break
 
-        assert observed_items[0].event.source == TEST_SOURCE
-        assert observed_items[0].event.subject == test_data.REGISTERED_SUBJECT
-        assert observed_items[0].event.type == test_data.REGISTERED_TYPE
-        assert observed_items[0].event.data == test_data.JANE_DATA
-        assert observed_items[1].event.source == TEST_SOURCE
-        assert observed_items[1].event.subject == test_data.REGISTERED_SUBJECT
-        assert observed_items[1].event.type == test_data.REGISTERED_TYPE
-        assert observed_items[1].event.data == test_data.JOHN_DATA
-        assert observed_items[2].event.source == TEST_SOURCE
-        assert observed_items[2].event.subject == test_data.REGISTERED_SUBJECT
-        assert observed_items[2].event.type == test_data.REGISTERED_TYPE
-        assert observed_items[2].event.data == test_data.APFEL_FRED_DATA
+        assert_event(
+            observed_items[0].event,
+            test_data.TEST_SOURCE_STRING,
+            test_data.REGISTERED_SUBJECT,
+            test_data.REGISTERED_TYPE,
+            test_data.JANE_DATA,
+            test_data.TRACING_CONTEXT_1
+        )
+        assert_event(
+            observed_items[1].event,
+            test_data.TEST_SOURCE_STRING,
+            test_data.REGISTERED_SUBJECT,
+            test_data.REGISTERED_TYPE,
+            test_data.JOHN_DATA,
+            test_data.TRACING_CONTEXT_3
+        )
+        assert_event(
+            observed_items[2].event,
+            test_data.TEST_SOURCE_STRING,
+            test_data.REGISTERED_SUBJECT,
+            test_data.REGISTERED_TYPE,
+            test_data.APFEL_FRED_DATA,
+            test_data.TRACING_CONTEXT_5
+        )
 
     @staticmethod
     @pytest.mark.asyncio
@@ -123,10 +136,11 @@ class TestObserveEvents:
             observed_items.append(event)
 
             if not did_push_intermediate_event:
-                await client.write_events([test_data.test_source.new_event(
+                await client.write_events([test_data.TEST_SOURCE.new_event(
                     subject=test_data.REGISTERED_SUBJECT,
                     event_type=test_data.REGISTERED_TYPE,
-                    data=test_data.APFEL_FRED_DATA
+                    data=test_data.APFEL_FRED_DATA,
+                    tracing_context=test_data.TRACING_CONTEXT_5,
                 )])
 
                 did_push_intermediate_event = True
@@ -135,26 +149,46 @@ class TestObserveEvents:
             if len(observed_items) == total_events_count:
                 break
 
-        assert observed_items[0].event.source == TEST_SOURCE
-        assert observed_items[0].event.subject == test_data.REGISTERED_SUBJECT
-        assert observed_items[0].event.type == test_data.REGISTERED_TYPE
-        assert observed_items[0].event.data == test_data.JANE_DATA
-        assert observed_items[1].event.source == TEST_SOURCE
-        assert observed_items[1].event.subject == test_data.LOGGED_IN_SUBJECT
-        assert observed_items[1].event.type == test_data.LOGGED_IN_TYPE
-        assert observed_items[1].event.data == test_data.JANE_DATA
-        assert observed_items[2].event.source == TEST_SOURCE
-        assert observed_items[2].event.subject == test_data.REGISTERED_SUBJECT
-        assert observed_items[2].event.type == test_data.REGISTERED_TYPE
-        assert observed_items[2].event.data == test_data.JOHN_DATA
-        assert observed_items[3].event.source == TEST_SOURCE
-        assert observed_items[3].event.subject == test_data.LOGGED_IN_SUBJECT
-        assert observed_items[3].event.type == test_data.LOGGED_IN_TYPE
-        assert observed_items[3].event.data == test_data.JOHN_DATA
-        assert observed_items[4].event.source == TEST_SOURCE
-        assert observed_items[4].event.subject == test_data.REGISTERED_SUBJECT
-        assert observed_items[4].event.type == test_data.REGISTERED_TYPE
-        assert observed_items[4].event.data == test_data.APFEL_FRED_DATA
+        assert_event(
+            observed_items[0].event,
+            test_data.TEST_SOURCE_STRING,
+            test_data.REGISTERED_SUBJECT,
+            test_data.REGISTERED_TYPE,
+            test_data.JANE_DATA,
+            test_data.TRACING_CONTEXT_1
+        )
+        assert_event(
+            observed_items[1].event,
+            test_data.TEST_SOURCE_STRING,
+            test_data.LOGGED_IN_SUBJECT,
+            test_data.LOGGED_IN_TYPE,
+            test_data.JANE_DATA,
+            test_data.TRACING_CONTEXT_2
+        )
+        assert_event(
+            observed_items[2].event,
+            test_data.TEST_SOURCE_STRING,
+            test_data.REGISTERED_SUBJECT,
+            test_data.REGISTERED_TYPE,
+            test_data.JOHN_DATA,
+            test_data.TRACING_CONTEXT_3
+        )
+        assert_event(
+            observed_items[3].event,
+            test_data.TEST_SOURCE_STRING,
+            test_data.LOGGED_IN_SUBJECT,
+            test_data.LOGGED_IN_TYPE,
+            test_data.JOHN_DATA,
+            test_data.TRACING_CONTEXT_4
+        )
+        assert_event(
+            observed_items[4].event,
+            test_data.TEST_SOURCE_STRING,
+            test_data.REGISTERED_SUBJECT,
+            test_data.REGISTERED_TYPE,
+            test_data.APFEL_FRED_DATA,
+            test_data.TRACING_CONTEXT_5
+        )
 
     @staticmethod
     @pytest.mark.asyncio
@@ -180,10 +214,11 @@ class TestObserveEvents:
             observed_items.append(event)
 
             if not did_push_intermediate_event:
-                await client.write_events([test_data.test_source.new_event(
+                await client.write_events([test_data.TEST_SOURCE.new_event(
                     subject=test_data.REGISTERED_SUBJECT,
                     event_type=test_data.REGISTERED_TYPE,
-                    data=test_data.APFEL_FRED_DATA
+                    data=test_data.APFEL_FRED_DATA,
+                    tracing_context=test_data.TRACING_CONTEXT_5,
                 )])
 
                 did_push_intermediate_event = True
@@ -192,14 +227,22 @@ class TestObserveEvents:
             if len(observed_items) == event_count_after_last_login:
                 break
 
-        assert observed_items[0].event.source == TEST_SOURCE
-        assert observed_items[0].event.subject == test_data.LOGGED_IN_SUBJECT
-        assert observed_items[0].event.type == test_data.LOGGED_IN_TYPE
-        assert observed_items[0].event.data == test_data.JOHN_DATA
-        assert observed_items[1].event.source == TEST_SOURCE
-        assert observed_items[1].event.subject == test_data.REGISTERED_SUBJECT
-        assert observed_items[1].event.type == test_data.REGISTERED_TYPE
-        assert observed_items[1].event.data == test_data.APFEL_FRED_DATA
+        assert_event(
+            observed_items[0].event,
+            test_data.TEST_SOURCE_STRING,
+            test_data.LOGGED_IN_SUBJECT,
+            test_data.LOGGED_IN_TYPE,
+            test_data.JOHN_DATA,
+            test_data.TRACING_CONTEXT_4
+        )
+        assert_event(
+            observed_items[1].event,
+            test_data.TEST_SOURCE_STRING,
+            test_data.REGISTERED_SUBJECT,
+            test_data.REGISTERED_TYPE,
+            test_data.APFEL_FRED_DATA,
+            test_data.TRACING_CONTEXT_5
+        )
 
     @staticmethod
     @pytest.mark.asyncio
@@ -221,10 +264,11 @@ class TestObserveEvents:
             observed_items.append(event)
 
             if not did_push_intermediate_event:
-                await client.write_events([test_data.test_source.new_event(
+                await client.write_events([test_data.TEST_SOURCE.new_event(
                     subject=test_data.REGISTERED_SUBJECT,
                     event_type=test_data.REGISTERED_TYPE,
-                    data=test_data.APFEL_FRED_DATA
+                    data=test_data.APFEL_FRED_DATA,
+                    tracing_context=test_data.TRACING_CONTEXT_5,
                 )])
 
                 did_push_intermediate_event = True
@@ -233,18 +277,30 @@ class TestObserveEvents:
             if len(observed_items) == event_count_after_given_id:
                 break
 
-        assert observed_items[0].event.source == TEST_SOURCE
-        assert observed_items[0].event.subject == test_data.REGISTERED_SUBJECT
-        assert observed_items[0].event.type == test_data.REGISTERED_TYPE
-        assert observed_items[0].event.data == test_data.JOHN_DATA
-        assert observed_items[1].event.source == TEST_SOURCE
-        assert observed_items[1].event.subject == test_data.LOGGED_IN_SUBJECT
-        assert observed_items[1].event.type == test_data.LOGGED_IN_TYPE
-        assert observed_items[1].event.data == test_data.JOHN_DATA
-        assert observed_items[2].event.source == TEST_SOURCE
-        assert observed_items[2].event.subject == test_data.REGISTERED_SUBJECT
-        assert observed_items[2].event.type == test_data.REGISTERED_TYPE
-        assert observed_items[2].event.data == test_data.APFEL_FRED_DATA
+        assert_event(
+            observed_items[0].event,
+            test_data.TEST_SOURCE_STRING,
+            test_data.REGISTERED_SUBJECT,
+            test_data.REGISTERED_TYPE,
+            test_data.JOHN_DATA,
+            test_data.TRACING_CONTEXT_3
+        )
+        assert_event(
+            observed_items[1].event,
+            test_data.TEST_SOURCE_STRING,
+            test_data.LOGGED_IN_SUBJECT,
+            test_data.LOGGED_IN_TYPE,
+            test_data.JOHN_DATA,
+            test_data.TRACING_CONTEXT_4
+        )
+        assert_event(
+            observed_items[2].event,
+            test_data.TEST_SOURCE_STRING,
+            test_data.REGISTERED_SUBJECT,
+            test_data.REGISTERED_TYPE,
+            test_data.APFEL_FRED_DATA,
+            test_data.TRACING_CONTEXT_5
+        )
 
     @staticmethod
     @pytest.mark.asyncio

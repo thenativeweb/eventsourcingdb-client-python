@@ -11,7 +11,7 @@ class EventCandidate:
     subject: str
     type: str
     data: dict
-    tracing_context: TracingContext | None
+    tracing_context: TracingContext | None = None
 
     def validate(self) -> None:
         validate_subject(self.subject)

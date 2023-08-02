@@ -7,7 +7,7 @@ from eventsourcingdb_client_python.client import Client
 from eventsourcingdb_client_python.errors.client_error import ClientError
 from eventsourcingdb_client_python.errors.invalid_parameter_error import InvalidParameterError
 from eventsourcingdb_client_python.errors.server_error import ServerError
-from eventsourcingdb_client_python.event.source import Source
+from eventsourcingdb_client_python.event.event_candidate import EventCandidate
 from eventsourcingdb_client_python.handlers.write_events import \
     IsSubjectPristinePrecondition, \
     IsSubjectOnEventIdPrecondition
@@ -15,7 +15,6 @@ from .conftest import TestData
 
 from .shared.build_database import build_database
 from .shared.database import Database
-from .shared.event.test_source import TEST_SOURCE
 from .shared.start_local_http_server import \
     AttachHandler, \
     Response, \
@@ -37,7 +36,7 @@ class TestWriteSubjects:
 
         with pytest.raises(ServerError):
             await client.write_events([
-                test_data.test_source.new_event(
+                test_data.TEST_SOURCE.new_event(
                     subject='/',
                     event_type='com.foo.bar',
                     data={}
@@ -64,7 +63,7 @@ class TestWriteSubjects:
 
         with pytest.raises(InvalidParameterError):
             await client.write_events([
-                test_data.test_source.new_event(
+                test_data.TEST_SOURCE.new_event(
                     subject='',
                     event_type='com.foo.bar',
                     data={}
@@ -81,7 +80,7 @@ class TestWriteSubjects:
 
         with pytest.raises(InvalidParameterError):
             await client.write_events([
-                test_data.test_source.new_event(
+                test_data.TEST_SOURCE.new_event(
                     subject='/',
                     event_type='',
                     data={}
@@ -97,7 +96,7 @@ class TestWriteSubjects:
         client = database.with_authorization.client
 
         await client.write_events([
-            test_data.test_source.new_event(
+            test_data.TEST_SOURCE.new_event(
                 subject='/',
                 event_type='com.foo.bar',
                 data={}
@@ -113,7 +112,7 @@ class TestWriteSubjects:
         client = database.with_authorization.client
 
         await client.write_events([
-            test_data.test_source.new_event(
+            test_data.TEST_SOURCE.new_event(
                 subject='/',
                 event_type='com.foo.bar',
                 data={}
@@ -130,7 +129,7 @@ class TestWriteSubjects:
         client = database.with_authorization.client
 
         await client.write_events([
-            test_data.test_source.new_event(
+            test_data.TEST_SOURCE.new_event(
                 subject='/',
                 event_type='com.foo.bar',
                 data={}
@@ -139,7 +138,7 @@ class TestWriteSubjects:
 
         with pytest.raises(ClientError):
             await client.write_events([
-                test_data.test_source.new_event(
+                test_data.TEST_SOURCE.new_event(
                     subject='/',
                     event_type='com.foo.bar',
                     data={}
@@ -156,7 +155,7 @@ class TestWriteSubjects:
         client = database.with_authorization.client
 
         await client.write_events([
-            test_data.test_source.new_event(
+            test_data.TEST_SOURCE.new_event(
                 subject='/',
                 event_type='com.foo.bar',
                 data={}
@@ -164,7 +163,7 @@ class TestWriteSubjects:
         )
 
         await client.write_events([
-            test_data.test_source.new_event(
+            test_data.TEST_SOURCE.new_event(
                 subject='/',
                 event_type='com.foo.bar',
                 data={}
@@ -181,7 +180,7 @@ class TestWriteSubjects:
         client = database.with_authorization.client
 
         await client.write_events([
-            test_data.test_source.new_event(
+            test_data.TEST_SOURCE.new_event(
                 subject='/',
                 event_type='com.foo.bar',
                 data={}
@@ -190,7 +189,7 @@ class TestWriteSubjects:
 
         with pytest.raises(ClientError):
             await client.write_events([
-                test_data.test_source.new_event(
+                test_data.TEST_SOURCE.new_event(
                     subject='/',
                     event_type='com.foo.bar',
                     data={}
@@ -200,13 +199,11 @@ class TestWriteSubjects:
 
 
 class TestWriteEventsWithMockServer:
-    test_source = Source(TEST_SOURCE)
-    events = [test_source.new_event('/', 'com.foo.bar', {})]
-
     @staticmethod
     @pytest.mark.asyncio
     async def test_throws_error_if_server_responds_with_5xx_status_code(
-        get_client: Callable[[AttachHandlers], Awaitable[Client]]
+        get_client: Callable[[AttachHandlers], Awaitable[Client]],
+        events_for_mocked_server: list[EventCandidate],
     ):
         def attach_handlers(attach_handler: AttachHandler):
             def handle_write_events(response: Response) -> Response:
@@ -219,12 +216,13 @@ class TestWriteEventsWithMockServer:
         client = await get_client(attach_handlers)
 
         with pytest.raises(ServerError):
-            await client.write_events(TestWriteEventsWithMockServer.events)
+            await client.write_events(events_for_mocked_server)
 
     @staticmethod
     @pytest.mark.asyncio
     async def test_throws_error_if_protocol_version_does_not_match(
-        get_client: Callable[[AttachHandlers], Awaitable[Client]]
+        get_client: Callable[[AttachHandlers], Awaitable[Client]],
+        events_for_mocked_server: list[EventCandidate],
     ):
         def attach_handlers(attach_handler: AttachHandler):
             def handle_write_events(response: Response) -> Response:
@@ -238,12 +236,13 @@ class TestWriteEventsWithMockServer:
         client = await get_client(attach_handlers)
 
         with pytest.raises(ClientError):
-            await client.write_events(TestWriteEventsWithMockServer.events)
+            await client.write_events(events_for_mocked_server)
 
     @staticmethod
     @pytest.mark.asyncio
     async def test_throws_error_if_server_responds_with_4xx_status_code(
-        get_client: Callable[[AttachHandlers], Awaitable[Client]]
+        get_client: Callable[[AttachHandlers], Awaitable[Client]],
+        events_for_mocked_server: list[EventCandidate],
     ):
         def attach_handlers(attach_handler: AttachHandler):
             def handle_write_events(response: Response) -> Response:
@@ -256,12 +255,13 @@ class TestWriteEventsWithMockServer:
         client = await get_client(attach_handlers)
 
         with pytest.raises(ClientError):
-            await client.write_events(TestWriteEventsWithMockServer.events)
+            await client.write_events(events_for_mocked_server)
 
     @staticmethod
     @pytest.mark.asyncio
     async def test_throws_error_if_server_responds_with_unexpected_status_code(
-        get_client: Callable[[AttachHandlers], Awaitable[Client]]
+        get_client: Callable[[AttachHandlers], Awaitable[Client]],
+        events_for_mocked_server: list[EventCandidate],
     ):
         def attach_handlers(attach_handler: AttachHandler):
             def handle_write_events(response: Response) -> Response:
@@ -274,12 +274,13 @@ class TestWriteEventsWithMockServer:
         client = await get_client(attach_handlers)
 
         with pytest.raises(ServerError):
-            await client.write_events(TestWriteEventsWithMockServer.events)
+            await client.write_events(events_for_mocked_server)
 
     @staticmethod
     @pytest.mark.asyncio
     async def test_throws_error_if_response_cannot_be_parsed(
-        get_client: Callable[[AttachHandlers], Awaitable[Client]]
+        get_client: Callable[[AttachHandlers], Awaitable[Client]],
+        events_for_mocked_server: list[EventCandidate],
     ):
         def attach_handlers(attach_handler: AttachHandler):
             def handle_write_events(response: Response) -> Response:
@@ -291,4 +292,32 @@ class TestWriteEventsWithMockServer:
         client = await get_client(attach_handlers)
 
         with pytest.raises(ServerError):
-            await client.write_events(TestWriteEventsWithMockServer.events)
+            await client.write_events(events_for_mocked_server)
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_throws_error_if_trace_id_is_invalid(
+        get_client: Callable[[AttachHandlers], Awaitable[Client]]
+    ):
+        raise NotImplementedError()
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_throws_error_if_span_id_is_invalid(
+        get_client: Callable[[AttachHandlers], Awaitable[Client]]
+    ):
+        raise NotImplementedError()
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_throws_error_if_trace_flags_are_invalid(
+        get_client: Callable[[AttachHandlers], Awaitable[Client]]
+    ):
+        raise NotImplementedError()
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_throws_error_if_trace_state_is_invalid(
+        get_client: Callable[[AttachHandlers], Awaitable[Client]]
+    ):
+        raise NotImplementedError()

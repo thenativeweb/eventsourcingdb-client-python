@@ -8,10 +8,10 @@ from eventsourcingdb_client_python.errors.client_error import ClientError
 from eventsourcingdb_client_python.errors.invalid_parameter_error import InvalidParameterError
 from eventsourcingdb_client_python.errors.server_error import ServerError
 from eventsourcingdb_client_python.event.event_candidate import EventCandidate
+from .conftest import TestData
 
 from .shared.build_database import build_database
 from .shared.database import Database
-from .shared.event.test_source import TEST_SOURCE
 from .shared.start_local_http_server import \
     AttachHandler, \
     Response, \
@@ -47,13 +47,14 @@ class TestReadSubjects:
     @staticmethod
     @pytest.mark.asyncio
     async def test_reads_all_subjects_starting_from_root(
-        database: Database
+        database: Database,
+        test_data: TestData,
     ):
         client = database.with_authorization.client
 
         await client.write_events([
             EventCandidate(
-                TEST_SOURCE,
+                test_data.TEST_SOURCE_STRING,
                 '/foo',
                 'io.thenativeweb.user.janeDoe.loggedIn',
                 {}
@@ -69,13 +70,14 @@ class TestReadSubjects:
     @staticmethod
     @pytest.mark.asyncio
     async def test_reads_all_subjects_starting_from_given_base_subject(
-        database: Database
+        database: Database,
+        test_data: TestData,
     ):
         client = database.with_authorization.client
 
         await client.write_events([
             EventCandidate(
-                TEST_SOURCE,
+                test_data.TEST_SOURCE_STRING,
                 '/foo/bar',
                 'io.thenativeweb.user.janeDoe.loggedIn',
                 {}
@@ -91,13 +93,14 @@ class TestReadSubjects:
     @staticmethod
     @pytest.mark.asyncio
     async def test_throws_an_error_if_base_subject_malformed(
-        database: Database
+        database: Database,
+        test_data: TestData,
     ):
         client = database.with_authorization.client
 
         await client.write_events([
             EventCandidate(
-                TEST_SOURCE,
+                test_data.TEST_SOURCE_STRING,
                 '/foo/bar',
                 'io.thenativeweb.user.janeDoe.loggedIn',
                 {}
