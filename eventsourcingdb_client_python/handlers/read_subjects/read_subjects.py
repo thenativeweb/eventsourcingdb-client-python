@@ -2,21 +2,20 @@ from collections.abc import Generator
 import json
 from http import HTTPStatus
 
-import requests
-
 from ...abstract_base_client import AbstractBaseClient
 from ...errors.custom_error import CustomError
 from ...errors.internal_error import InternalError
 from ...errors.invalid_parameter_error import InvalidParameterError
 from ...errors.server_error import ServerError
 from ...errors.validation_error import ValidationError
+from ...http_client.response import Response
 from ..is_stream_error import is_stream_error
 from ..parse_raw_message import parse_raw_message
 from .is_subject import is_subject
 from ...event.validate_subject import validate_subject
 
 
-def read_subjects(
+async def read_subjects(
     client: AbstractBaseClient,
     base_subject: str
 ) -> Generator[str, None, None]:
@@ -31,12 +30,11 @@ def read_subjects(
         'baseSubject': base_subject
     })
 
-    response: requests.Response
+    response: Response
     try:
-        response = client.http_client.post(
+        response = await client.http_client.post(
             path='/api/read-subjects',
             request_body=request_body,
-            stream_response=True
         )
     except CustomError as custom_error:
         raise custom_error
@@ -49,7 +47,7 @@ def read_subjects(
                 f'Unexpected response status: '
                 f'{response.status_code} {HTTPStatus(response.status_code).phrase}'
             )
-        for raw_message in response.iter_lines():
+        async for raw_message in response.body:
             message = parse_raw_message(raw_message)
 
             if is_stream_error(message):

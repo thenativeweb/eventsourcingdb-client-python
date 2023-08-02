@@ -1,8 +1,6 @@
 import json
-from collections.abc import Generator
+from collections.abc import AsyncGenerator
 from http import HTTPStatus
-
-import requests
 
 from ..is_heartbeat import is_heartbeat
 from ..is_item import is_item
@@ -18,13 +16,14 @@ from ...event.event import Event
 from ...event.validate_subject import validate_subject
 from ..store_item import StoreItem
 from .observe_events_options import ObserveEventsOptions
+from ...http_client.response import Response
 
 
-def observe_events(
+async def observe_events(
     client: AbstractBaseClient,
     subject: str,
     options: ObserveEventsOptions
-) -> Generator[StoreItem, None, None]:
+) -> AsyncGenerator[StoreItem, None]:
     try:
         validate_subject(subject)
     except ValidationError as validation_error:
@@ -44,12 +43,11 @@ def observe_events(
         'options': options.to_json()
     })
 
-    response: requests.Response
+    response: Response
     try:
-        response = client.http_client.post(
+        response = await client.http_client.post(
             path='/api/observe-events',
             request_body=request_body,
-            stream_response=True
         )
     except CustomError as custom_error:
         raise custom_error
@@ -62,7 +60,7 @@ def observe_events(
                 f'Unexpected response status: '
                 f'{response.status_code} {HTTPStatus(response.status_code).phrase}'
             )
-        for raw_message in response.iter_lines():
+        async for raw_message in response.body:
             message = parse_raw_message(raw_message)
 
             if is_heartbeat(message):

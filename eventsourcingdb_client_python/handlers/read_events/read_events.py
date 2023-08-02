@@ -2,8 +2,6 @@ from collections.abc import Generator
 import json
 from http import HTTPStatus
 
-import requests
-
 from ...abstract_base_client import AbstractBaseClient
 from ...errors.custom_error import CustomError
 from ...errors.internal_error import InternalError
@@ -12,6 +10,7 @@ from ...errors.server_error import ServerError
 from ...errors.validation_error import ValidationError
 from ...event.event import Event
 from ...event.validate_subject import validate_subject
+from ...http_client.response import Response
 from ..is_item import is_item
 from ..is_stream_error import is_stream_error
 from ..parse_raw_message import parse_raw_message
@@ -19,7 +18,7 @@ from ..store_item import StoreItem
 from .read_events_options import ReadEventsOptions
 
 
-def read_events(
+async def read_events(
     client: AbstractBaseClient,
     subject: str,
     options: ReadEventsOptions
@@ -43,12 +42,11 @@ def read_events(
         'options': options.to_json()
     })
 
-    response: requests.Response
+    response: Response
     try:
-        response = client.http_client.post(
+        response = await client.http_client.post(
             path='/api/read-events',
             request_body=request_body,
-            stream_response=True
         )
     except CustomError as custom_error:
         raise custom_error
@@ -61,7 +59,7 @@ def read_events(
                 f'Unexpected response status: '
                 f'{response.status_code} {HTTPStatus(response.status_code).phrase}'
             )
-        for raw_message in response.iter_lines():
+        async for raw_message in response.body:
             message = parse_raw_message(raw_message)
 
             if is_stream_error(message):
