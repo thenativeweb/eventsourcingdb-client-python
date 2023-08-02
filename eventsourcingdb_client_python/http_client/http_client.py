@@ -87,21 +87,31 @@ class HttpClient:
             f' client \'{self.__client_configuration.protocol_version}\'.'
         )
 
-    def __validate_response(
+    async def __get_error_message(self, response: Response):
+        error_message = f'Request failed with status code \'{response.status_code}\''
+
+        try:
+            encoded_error_reason = await response.body.read()
+            error_reason = encoded_error_reason.decode('utf-8')
+            error_message += f" {error_reason}"
+        finally:
+            pass
+
+        error_message += '.'
+
+        return error_message
+
+    async def __validate_response(
         self,
         response: Response
     ) -> RetryResult[Response]:
         server_failure_range = Range(500, 600)
         if server_failure_range.lower <= response.status_code < server_failure_range.upper:
-            return Retry(
-                ServerError(f'Request failed with status code \'{response.status_code}\'.')
-            )
+            return Retry(ServerError(await self.__get_error_message(response)))
 
         client_failure_range = Range(400, 500)
         if client_failure_range.lower <= response.status_code < client_failure_range.upper:
-            raise ClientError(
-                f'Request failed with status code \'{response.status_code}\'.'
-            )
+            raise ClientError(await self.__get_error_message(response))
 
         self.__validate_protocol_version(response.status_code, response.headers)
 
@@ -132,7 +142,7 @@ class HttpClient:
 
             response = Response(response)
             try:
-                result = self.__validate_response(response)
+                result = await self.__validate_response(response)
             except Exception as error:
                 response.close()
                 raise error
@@ -171,7 +181,7 @@ class HttpClient:
 
             response = Response(response)
             try:
-                result = self.__validate_response(response)
+                result = await self.__validate_response(response)
             except Exception as error:
                 response.close()
                 raise error

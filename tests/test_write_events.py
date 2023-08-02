@@ -263,6 +263,27 @@ class TestWriteSubjects:
                 )],
             )
 
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_throws_error_if_event_does_not_match_schema(
+        database: Database,
+        test_data: TestData,
+    ):
+        client = database.with_authorization.client
+
+        await client.register_event_schema("com.super.duper", '{"type":"object","additionalProperties":false}')
+
+        with pytest.raises(ClientError, match="event candidate does not match schema"):
+            await client.write_events([
+                test_data.TEST_SOURCE.new_event(
+                    subject="/",
+                    event_type="com.super.duper",
+                    data={
+                        "haft": "befehl",
+                    },
+                ),
+            ])
+
 
 class TestWriteEventsWithMockServer:
     @staticmethod

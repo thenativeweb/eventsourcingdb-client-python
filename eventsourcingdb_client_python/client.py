@@ -7,6 +7,9 @@ from .event.event_candidate import EventCandidate
 from .event.event_context import EventContext
 from .handlers.observe_events.observe_events import observe_events
 from .handlers.observe_events.observe_events_options import ObserveEventsOptions
+from .handlers.read_event_types.event_type import EventType
+from .handlers.read_event_types.read_event_types import read_event_types
+from .handlers.register_event_schema.register_event_schema import register_event_schema
 from .http_client.http_client import HttpClient
 from .handlers.ping import ping
 from .handlers.read_events import read_events, ReadEventsOptions
@@ -71,6 +74,13 @@ class Client(AbstractBaseClient):
     ) -> AsyncGenerator[StoreItem, None]:
         async for event in read_events(self, subject, options):
             yield event
+
+    async def read_event_types(self) -> AsyncGenerator[EventType, None]:
+        async for event_type in read_event_types(self):
+            yield event_type
+
+    async def register_event_schema(self, event_type: str, json_schema: str) -> None:
+        await register_event_schema(self, event_type, json_schema)
 
     async def observe_events(
         self,
