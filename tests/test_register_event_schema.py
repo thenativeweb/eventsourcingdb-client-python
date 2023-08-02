@@ -39,7 +39,10 @@ class TestRegisterEventSchema:
         ])
 
         with pytest.raises(ClientError, match="additionalProperties"):
-            await client.register_event_schema("com.gornisht.ekht", '{"type":"object","additionalProperties":false}')
+            await client.register_event_schema(
+                "com.gornisht.ekht",
+                '{"type":"object","additionalProperties":false}'
+            )
 
     @staticmethod
     @pytest.mark.asyncio
@@ -48,10 +51,16 @@ class TestRegisterEventSchema:
     ):
         client = database.with_authorization.client
 
-        await client.register_event_schema("com.gornisht.ekht", '{"type":"object","additionalProperties":false}')
+        await client.register_event_schema(
+            "com.gornisht.ekht",
+            '{"type":"object","additionalProperties":false}'
+        )
 
         with pytest.raises(ClientError, match="schema already exists"):
-            await client.register_event_schema("com.gornisht.ekht", '{"type":"object","additionalProperties":false}')
+            await client.register_event_schema(
+                "com.gornisht.ekht",
+                '{"type":"object","additionalProperties":false}'
+            )
 
     @staticmethod
     @pytest.mark.asyncio

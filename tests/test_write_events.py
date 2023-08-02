@@ -271,7 +271,10 @@ class TestWriteSubjects:
     ):
         client = database.with_authorization.client
 
-        await client.register_event_schema("com.super.duper", '{"type":"object","additionalProperties":false}')
+        await client.register_event_schema(
+            "com.super.duper",
+            '{"type":"object","additionalProperties":false}'
+        )
 
         with pytest.raises(ClientError, match="event candidate does not match schema"):
             await client.write_events([

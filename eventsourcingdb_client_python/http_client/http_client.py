@@ -87,15 +87,20 @@ class HttpClient:
             f' client \'{self.__client_configuration.protocol_version}\'.'
         )
 
-    async def __get_error_message(self, response: Response):
+    @staticmethod
+    async def __get_error_message(response: Response):
         error_message = f'Request failed with status code \'{response.status_code}\''
 
+        # We want to purposefully ignore all errors here, as we're already error handling,
+        # and this function just tries to get more information on a best-effort basis.
+        # pylint: disable=too-many-try-statements
         try:
             encoded_error_reason = await response.body.read()
             error_reason = encoded_error_reason.decode('utf-8')
             error_message += f" {error_reason}"
         finally:
             pass
+        # pylint: enable=too-many-try-statements
 
         error_message += '.'
 

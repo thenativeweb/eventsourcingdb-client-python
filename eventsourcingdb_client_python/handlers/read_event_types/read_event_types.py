@@ -40,7 +40,6 @@ async def read_event_types(
                 raise ServerError(message['payload']['error'])
 
             if is_event_type(message):
-                event_type: EventType
                 try:
                     yield EventType.parse(message['payload'])
                 except ValidationError as validation_error:
