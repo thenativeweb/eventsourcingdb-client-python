@@ -78,7 +78,13 @@ async def test_data() -> TestData:
 
 
 @pytest_asyncio.fixture
-async def prepared_database(database: Database, test_data: TestData) -> Database:
+async def prepared_database(
+    # This is required in order to request a fixture defined in the same file
+    # pylint: disable=redefined-outer-name
+    database: Database,
+    test_data: TestData
+    # pylint: enable=redefined-outer-name
+) -> Database:
     await database.with_authorization.client.write_events([
         test_data.test_source.new_event(
             test_data.REGISTERED_SUBJECT,

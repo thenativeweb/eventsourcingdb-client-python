@@ -2,13 +2,11 @@ from collections.abc import Callable, Awaitable
 from http import HTTPStatus
 
 import pytest
-import pytest_asyncio
 
 from eventsourcingdb_client_python.client import Client
 from eventsourcingdb_client_python.errors.client_error import ClientError
 from eventsourcingdb_client_python.errors.invalid_parameter_error import InvalidParameterError
 from eventsourcingdb_client_python.errors.server_error import ServerError
-from eventsourcingdb_client_python.event.source import Source
 from eventsourcingdb_client_python.handlers.read_events import \
     ReadEventsOptions, \
     ReadFromLatestEvent, \

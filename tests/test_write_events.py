@@ -11,6 +11,7 @@ from eventsourcingdb_client_python.event.source import Source
 from eventsourcingdb_client_python.handlers.write_events import \
     IsSubjectPristinePrecondition, \
     IsSubjectOnEventIdPrecondition
+from .conftest import TestData
 
 from .shared.build_database import build_database
 from .shared.database import Database
@@ -22,8 +23,6 @@ from .shared.start_local_http_server import \
 
 
 class TestWriteSubjects:
-    test_source = Source(TEST_SOURCE)
-
     @classmethod
     def setup_class(cls):
         build_database('tests/shared/docker/eventsourcingdb')
@@ -31,13 +30,14 @@ class TestWriteSubjects:
     @staticmethod
     @pytest.mark.asyncio
     async def test_throws_an_error_if_server_is_not_reachable(
-        database: Database
+        database: Database,
+        test_data: TestData
     ):
         client = database.with_invalid_url.client
 
         with pytest.raises(ServerError):
             await client.write_events([
-                TestWriteSubjects.test_source.new_event(
+                test_data.test_source.new_event(
                     subject='/',
                     event_type='com.foo.bar',
                     data={}
@@ -57,13 +57,14 @@ class TestWriteSubjects:
     @staticmethod
     @pytest.mark.asyncio
     async def test_throws_an_error_for_malformed_subject(
-        database: Database
+        database: Database,
+        test_data: TestData
     ):
         client = database.with_authorization.client
 
         with pytest.raises(InvalidParameterError):
             await client.write_events([
-                TestWriteSubjects.test_source.new_event(
+                test_data.test_source.new_event(
                     subject='',
                     event_type='com.foo.bar',
                     data={}
@@ -73,13 +74,14 @@ class TestWriteSubjects:
     @staticmethod
     @pytest.mark.asyncio
     async def test_throws_an_error_for_malformed_type(
-        database: Database
+        database: Database,
+        test_data: TestData
     ):
         client = database.with_authorization.client
 
         with pytest.raises(InvalidParameterError):
             await client.write_events([
-                TestWriteSubjects.test_source.new_event(
+                test_data.test_source.new_event(
                     subject='/',
                     event_type='',
                     data={}
@@ -89,12 +91,13 @@ class TestWriteSubjects:
     @staticmethod
     @pytest.mark.asyncio
     async def test_supports_authorization(
-        database: Database
+        database: Database,
+        test_data: TestData
     ):
         client = database.with_authorization.client
 
         await client.write_events([
-            TestWriteSubjects.test_source.new_event(
+            test_data.test_source.new_event(
                 subject='/',
                 event_type='com.foo.bar',
                 data={}
@@ -104,12 +107,13 @@ class TestWriteSubjects:
     @staticmethod
     @pytest.mark.asyncio
     async def test_is_pristine_precondition_works_for_new_subject(
-        database: Database
+        database: Database,
+        test_data: TestData
     ):
         client = database.with_authorization.client
 
         await client.write_events([
-            TestWriteSubjects.test_source.new_event(
+            test_data.test_source.new_event(
                 subject='/',
                 event_type='com.foo.bar',
                 data={}
@@ -120,12 +124,13 @@ class TestWriteSubjects:
     @staticmethod
     @pytest.mark.asyncio
     async def test_is_pristine_precondition_fails_for_existing_subject(
-        database: Database
+        database: Database,
+        test_data: TestData
     ):
         client = database.with_authorization.client
 
         await client.write_events([
-            TestWriteSubjects.test_source.new_event(
+            test_data.test_source.new_event(
                 subject='/',
                 event_type='com.foo.bar',
                 data={}
@@ -134,7 +139,7 @@ class TestWriteSubjects:
 
         with pytest.raises(ClientError):
             await client.write_events([
-                TestWriteSubjects.test_source.new_event(
+                test_data.test_source.new_event(
                     subject='/',
                     event_type='com.foo.bar',
                     data={}
@@ -145,12 +150,13 @@ class TestWriteSubjects:
     @staticmethod
     @pytest.mark.asyncio
     async def test_is_on_event_id_precondition_works_for_correct_id(
-        database: Database
+        database: Database,
+        test_data: TestData
     ):
         client = database.with_authorization.client
 
         await client.write_events([
-            TestWriteSubjects.test_source.new_event(
+            test_data.test_source.new_event(
                 subject='/',
                 event_type='com.foo.bar',
                 data={}
@@ -158,7 +164,7 @@ class TestWriteSubjects:
         )
 
         await client.write_events([
-            TestWriteSubjects.test_source.new_event(
+            test_data.test_source.new_event(
                 subject='/',
                 event_type='com.foo.bar',
                 data={}
@@ -169,12 +175,13 @@ class TestWriteSubjects:
     @staticmethod
     @pytest.mark.asyncio
     async def test_is_subject_on_event_id_fails_for_wrong_id(
-        database: Database
+        database: Database,
+        test_data: TestData
     ):
         client = database.with_authorization.client
 
         await client.write_events([
-            TestWriteSubjects.test_source.new_event(
+            test_data.test_source.new_event(
                 subject='/',
                 event_type='com.foo.bar',
                 data={}
@@ -183,7 +190,7 @@ class TestWriteSubjects:
 
         with pytest.raises(ClientError):
             await client.write_events([
-                TestWriteSubjects.test_source.new_event(
+                test_data.test_source.new_event(
                     subject='/',
                     event_type='com.foo.bar',
                     data={}
