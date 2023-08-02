@@ -9,11 +9,26 @@ from .testing_database import TestingDatabase
 
 
 class Database:
-    def __init__(self):
+    __create_key = object()
+
+    def __init__(
+        self,
+        create_key,
+        with_authorization: ContainerizedTestingDatabase,
+        with_invalid_url: TestingDatabase
+    ):
+        assert create_key == Database.__create_key, \
+            'Database objects must be created using Database.create.'
+
+        self.with_authorization: ContainerizedTestingDatabase = with_authorization
+        self.with_invalid_url: TestingDatabase = with_invalid_url
+
+    @classmethod
+    async def create(cls) -> 'Database':
         image = Image('eventsourcingdb', 'latest')
 
         access_token = str(uuid.uuid4())
-        with_authorization = ContainerizedTestingDatabase(
+        with_authorization = await ContainerizedTestingDatabase.create(
             image,
             ['run', '--access-token', f'{access_token}', '--store-temporary'],
             access_token,
@@ -21,11 +36,11 @@ class Database:
         )
 
         with_invalid_url = TestingDatabase(
-            Client(base_url='http://localhost.invalid', access_token=access_token)
+            await Client.create(base_url='http://localhost.invalid', access_token=access_token)
         )
 
-        self.with_authorization: ContainerizedTestingDatabase = with_authorization
-        self.with_invalid_url: TestingDatabase = with_invalid_url
+        return cls(Database.__create_key, with_authorization, with_invalid_url)
 
-    def stop(self):
-        self.with_authorization.stop()
+    async def stop(self):
+        await self.with_authorization.stop()
+        await self.with_invalid_url.stop()

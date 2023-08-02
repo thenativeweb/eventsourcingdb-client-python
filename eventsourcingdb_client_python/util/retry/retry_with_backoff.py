@@ -1,38 +1,19 @@
-from collections.abc import Callable
-from dataclasses import dataclass
+from collections.abc import Callable, Coroutine
 import time
-import random
-from typing import Generic, TypeVar
+from typing import TypeVar
 
 from .retry_error import RetryError
+from .retry_result import RetryResult, Return
+from ..get_randomized_duration import get_randomized_duration
+
 
 ReturnT = TypeVar('ReturnT')
-DataT = TypeVar('DataT')
 
 
-@dataclass
-class Return(Generic[DataT]):
-    data: DataT
-
-
-@dataclass
-class Retry:
-    cause: Exception
-
-
-RetryResult = Return[ReturnT] | Retry
-
-
-def get_randomized_duration(
-    duration_milliseconds: int,
-    deviation_milliseconds: int
-) -> int:
-    return duration_milliseconds \
-        - deviation_milliseconds \
-        + round(random.random() * deviation_milliseconds * 2)
-
-
-def retry_with_backoff(tries: int, operation: Callable[[], RetryResult]) -> ReturnT:
+async def retry_with_backoff(
+    tries: int,
+    operation: Callable[[], Coroutine[None, None, RetryResult[ReturnT]]],
+) -> ReturnT:
     if tries < 1:
         raise ValueError('Tries must be greater than 0')
 
@@ -43,7 +24,7 @@ def retry_with_backoff(tries: int, operation: Callable[[], RetryResult]) -> Retu
 
         time.sleep(timeout / 1_000)
 
-        result = operation()
+        result = await operation()
 
         if isinstance(result, Return):
             return result.data
