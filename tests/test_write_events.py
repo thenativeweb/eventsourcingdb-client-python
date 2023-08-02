@@ -2,12 +2,14 @@ from collections.abc import Callable, Awaitable
 from http import HTTPStatus
 
 import pytest
+from opentelemetry.trace import TraceFlags
 
 from eventsourcingdb_client_python.client import Client
 from eventsourcingdb_client_python.errors.client_error import ClientError
 from eventsourcingdb_client_python.errors.invalid_parameter_error import InvalidParameterError
 from eventsourcingdb_client_python.errors.server_error import ServerError
 from eventsourcingdb_client_python.event.event_candidate import EventCandidate
+from eventsourcingdb_client_python.event.tracing import TracingContext
 from eventsourcingdb_client_python.handlers.write_events import \
     IsSubjectPristinePrecondition, \
     IsSubjectOnEventIdPrecondition
@@ -30,7 +32,7 @@ class TestWriteSubjects:
     @pytest.mark.asyncio
     async def test_throws_an_error_if_server_is_not_reachable(
         database: Database,
-        test_data: TestData
+        test_data: TestData,
     ):
         client = database.with_invalid_url.client
 
@@ -46,7 +48,7 @@ class TestWriteSubjects:
     @staticmethod
     @pytest.mark.asyncio
     async def test_throws_an_error_for_empty_event_candidates(
-        database: Database
+        database: Database,
     ):
         client = database.with_authorization.client
 
@@ -57,7 +59,7 @@ class TestWriteSubjects:
     @pytest.mark.asyncio
     async def test_throws_an_error_for_malformed_subject(
         database: Database,
-        test_data: TestData
+        test_data: TestData,
     ):
         client = database.with_authorization.client
 
@@ -74,7 +76,7 @@ class TestWriteSubjects:
     @pytest.mark.asyncio
     async def test_throws_an_error_for_malformed_type(
         database: Database,
-        test_data: TestData
+        test_data: TestData,
     ):
         client = database.with_authorization.client
 
@@ -91,7 +93,7 @@ class TestWriteSubjects:
     @pytest.mark.asyncio
     async def test_supports_authorization(
         database: Database,
-        test_data: TestData
+        test_data: TestData,
     ):
         client = database.with_authorization.client
 
@@ -107,7 +109,7 @@ class TestWriteSubjects:
     @pytest.mark.asyncio
     async def test_is_pristine_precondition_works_for_new_subject(
         database: Database,
-        test_data: TestData
+        test_data: TestData,
     ):
         client = database.with_authorization.client
 
@@ -124,7 +126,7 @@ class TestWriteSubjects:
     @pytest.mark.asyncio
     async def test_is_pristine_precondition_fails_for_existing_subject(
         database: Database,
-        test_data: TestData
+        test_data: TestData,
     ):
         client = database.with_authorization.client
 
@@ -150,7 +152,7 @@ class TestWriteSubjects:
     @pytest.mark.asyncio
     async def test_is_on_event_id_precondition_works_for_correct_id(
         database: Database,
-        test_data: TestData
+        test_data: TestData,
     ):
         client = database.with_authorization.client
 
@@ -175,7 +177,7 @@ class TestWriteSubjects:
     @pytest.mark.asyncio
     async def test_is_subject_on_event_id_fails_for_wrong_id(
         database: Database,
-        test_data: TestData
+        test_data: TestData,
     ):
         client = database.with_authorization.client
 
@@ -195,6 +197,70 @@ class TestWriteSubjects:
                     data={}
                 )],
                 [IsSubjectOnEventIdPrecondition('/', '2')]
+            )
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_throws_error_if_trace_id_is_invalid(
+        database: Database,
+        test_data: TestData,
+    ):
+        client = database.with_authorization.client
+
+        with pytest.raises(ClientError):
+            await client.write_events([
+                test_data.TEST_SOURCE.new_event(
+                    subject='/',
+                    event_type='com.foo.bar',
+                    data={},
+                    tracing_context=TracingContext(
+                        trace_id="what dis?",
+                        span_id="0011223344556677"
+                    )
+                )],
+            )
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_throws_error_if_span_id_is_invalid(
+        database: Database,
+        test_data: TestData,
+    ):
+        client = database.with_authorization.client
+
+        with pytest.raises(ClientError):
+            await client.write_events([
+                test_data.TEST_SOURCE.new_event(
+                    subject='/',
+                    event_type='com.foo.bar',
+                    data={},
+                    tracing_context=TracingContext(
+                        trace_id="00112233445566770011223344556677",
+                        span_id="wat dis?"
+                    )
+                )],
+            )
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_throws_error_if_trace_flags_are_invalid(
+        database: Database,
+        test_data: TestData,
+    ):
+        client = database.with_authorization.client
+
+        with pytest.raises(ClientError):
+            await client.write_events([
+                test_data.TEST_SOURCE.new_event(
+                    subject='/',
+                    event_type='com.foo.bar',
+                    data={},
+                    tracing_context=TracingContext(
+                        trace_id="00112233445566770011223344556677",
+                        span_id="0011223344556677",
+                        trace_flags=TraceFlags("1337")
+                    )
+                )],
             )
 
 
@@ -293,31 +359,3 @@ class TestWriteEventsWithMockServer:
 
         with pytest.raises(ServerError):
             await client.write_events(events_for_mocked_server)
-
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_throws_error_if_trace_id_is_invalid(
-        get_client: Callable[[AttachHandlers], Awaitable[Client]]
-    ):
-        raise NotImplementedError()
-
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_throws_error_if_span_id_is_invalid(
-        get_client: Callable[[AttachHandlers], Awaitable[Client]]
-    ):
-        raise NotImplementedError()
-
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_throws_error_if_trace_flags_are_invalid(
-        get_client: Callable[[AttachHandlers], Awaitable[Client]]
-    ):
-        raise NotImplementedError()
-
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_throws_error_if_trace_state_is_invalid(
-        get_client: Callable[[AttachHandlers], Awaitable[Client]]
-    ):
-        raise NotImplementedError()
