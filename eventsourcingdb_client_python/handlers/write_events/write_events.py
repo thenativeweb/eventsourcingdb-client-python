@@ -1,5 +1,4 @@
 from http import HTTPStatus
-from collections.abc import AsyncGenerator
 import json
 
 from ...abstract_base_client import AbstractBaseClient
