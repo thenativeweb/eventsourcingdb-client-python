@@ -1,4 +1,3 @@
-from collections.abc import AsyncGenerator
 import json
 from http import HTTPStatus
 
@@ -8,32 +7,33 @@ from ...errors.internal_error import InternalError
 from ...errors.invalid_parameter_error import InvalidParameterError
 from ...errors.server_error import ServerError
 from ...errors.validation_error import ValidationError
+from ...event.validate_type import validate_type
 from ...http_client.response import Response
-from ..is_stream_error import is_stream_error
-from ..parse_raw_message import parse_raw_message
-from .is_subject import is_subject
-from ...event.validate_subject import validate_subject
 
 
-async def read_subjects(
+async def register_event_schema(
     client: AbstractBaseClient,
-    base_subject: str
-) -> AsyncGenerator[str, None, None]:
+    event_type: str,
+    json_schema: str,
+) -> None:
     try:
-        validate_subject(base_subject)
+        validate_type(event_type)
     except ValidationError as validation_error:
-        raise InvalidParameterError('base_subject', str(validation_error)) from validation_error
+        raise InvalidParameterError(
+            'event_type', str(validation_error)
+        ) from validation_error
     except Exception as other_error:
         raise InternalError(str(other_error)) from other_error
 
     request_body = json.dumps({
-        'baseSubject': base_subject
+        'eventType': event_type,
+        'schema': json_schema,
     })
 
     response: Response
     try:
         response = await client.http_client.post(
-            path='/api/read-subjects',
+            path='/api/register-event-schema',
             request_body=request_body,
         )
     except CustomError as custom_error:
@@ -47,16 +47,5 @@ async def read_subjects(
                 'Unexpected response status: '
                 f'{response.status_code} {HTTPStatus(response.status_code).phrase}'
             )
-        async for raw_message in response.body:
-            message = parse_raw_message(raw_message)
 
-            if is_stream_error(message):
-                raise ServerError(message['payload']['error'])
-
-            if is_subject(message):
-                yield message['payload']['subject']
-                continue
-
-            raise ServerError(
-                f'Failed to read subjects, an unexpected stream item was received \'{message}\'.'
-            )
+    return

@@ -1,40 +1,26 @@
 from collections.abc import AsyncGenerator
-import json
 from http import HTTPStatus
 
+from .event_type import EventType
+from .is_event_type import is_event_type
+from ..is_stream_error import is_stream_error
+from ..parse_raw_message import parse_raw_message
 from ...abstract_base_client import AbstractBaseClient
 from ...errors.custom_error import CustomError
 from ...errors.internal_error import InternalError
-from ...errors.invalid_parameter_error import InvalidParameterError
 from ...errors.server_error import ServerError
 from ...errors.validation_error import ValidationError
 from ...http_client.response import Response
-from ..is_stream_error import is_stream_error
-from ..parse_raw_message import parse_raw_message
-from .is_subject import is_subject
-from ...event.validate_subject import validate_subject
 
 
-async def read_subjects(
+async def read_event_types(
     client: AbstractBaseClient,
-    base_subject: str
-) -> AsyncGenerator[str, None, None]:
-    try:
-        validate_subject(base_subject)
-    except ValidationError as validation_error:
-        raise InvalidParameterError('base_subject', str(validation_error)) from validation_error
-    except Exception as other_error:
-        raise InternalError(str(other_error)) from other_error
-
-    request_body = json.dumps({
-        'baseSubject': base_subject
-    })
-
+) -> AsyncGenerator[EventType, None]:
     response: Response
     try:
         response = await client.http_client.post(
-            path='/api/read-subjects',
-            request_body=request_body,
+            path='/api/read-event-types',
+            request_body='',
         )
     except CustomError as custom_error:
         raise custom_error
@@ -53,10 +39,18 @@ async def read_subjects(
             if is_stream_error(message):
                 raise ServerError(message['payload']['error'])
 
-            if is_subject(message):
-                yield message['payload']['subject']
+            if is_event_type(message):
+                event_type: EventType
+                try:
+                    event_type = EventType.parse(message['payload'])
+                except ValidationError as validation_error:
+                    raise ServerError(str(validation_error)) from validation_error
+                except Exception as other_error:
+                    raise InternalError(str(other_error)) from other_error
+
+                yield event_type
                 continue
 
             raise ServerError(
-                f'Failed to read subjects, an unexpected stream item was received \'{message}\'.'
+                f'Failed to read event types, an unexpected stream item was received \'{message}\'.'
             )
