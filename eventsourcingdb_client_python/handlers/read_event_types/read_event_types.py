@@ -40,9 +40,17 @@ async def read_event_types(
                 raise ServerError(message['payload']['error'])
 
             if is_event_type(message):
+                event_type: EventType
                 try:
-                    yield EventType.parse(message['payload'])
+                    event_type = EventType.parse(message['payload'])
                 except ValidationError as validation_error:
                     raise ServerError(str(validation_error)) from validation_error
                 except Exception as other_error:
                     raise InternalError(str(other_error)) from other_error
+
+                yield event_type
+                continue
+
+            raise ServerError(
+                f'Failed to read event types, an unexpected stream item was received \'{message}\'.'
+            )
