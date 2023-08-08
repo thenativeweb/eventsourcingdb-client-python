@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import TypeVar
 
-from eventsourcingdb_client_python.errors.validation_error import ValidationError
+from ...errors.validation_error import ValidationError
 
 Self = TypeVar("Self", bound="EventType")
 

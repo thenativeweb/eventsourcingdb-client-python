@@ -24,30 +24,20 @@ class UninitializedError(CustomError):
 
 
 class HttpClient:
-    __create_key = object()
-
-    @classmethod
-    async def create(cls, client_configuration: ClientConfiguration) -> 'HttpClient':
-        session = aiohttp.ClientSession(
-            timeout=aiohttp.ClientTimeout(
-                connect=client_configuration.timeout_seconds,
-                sock_read=client_configuration.timeout_seconds
-            )
-        )
-
-        return cls(HttpClient.__create_key, client_configuration, session)
-
     def __init__(
         self,
-        create_key,
-        client_configuration: ClientConfiguration,
-        session: aiohttp.ClientSession
+        client_configuration: ClientConfiguration
     ):
-        assert create_key == HttpClient.__create_key, \
-            'HttpClient objects must be created using HttpClient.create.'
-
         self.__client_configuration: ClientConfiguration = client_configuration
-        self.__session: ClientSession = session
+        self.__session: ClientSession | None = None
+
+    async def initialize(self) -> None:
+        self.__session = aiohttp.ClientSession(
+            timeout=aiohttp.ClientTimeout(
+                connect=self.__client_configuration.timeout_seconds,
+                sock_read=self.__client_configuration.timeout_seconds
+            )
+        )
 
     async def close(self):
         if self.__session is not None:

@@ -32,7 +32,8 @@ class ContainerizedTestingDatabase:
         container = image.run(command, True, True)
         exposed_port = container.get_exposed_port(3_000)
         base_url = f'http://127.0.0.1:{exposed_port}'
-        client = await Client.create(base_url, access_token=access_token, options=options)
+        client = Client(base_url, access_token=access_token, options=options)
+        await client.initialize()
 
         await client.ping()
 

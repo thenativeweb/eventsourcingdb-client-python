@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
-from eventsourcingdb_client_python.event.event_candidate import EventCandidate
-from eventsourcingdb_client_python.event.tracing import TracingContext
+from ..event.tracing import TracingContext
+from ..event.event_candidate import EventCandidate
 
 
 @dataclass
