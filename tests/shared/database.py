@@ -35,8 +35,12 @@ class Database:
             ClientOptions()
         )
 
+        with_invalid_url_client = Client(
+            base_url='http://localhost.invalid', access_token=access_token
+        )
+        await with_invalid_url_client.initialize()
         with_invalid_url = TestingDatabase(
-            await Client.create(base_url='http://localhost.invalid', access_token=access_token)
+            with_invalid_url_client
         )
 
         return cls(Database.__create_key, with_authorization, with_invalid_url)

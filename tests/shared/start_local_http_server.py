@@ -59,10 +59,11 @@ async def start_local_http_server(attach_handlers: AttachHandlers) -> tuple[Clie
         server.terminate()
         server.join()
 
-    client = await Client.create(
+    client = Client(
         f'http://localhost:{port}',
         'access-token',
         ClientOptions(max_tries=2)
     )
+    await client.initialize()
 
     return client, stop_server

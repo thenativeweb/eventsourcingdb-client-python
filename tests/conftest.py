@@ -5,6 +5,7 @@ from eventsourcingdb_client_python.event.event_candidate import EventCandidate
 from eventsourcingdb_client_python.event.source import Source
 from eventsourcingdb_client_python.event.tracing import TracingContext
 from eventsourcingdb_client_python.http_client.http_client import HttpClient
+from .shared.build_database import build_database
 from .shared.database import Database
 
 from .shared.start_local_http_server import \
@@ -12,6 +13,10 @@ from .shared.start_local_http_server import \
     StopServer
 
 pytest_plugins = ('pytest_asyncio', )
+
+
+def pytest_sessionstart():
+    build_database('tests/shared/docker/eventsourcingdb')
 
 
 @pytest_asyncio.fixture

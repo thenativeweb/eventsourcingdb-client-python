@@ -10,7 +10,6 @@ from eventsourcingdb_client_python.errors.server_error import ServerError
 from eventsourcingdb_client_python.event.event_candidate import EventCandidate
 from .conftest import TestData
 
-from .shared.build_database import build_database
 from .shared.database import Database
 from .shared.start_local_http_server import \
     AttachHandler, \
@@ -19,10 +18,6 @@ from .shared.start_local_http_server import \
 
 
 class TestReadSubjects:
-    @classmethod
-    def setup_class(cls):
-        build_database('tests/shared/docker/eventsourcingdb')
-
     @staticmethod
     @pytest.mark.asyncio
     async def test_throws_error_if_server_is_not_reachable(

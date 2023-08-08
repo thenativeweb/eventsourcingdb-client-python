@@ -14,7 +14,6 @@ from eventsourcingdb_client_python.handlers.read_events import \
 from eventsourcingdb_client_python.handlers.read_events.order import Order
 from .conftest import TestData
 
-from .shared.build_database import build_database
 from .shared.database import Database
 from .shared.event.assert_event import assert_event
 from .shared.start_local_http_server import \
@@ -24,10 +23,6 @@ from .shared.start_local_http_server import \
 
 
 class TestReadEvents:
-    @classmethod
-    def setup_class(cls):
-        build_database('tests/shared/docker/eventsourcingdb')
-
     @staticmethod
     @pytest.mark.asyncio
     async def test_throws_error_if_server_is_not_reachable(

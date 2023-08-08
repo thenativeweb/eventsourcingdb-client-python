@@ -19,15 +19,12 @@ from .handlers.write_events import Precondition, write_events
 
 
 class Client(AbstractBaseClient):
-    __create_key = object()
-
-    @classmethod
-    async def create(
-        cls,
+    def __init__(
+        self,
         base_url: str,
         access_token: str,
         options: ClientOptions = ClientOptions()
-    ) -> 'Client':
+    ):
         configuration = ClientConfiguration(
             base_url=base_url,
             timeout_seconds=options.timeout_seconds,
@@ -36,19 +33,10 @@ class Client(AbstractBaseClient):
             max_tries=options.max_tries
         )
 
-        http_client = await HttpClient.create(configuration)
+        self.__http_client = HttpClient(configuration)
 
-        return cls(Client.__create_key, http_client)
-
-    def __init__(
-        self,
-        create_key,
-        http_client: HttpClient
-    ):
-        assert create_key == Client.__create_key, \
-            'Client objects must be created using Client.create.'
-
-        self.__http_client = http_client
+    async def initialize(self) -> None:
+        await self.__http_client.initialize()
 
     async def close(self):
         await self.__http_client.close()
