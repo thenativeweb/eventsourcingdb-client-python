@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "eventsourcingdb-client-python"
-version = "0.5.0"
+version = "0.5.1"
 description = "The Python client for the EventSourcingDB."
 authors = [ "Alexander Kampf", "Golo Roden", "Noah Hummel" ]
 readme = "README.md"
