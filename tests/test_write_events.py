@@ -2,14 +2,12 @@ from collections.abc import Callable, Awaitable
 from http import HTTPStatus
 
 import pytest
-from opentelemetry.trace import TraceFlags
 
 from eventsourcingdb_client_python.client import Client
 from eventsourcingdb_client_python.errors.client_error import ClientError
 from eventsourcingdb_client_python.errors.invalid_parameter_error import InvalidParameterError
 from eventsourcingdb_client_python.errors.server_error import ServerError
 from eventsourcingdb_client_python.event.event_candidate import EventCandidate
-from eventsourcingdb_client_python.event.tracing import TracingContext
 from eventsourcingdb_client_python.handlers.write_events import \
     IsSubjectPristinePrecondition, \
     IsSubjectOnEventIdPrecondition
@@ -192,70 +190,6 @@ class TestWriteSubjects:
                     data={}
                 )],
                 [IsSubjectOnEventIdPrecondition('/', '2')]
-            )
-
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_throws_error_if_trace_id_is_invalid(
-        database: Database,
-        test_data: TestData,
-    ):
-        client = database.with_authorization.client
-
-        with pytest.raises(ClientError):
-            await client.write_events([
-                test_data.TEST_SOURCE.new_event(
-                    subject='/',
-                    event_type='com.foo.bar',
-                    data={},
-                    tracing_context=TracingContext(
-                        trace_id="what dis?",
-                        span_id="0011223344556677"
-                    )
-                )],
-            )
-
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_throws_error_if_span_id_is_invalid(
-        database: Database,
-        test_data: TestData,
-    ):
-        client = database.with_authorization.client
-
-        with pytest.raises(ClientError):
-            await client.write_events([
-                test_data.TEST_SOURCE.new_event(
-                    subject='/',
-                    event_type='com.foo.bar',
-                    data={},
-                    tracing_context=TracingContext(
-                        trace_id="00112233445566770011223344556677",
-                        span_id="wat dis?"
-                    )
-                )],
-            )
-
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_throws_error_if_trace_flags_are_invalid(
-        database: Database,
-        test_data: TestData,
-    ):
-        client = database.with_authorization.client
-
-        with pytest.raises(ClientError):
-            await client.write_events([
-                test_data.TEST_SOURCE.new_event(
-                    subject='/',
-                    event_type='com.foo.bar',
-                    data={},
-                    tracing_context=TracingContext(
-                        trace_id="00112233445566770011223344556677",
-                        span_id="0011223344556677",
-                        trace_flags=TraceFlags("1337")
-                    )
-                )],
             )
 
     @staticmethod

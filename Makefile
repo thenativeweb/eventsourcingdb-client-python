@@ -4,7 +4,7 @@ analyze:
 	@poetry run pylint eventsourcingdb_client_python tests
 
 test:
-	@poetry run pytest
+	@poetry run pytest --maxfail=1
 
 clean:
 

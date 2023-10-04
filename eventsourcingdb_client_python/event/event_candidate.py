@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 
-from .tracing import TracingContext
 from .validate_subject import validate_subject
 from .validate_type import validate_type
 
@@ -11,7 +10,8 @@ class EventCandidate:
     subject: str
     type: str
     data: dict
-    tracing_context: TracingContext | None = None
+    trace_parent: str = None
+    trace_state: str = None
 
     def validate(self) -> None:
         validate_subject(self.subject)
@@ -25,7 +25,9 @@ class EventCandidate:
             'type': self.type
         }
 
-        if self.tracing_context is not None:
-            json['tracingContext'] = self.tracing_context.to_json()
+        if self.trace_parent is not None:
+            json['traceparent'] = self.trace_parent
+        if self.trace_state is not None:
+            json['tracestate'] = self.trace_state
 
         return json

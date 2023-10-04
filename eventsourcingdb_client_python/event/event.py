@@ -1,7 +1,6 @@
 from datetime import datetime
 from typing import TypeVar
 
-from .tracing import TracingContext
 from ..errors.validation_error import ValidationError
 from .event_context import EventContext
 
@@ -20,7 +19,8 @@ class Event(EventContext):
         time: datetime,
         data_content_type: str,
         predecessor_hash: str,
-        tracing_context: TracingContext = None
+        trace_parent: str = None,
+        trace_state: str = None
     ):
         super().__init__(
             source,
@@ -31,13 +31,15 @@ class Event(EventContext):
             time,
             data_content_type,
             predecessor_hash,
-            tracing_context
+            trace_parent,
+            trace_state
         )
         self.data = data
 
     @staticmethod
     def parse(unknown_object: dict) -> Self:
         event_context = super(Event, Event).parse(unknown_object)
+
         data = unknown_object.get('data')
         if not isinstance(data, dict):
             raise ValidationError(
@@ -54,7 +56,8 @@ class Event(EventContext):
             event_context.time,
             event_context.data_content_type,
             event_context.predecessor_hash,
-            event_context.tracing_context
+            event_context.trace_parent,
+            event_context.trace_state
         )
 
     def to_json(self):

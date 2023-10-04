@@ -15,7 +15,7 @@ from eventsourcingdb_client_python.handlers.read_events.order import Order
 from .conftest import TestData
 
 from .shared.database import Database
-from .shared.event.assert_event import assert_event
+from .shared.event.assert_event import assert_event_equals
 from .shared.start_local_http_server import \
     AttachHandler, \
     Response, \
@@ -61,21 +61,23 @@ class TestReadEvents:
 
         registered_count = 2
         assert len(result) == registered_count
-        assert_event(
+        assert_event_equals(
             result[0].event,
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
             test_data.JANE_DATA,
-            test_data.TRACING_CONTEXT_1,
+            test_data.TRACE_PARENT_1,
+            None
         )
-        assert_event(
+        assert_event_equals(
             result[1].event,
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
             test_data.JOHN_DATA,
-            test_data.TRACING_CONTEXT_3,
+            test_data.TRACE_PARENT_3,
+            None
         )
 
     @staticmethod
@@ -95,37 +97,41 @@ class TestReadEvents:
 
         total_event_count = 4
         assert len(result) == total_event_count
-        assert_event(
+        assert_event_equals(
             result[0].event,
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
             test_data.JANE_DATA,
-            test_data.TRACING_CONTEXT_1,
+            test_data.TRACE_PARENT_1,
+            None
         )
-        assert_event(
+        assert_event_equals(
             result[1].event,
             test_data.TEST_SOURCE_STRING,
             test_data.LOGGED_IN_SUBJECT,
             test_data.LOGGED_IN_TYPE,
             test_data.JANE_DATA,
-            test_data.TRACING_CONTEXT_2,
+            test_data.TRACE_PARENT_2,
+            None
         )
-        assert_event(
+        assert_event_equals(
             result[2].event,
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
             test_data.JOHN_DATA,
-            test_data.TRACING_CONTEXT_3,
+            test_data.TRACE_PARENT_3,
+            None
         )
-        assert_event(
+        assert_event_equals(
             result[3].event,
             test_data.TEST_SOURCE_STRING,
             test_data.LOGGED_IN_SUBJECT,
             test_data.LOGGED_IN_TYPE,
             test_data.JOHN_DATA,
-            test_data.TRACING_CONTEXT_4,
+            test_data.TRACE_PARENT_4,
+            None
         )
 
 
@@ -146,21 +152,23 @@ class TestReadEvents:
 
         registered_count = 2
         assert len(result) == registered_count
-        assert_event(
+        assert_event_equals(
             result[0].event,
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
             test_data.JOHN_DATA,
-            test_data.TRACING_CONTEXT_3,
+            test_data.TRACE_PARENT_3,
+            None
         )
-        assert_event(
+        assert_event_equals(
             result[1].event,
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
             test_data.JANE_DATA,
-            test_data.TRACING_CONTEXT_1,
+            test_data.TRACE_PARENT_1,
+            None
         )
 
     @staticmethod
@@ -187,21 +195,23 @@ class TestReadEvents:
 
         john_count = 2
         assert len(result) == john_count
-        assert_event(
+        assert_event_equals(
             result[0].event,
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
             test_data.JOHN_DATA,
-            test_data.TRACING_CONTEXT_3,
+            test_data.TRACE_PARENT_3,
+            None
         )
-        assert_event(
+        assert_event_equals(
             result[1].event,
             test_data.TEST_SOURCE_STRING,
             test_data.LOGGED_IN_SUBJECT,
             test_data.LOGGED_IN_TYPE,
             test_data.JOHN_DATA,
-            test_data.TRACING_CONTEXT_4,
+            test_data.TRACE_PARENT_4,
+            None
         )
 
     @staticmethod
@@ -224,21 +234,23 @@ class TestReadEvents:
 
         john_count = 2
         assert len(result) == john_count
-        assert_event(
+        assert_event_equals(
             result[0].event,
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
             test_data.JOHN_DATA,
-            test_data.TRACING_CONTEXT_3,
+            test_data.TRACE_PARENT_3,
+            None
         )
-        assert_event(
+        assert_event_equals(
             result[1].event,
             test_data.TEST_SOURCE_STRING,
             test_data.LOGGED_IN_SUBJECT,
             test_data.LOGGED_IN_TYPE,
             test_data.JOHN_DATA,
-            test_data.TRACING_CONTEXT_4,
+            test_data.TRACE_PARENT_4,
+            None
         )
 
     @staticmethod
@@ -261,21 +273,23 @@ class TestReadEvents:
 
         jane_count = 2
         assert len(result) == jane_count
-        assert_event(
+        assert_event_equals(
             result[0].event,
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
             test_data.JANE_DATA,
-            test_data.TRACING_CONTEXT_1,
+            test_data.TRACE_PARENT_1,
+            None
         )
-        assert_event(
+        assert_event_equals(
             result[1].event,
             test_data.TEST_SOURCE_STRING,
             test_data.LOGGED_IN_SUBJECT,
             test_data.LOGGED_IN_TYPE,
             test_data.JANE_DATA,
-            test_data.TRACING_CONTEXT_2,
+            test_data.TRACE_PARENT_2,
+            None
         )
 
     @staticmethod

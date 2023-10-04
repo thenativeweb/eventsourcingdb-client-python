@@ -14,7 +14,7 @@ from eventsourcingdb_client_python.handlers.observe_events import \
 from .conftest import TestData
 
 from .shared.database import Database
-from .shared.event.assert_event import assert_event
+from .shared.event.assert_event import assert_event_equals
 from .shared.start_local_http_server import \
     AttachHandler, \
     Response, \
@@ -80,7 +80,7 @@ class TestObserveEvents:
             subject=test_data.REGISTERED_SUBJECT,
             event_type=test_data.REGISTERED_TYPE,
             data=test_data.APFEL_FRED_DATA,
-            tracing_context=test_data.TRACING_CONTEXT_5,
+            tracing_context=test_data.TRACE_PARENT_5,
         )])
 
         async for event in events:
@@ -89,29 +89,32 @@ class TestObserveEvents:
             if len(observed_items) == registered_events_count:
                 break
 
-        assert_event(
+        assert_event_equals(
             observed_items[0].event,
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
             test_data.JANE_DATA,
-            test_data.TRACING_CONTEXT_1
+            test_data.TRACE_PARENT_1,
+            None
         )
-        assert_event(
+        assert_event_equals(
             observed_items[1].event,
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
             test_data.JOHN_DATA,
-            test_data.TRACING_CONTEXT_3
+            test_data.TRACE_PARENT_3,
+            None
         )
-        assert_event(
+        assert_event_equals(
             observed_items[2].event,
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
             test_data.APFEL_FRED_DATA,
-            test_data.TRACING_CONTEXT_5
+            test_data.TRACE_PARENT_5,
+            None
         )
 
     @staticmethod
@@ -135,7 +138,7 @@ class TestObserveEvents:
                     subject=test_data.REGISTERED_SUBJECT,
                     event_type=test_data.REGISTERED_TYPE,
                     data=test_data.APFEL_FRED_DATA,
-                    tracing_context=test_data.TRACING_CONTEXT_5,
+                    tracing_context=test_data.TRACE_PARENT_5,
                 )])
 
                 did_push_intermediate_event = True
@@ -144,45 +147,50 @@ class TestObserveEvents:
             if len(observed_items) == total_events_count:
                 break
 
-        assert_event(
+        assert_event_equals(
             observed_items[0].event,
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
             test_data.JANE_DATA,
-            test_data.TRACING_CONTEXT_1
+            test_data.TRACE_PARENT_1,
+            None
         )
-        assert_event(
+        assert_event_equals(
             observed_items[1].event,
             test_data.TEST_SOURCE_STRING,
             test_data.LOGGED_IN_SUBJECT,
             test_data.LOGGED_IN_TYPE,
             test_data.JANE_DATA,
-            test_data.TRACING_CONTEXT_2
+            test_data.TRACE_PARENT_2,
+            None
         )
-        assert_event(
+        assert_event_equals(
             observed_items[2].event,
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
             test_data.JOHN_DATA,
-            test_data.TRACING_CONTEXT_3
+            test_data.TRACE_PARENT_3,
+            None
         )
-        assert_event(
+        assert_event_equals(
             observed_items[3].event,
             test_data.TEST_SOURCE_STRING,
             test_data.LOGGED_IN_SUBJECT,
             test_data.LOGGED_IN_TYPE,
             test_data.JOHN_DATA,
-            test_data.TRACING_CONTEXT_4
+            test_data.TRACE_PARENT_4,
+            None
         )
-        assert_event(
+        assert_event_equals(
             observed_items[4].event,
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
             test_data.APFEL_FRED_DATA,
-            test_data.TRACING_CONTEXT_5
+            test_data.TRACE_PARENT_5,
+            None
         )
 
     @staticmethod
@@ -213,7 +221,7 @@ class TestObserveEvents:
                     subject=test_data.REGISTERED_SUBJECT,
                     event_type=test_data.REGISTERED_TYPE,
                     data=test_data.APFEL_FRED_DATA,
-                    tracing_context=test_data.TRACING_CONTEXT_5,
+                    tracing_context=test_data.TRACE_PARENT_5,
                 )])
 
                 did_push_intermediate_event = True
@@ -222,21 +230,23 @@ class TestObserveEvents:
             if len(observed_items) == event_count_after_last_login:
                 break
 
-        assert_event(
+        assert_event_equals(
             observed_items[0].event,
             test_data.TEST_SOURCE_STRING,
             test_data.LOGGED_IN_SUBJECT,
             test_data.LOGGED_IN_TYPE,
             test_data.JOHN_DATA,
-            test_data.TRACING_CONTEXT_4
+            test_data.TRACE_PARENT_4,
+            None
         )
-        assert_event(
+        assert_event_equals(
             observed_items[1].event,
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
             test_data.APFEL_FRED_DATA,
-            test_data.TRACING_CONTEXT_5
+            test_data.TRACE_PARENT_5,
+            None
         )
 
     @staticmethod
@@ -263,7 +273,7 @@ class TestObserveEvents:
                     subject=test_data.REGISTERED_SUBJECT,
                     event_type=test_data.REGISTERED_TYPE,
                     data=test_data.APFEL_FRED_DATA,
-                    tracing_context=test_data.TRACING_CONTEXT_5,
+                    tracing_context=test_data.TRACE_PARENT_5,
                 )])
 
                 did_push_intermediate_event = True
@@ -272,29 +282,32 @@ class TestObserveEvents:
             if len(observed_items) == event_count_after_given_id:
                 break
 
-        assert_event(
+        assert_event_equals(
             observed_items[0].event,
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
             test_data.JOHN_DATA,
-            test_data.TRACING_CONTEXT_3
+            test_data.TRACE_PARENT_3,
+            None
         )
-        assert_event(
+        assert_event_equals(
             observed_items[1].event,
             test_data.TEST_SOURCE_STRING,
             test_data.LOGGED_IN_SUBJECT,
             test_data.LOGGED_IN_TYPE,
             test_data.JOHN_DATA,
-            test_data.TRACING_CONTEXT_4
+            test_data.TRACE_PARENT_4,
+            None
         )
-        assert_event(
+        assert_event_equals(
             observed_items[2].event,
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
             test_data.APFEL_FRED_DATA,
-            test_data.TRACING_CONTEXT_5
+            test_data.TRACE_PARENT_5,
+            None
         )
 
     @staticmethod

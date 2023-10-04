@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from multiprocessing import Process
+from multiprocessing import Process, set_start_method
 
 import aiohttp
 from flask import Flask, Response, make_response
@@ -17,29 +17,38 @@ AttachHandlers = Callable[[AttachHandler], None]
 StopServer = Callable[[], None]
 
 
+class LocalHttpServer():
+    def __init__(self, attach_handlers: AttachHandlers):
+        self.port = get_random_available_port()
+        self.__app = Flask('local')
+
+        def attach_handler(route: str, method: str, handler: Handler):
+            @self.__app.route(route, methods=[method])
+            def attached_handler():
+                response = make_response()
+                return handler(response)
+
+        attach_handlers(attach_handler)
+
+        @self.__app.get('/__python_test__/ping')
+        def ping():
+            return "OK"
+
+    @staticmethod
+    def start(self):
+        self.__app.run(host='localhost', port=self.port)
+
+
 async def start_local_http_server(attach_handlers: AttachHandlers) -> tuple[Client, StopServer]:
-    app = Flask('local')
-    port = get_random_available_port()
-
-    def attach_handler(route: str, method: str, handler: Handler):
-        @app.route(route, methods=[method])
-        def attached_handler():
-            response = make_response()
-            return handler(response)
-
-    attach_handlers(attach_handler)
-
-    @app.get('/__python_test__/ping')
-    def ping():
-        return "OK"
-
+    local_http_server = LocalHttpServer(attach_handlers)
+    
     async def ping_app() -> RetryResult[None]:
         session = aiohttp.ClientSession()
 
         async with session:
             try:
                 response = await session.get(
-                    f'http://localhost:{port}/__python_test__/ping', timeout=1
+                    f'http://localhost:{local_http_server.port}/__python_test__/ping', timeout=1
                 )
             except aiohttp.ClientError as error:
                 return Retry(cause=error)
@@ -48,10 +57,8 @@ async def start_local_http_server(attach_handlers: AttachHandlers) -> tuple[Clie
 
         return Return(None)
 
-    def start() -> None:
-        app.run(host='localhost', port=port)
-
-    server = Process(target=start)
+    set_start_method('fork')
+    server = Process(target=LocalHttpServer.start, args=(local_http_server, ))
     server.start()
     await retry_with_backoff(10, ping_app)
 
@@ -60,7 +67,7 @@ async def start_local_http_server(attach_handlers: AttachHandlers) -> tuple[Clie
         server.join()
 
     client = Client(
-        f'http://localhost:{port}',
+        f'http://localhost:{local_http_server.port}',
         'access-token',
         ClientOptions(max_tries=2)
     )
