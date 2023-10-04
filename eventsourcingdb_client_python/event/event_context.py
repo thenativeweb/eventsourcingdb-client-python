@@ -2,7 +2,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import TypeVar
 
-from .tracing import TracingContext
 from ..errors.internal_error import InternalError
 from ..errors.validation_error import ValidationError
 from .validate_subject import validate_subject
@@ -21,7 +20,8 @@ class EventContext:
     time: datetime
     data_content_type: str
     predecessor_hash: str
-    tracing_context: TracingContext | None = None
+    trace_parent: str = None
+    trace_state: str = None
 
     @staticmethod
     def parse(unknown_object: dict) -> Self:
@@ -77,10 +77,15 @@ class EventContext:
             raise ValidationError(
                 f'Failed to parse predecessor_hash \'{predecessor_hash}\' to string.')
 
-        raw_tracing_context = unknown_object.get("tracingContext")
-        tracing_context = TracingContext.parse(raw_tracing_context) \
-            if raw_tracing_context is not None \
-            else None
+        trace_parent = unknown_object.get('traceparent')
+        if trace_parent is not None and not isinstance(trace_parent, str):
+            raise ValidationError(
+                f'Failed to parse trace_parent \'{trace_parent}\' to string.')
+
+        trace_state = unknown_object.get('tracestate')
+        if trace_state is not None and not isinstance(trace_state, str):
+            raise ValidationError(
+                f'Failed to parse trace_state \'{trace_state}\' to string.')
 
         return EventContext(
             source=source,
@@ -91,11 +96,12 @@ class EventContext:
             time=time,
             data_content_type=data_content_type,
             predecessor_hash=predecessor_hash,
-            tracing_context=tracing_context
+            trace_parent=trace_parent,
+            trace_state=trace_state,
         )
 
     def to_json(self):
-        return {
+        json = {
             'specversion': self.spec_version,
             'id': self.event_id,
             'time': self.time.isoformat(sep='T'),
@@ -105,3 +111,10 @@ class EventContext:
             'datacontenttype': self.data_content_type,
             'predecessorhash': self.predecessor_hash
         }
+
+        if self.trace_parent is not None:
+            json['traceparent'] = self.trace_parent
+        if self.trace_state is not None:
+            json['tracestate'] = self.trace_state
+
+        return json

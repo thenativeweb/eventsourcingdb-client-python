@@ -1,17 +1,17 @@
 from eventsourcingdb_client_python.event.event import Event
-from eventsourcingdb_client_python.event.tracing import TracingContext
 
-
-def assert_event(
+def assert_event_equals(
         event: Event,
         source: str,
         subject: str,
         type_: str,
         data: dict,
-        tracing_context: TracingContext = None
+        trace_parent: str | None,
+        trace_state: str | None
 ):
     assert event.source == source
     assert event.subject == subject
     assert event.type == type_
     assert event.data == data
-    assert event.tracing_context == tracing_context
+    assert event.trace_parent == trace_parent
+    assert event.trace_state == trace_state

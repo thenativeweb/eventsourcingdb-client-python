@@ -3,7 +3,6 @@ import pytest_asyncio
 from eventsourcingdb_client_python.client import Client
 from eventsourcingdb_client_python.event.event_candidate import EventCandidate
 from eventsourcingdb_client_python.event.source import Source
-from eventsourcingdb_client_python.event.tracing import TracingContext
 from eventsourcingdb_client_python.http_client.http_client import HttpClient
 from .shared.build_database import build_database
 from .shared.database import Database
@@ -77,26 +76,11 @@ class TestData:
     JANE_DATA = {'name': 'jane'}
     JOHN_DATA = {'name': 'john'}
     APFEL_FRED_DATA = {'name': 'apfel fred'}
-    TRACING_CONTEXT_1 = TracingContext(
-        trace_id="10000000000000000000000000000000",
-        span_id="1000000000000000",
-    )
-    TRACING_CONTEXT_2 = TracingContext(
-        trace_id="20000000000000000000000000000000",
-        span_id="2000000000000000",
-    )
-    TRACING_CONTEXT_3 = TracingContext(
-        trace_id="30000000000000000000000000000000",
-        span_id="3000000000000000",
-    )
-    TRACING_CONTEXT_4 = TracingContext(
-        trace_id="40000000000000000000000000000000",
-        span_id="4000000000000000",
-    )
-    TRACING_CONTEXT_5 = TracingContext(
-        trace_id="50000000000000000000000000000000",
-        span_id="5000000000000000",
-    )
+    TRACE_PARENT_1 = "00-10000000000000000000000000000000-1000000000000000-00"
+    TRACE_PARENT_2 = "00-20000000000000000000000000000000-2000000000000000-00"
+    TRACE_PARENT_3 = "00-30000000000000000000000000000000-3000000000000000-00"
+    TRACE_PARENT_4 = "00-40000000000000000000000000000000-4000000000000000-00"
+    TRACE_PARENT_5 = "00-50000000000000000000000000000000-5000000000000000-00"
 
 
 @pytest_asyncio.fixture
@@ -117,25 +101,29 @@ async def prepared_database(
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
             test_data.JANE_DATA,
-            test_data.TRACING_CONTEXT_1,
+            test_data.TRACE_PARENT_1,
+            None
         ),
         test_data.TEST_SOURCE.new_event(
             test_data.LOGGED_IN_SUBJECT,
             test_data.LOGGED_IN_TYPE,
             test_data.JANE_DATA,
-            test_data.TRACING_CONTEXT_2,
+            test_data.TRACE_PARENT_2,
+            None
         ),
         test_data.TEST_SOURCE.new_event(
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
             test_data.JOHN_DATA,
-            test_data.TRACING_CONTEXT_3,
+            test_data.TRACE_PARENT_3,
+            None
         ),
         test_data.TEST_SOURCE.new_event(
             test_data.LOGGED_IN_SUBJECT,
             test_data.LOGGED_IN_TYPE,
             test_data.JOHN_DATA,
-            test_data.TRACING_CONTEXT_4,
+            test_data.TRACE_PARENT_4,
+            None
         ),
     ])
 
@@ -149,5 +137,5 @@ async def events_for_mocked_server(
     # pylint: enable=redefined-outer-name
 ) -> list[EventCandidate]:
     return [
-        test_data.TEST_SOURCE.new_event('/', 'com.foo.bar', {}),
+        test_data.TEST_SOURCE.new_event('/', 'com.foo.bar', {}, None, None),
     ]

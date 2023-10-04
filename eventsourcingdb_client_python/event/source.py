@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 
-from ..event.tracing import TracingContext
 from ..event.event_candidate import EventCandidate
 
 
@@ -13,6 +12,14 @@ class Source:
         subject: str,
         event_type: str,
         data: dict,
-        tracing_context: TracingContext = None
+        trace_parent: str = None,
+        trace_state: str = None
     ) -> EventCandidate:
-        return EventCandidate(self.source, subject, event_type, data, tracing_context)
+        return EventCandidate(
+            self.source,
+            subject,
+            event_type,
+            data,
+            trace_parent,
+            trace_state
+        )
