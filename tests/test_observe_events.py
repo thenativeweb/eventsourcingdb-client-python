@@ -80,7 +80,7 @@ class TestObserveEvents:
             subject=test_data.REGISTERED_SUBJECT,
             event_type=test_data.REGISTERED_TYPE,
             data=test_data.APFEL_FRED_DATA,
-            tracing_context=test_data.TRACE_PARENT_5,
+            trace_parent=test_data.TRACE_PARENT_5,
         )])
 
         async for event in events:
@@ -138,7 +138,7 @@ class TestObserveEvents:
                     subject=test_data.REGISTERED_SUBJECT,
                     event_type=test_data.REGISTERED_TYPE,
                     data=test_data.APFEL_FRED_DATA,
-                    tracing_context=test_data.TRACE_PARENT_5,
+                    trace_parent=test_data.TRACE_PARENT_5,
                 )])
 
                 did_push_intermediate_event = True
@@ -221,7 +221,7 @@ class TestObserveEvents:
                     subject=test_data.REGISTERED_SUBJECT,
                     event_type=test_data.REGISTERED_TYPE,
                     data=test_data.APFEL_FRED_DATA,
-                    tracing_context=test_data.TRACE_PARENT_5,
+                    trace_parent=test_data.TRACE_PARENT_5,
                 )])
 
                 did_push_intermediate_event = True
@@ -273,7 +273,7 @@ class TestObserveEvents:
                     subject=test_data.REGISTERED_SUBJECT,
                     event_type=test_data.REGISTERED_TYPE,
                     data=test_data.APFEL_FRED_DATA,
-                    tracing_context=test_data.TRACE_PARENT_5,
+                    trace_parent=test_data.TRACE_PARENT_5,
                 )])
 
                 did_push_intermediate_event = True
