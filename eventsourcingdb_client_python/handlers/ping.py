@@ -5,7 +5,7 @@ from ..errors.server_error import ServerError
 
 
 async def ping(client: AbstractBaseClient) -> None:
-    response = await client.http_client.get('/ping')
+    response = await client.http_client.get('/api/ping')
     response_body = bytes.decode(await response.body.read(), encoding='utf-8')
 
     if response.status_code != HTTPStatus.OK or response_body != HTTPStatus.OK.phrase:
