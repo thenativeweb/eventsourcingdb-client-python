@@ -18,7 +18,11 @@ from ..store_item import StoreItem
 from .observe_events_options import ObserveEventsOptions
 from ...http_client.response import Response
 
-
+# pylint: disable=R6007
+# Reason: This method explicitly specifies the return type as None
+# for better readability. Even though it is not necessary,
+# it makes the return type clear without needing to read any
+# documentation or code.
 async def observe_events(
     client: AbstractBaseClient,
     subject: str,

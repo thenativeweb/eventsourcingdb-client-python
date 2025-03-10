@@ -1,5 +1,10 @@
 from eventsourcingdb_client_python.event.event import Event
 
+# pylint: disable=R0917
+# Reason: This method is expected to have many parameters
+# due to its business context. Splitting it into smaller
+# methods would increase cognitive load and make the
+# code less readable.
 def assert_event_equals(
         event: Event,
         source: str,
