@@ -1,6 +1,29 @@
-# Python folders
-__pycache__/
+# Python bytecode files
+*.pyc
+*.pyo
+*.pyd
 
-# OS generated files and folders
+# Cache directories
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.cache/
+
+# Build and distribution directories
+build/
+dist/
+*.egg-info/
+
+# Virtual environments
+.env/
+.venv/
+env/
+ENV/
+
+# VSCode specific files
+.vscode/
+*.code-workspace
+
+# OS generated files
 .DS_Store
 npm-debug.log
