@@ -11,6 +11,11 @@ from .shared.start_local_http_server import \
     start_local_http_server, \
     StopServer
 
+import _pytest.fixtures
+
+if not hasattr(_pytest.fixtures.FixtureDef, "unittest"):
+    _pytest.fixtures.FixtureDef.unittest = False
+
 pytest_plugins = ('pytest_asyncio', )
 
 
