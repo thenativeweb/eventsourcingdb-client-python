@@ -17,7 +17,11 @@ from ..parse_raw_message import parse_raw_message
 from ..store_item import StoreItem
 from .read_events_options import ReadEventsOptions
 
-
+# pylint: disable=R6007
+# Reason: This method explicitly specifies the return type as None
+# for better readability. Even though it is not necessary,
+# it makes the return type clear without needing to read any
+# documentation or code.
 async def read_events(
     client: AbstractBaseClient,
     subject: str,

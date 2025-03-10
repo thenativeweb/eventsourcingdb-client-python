@@ -6,7 +6,11 @@ from .event_context import EventContext
 
 Self = TypeVar("Self", bound="Event")
 
-
+# pylint: disable=R0917
+# Reason: This class is expected to have many parameters
+# due to its business context. Splitting it into smaller
+# methods would increase cognitive load and make the
+# code less readable.
 class Event(EventContext):
     def __init__(
         self,

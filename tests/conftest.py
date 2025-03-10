@@ -1,5 +1,9 @@
 import pytest_asyncio
 
+# pylint: disable=C2701
+# Reason: This is a false positive. The module is imported to access a private attribute.
+import _pytest.fixtures
+
 from eventsourcingdb_client_python.client import Client
 from eventsourcingdb_client_python.event.event_candidate import EventCandidate
 from eventsourcingdb_client_python.event.source import Source
@@ -11,13 +15,10 @@ from .shared.start_local_http_server import \
     start_local_http_server, \
     StopServer
 
-import _pytest.fixtures
+pytest_plugins = ('pytest_asyncio', )
 
 if not hasattr(_pytest.fixtures.FixtureDef, "unittest"):
     _pytest.fixtures.FixtureDef.unittest = False
-
-pytest_plugins = ('pytest_asyncio', )
-
 
 def pytest_sessionstart():
     build_database('tests/shared/docker/eventsourcingdb')

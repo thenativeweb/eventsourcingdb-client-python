@@ -18,6 +18,11 @@ from .handlers.store_item import StoreItem
 from .handlers.write_events import Precondition, write_events
 
 
+# pylint: disable=R6007
+# Reason: This class explicitly specifies the return type as None
+# for better readability. Even though it is not necessary,
+# it makes the return type clear without needing to read any
+# documentation or code.
 class Client(AbstractBaseClient):
     def __init__(
         self,
@@ -38,7 +43,7 @@ class Client(AbstractBaseClient):
     async def initialize(self) -> None:
         await self.__http_client.initialize()
 
-    async def close(self):
+    async def close(self) -> None:
         await self.__http_client.close()
 
     @property

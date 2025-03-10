@@ -14,7 +14,11 @@ from ..parse_raw_message import parse_raw_message
 from .is_subject import is_subject
 from ...event.validate_subject import validate_subject
 
-
+# pylint: disable=R6007
+# Reason: This method explicitly specifies the return type as None
+# for better readability. Even though it is not necessary,
+# it makes the return type clear without needing to read any
+# documentation or code.
 async def read_subjects(
     client: AbstractBaseClient,
     base_subject: str
