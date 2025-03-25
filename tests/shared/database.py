@@ -30,7 +30,7 @@ class Database:
         access_token = str(uuid.uuid4())
         with_authorization = await ContainerizedTestingDatabase.create(
             image,
-            ['run', '--access-token', f'{access_token}', '--store-temporary'],
+            ['run', '--api-token', f'{access_token}', '--data-directory-temporary'],
             access_token,
             ClientOptions()
         )

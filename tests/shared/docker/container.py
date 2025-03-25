@@ -20,7 +20,7 @@ class Container:
                 raise DockerCommandFailedError(
                     f'Kill failed with output: {stderr}')
 
-    def get_exposed_port(self, internal_port: int) -> int:
+    def get_exposed_port(self, internal_port: int = 3_000) -> int:
         docker_command = [
             'docker',
             'inspect',

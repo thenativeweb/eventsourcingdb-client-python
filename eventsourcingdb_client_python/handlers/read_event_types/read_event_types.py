@@ -23,7 +23,7 @@ async def read_event_types(
     response: Response
     try:
         response = await client.http_client.post(
-            path='/api/read-event-types',
+            path='/api/v1/read-event-types',
             request_body='',
         )
     except CustomError as custom_error:

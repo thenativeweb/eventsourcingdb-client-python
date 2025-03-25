@@ -49,7 +49,7 @@ async def read_events(
     response: Response
     try:
         response = await client.http_client.post(
-            path='/api/read-events',
+            path='/api/v1/read-events',
             request_body=request_body,
         )
     except CustomError as custom_error:

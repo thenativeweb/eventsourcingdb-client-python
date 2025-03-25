@@ -105,7 +105,7 @@ class TestReadEvenTypesWithMockServer:
                 response.set_data(HTTPStatus.BAD_GATEWAY.phrase)
                 return response
 
-            attach_handler('/api/read-event-types', 'POST', handle_read_event_types)
+            attach_handler('/api/v1/read-event-types', 'POST', handle_read_event_types)
 
         client = await get_client(attach_handlers)
 
@@ -125,7 +125,7 @@ class TestReadEvenTypesWithMockServer:
                 response.set_data(HTTPStatus.UNPROCESSABLE_ENTITY.phrase)
                 return response
 
-            attach_handler('/api/read-event-types', 'POST', handle_read_event_types)
+            attach_handler('/api/v1/read-event-types', 'POST', handle_read_event_types)
 
         client = await get_client(attach_handlers)
 
@@ -144,7 +144,7 @@ class TestReadEvenTypesWithMockServer:
                 response.set_data(HTTPStatus.NOT_FOUND.phrase)
                 return response
 
-            attach_handler('/api/read-event-types', 'POST', handle_read_event_types)
+            attach_handler('/api/v1/read-event-types', 'POST', handle_read_event_types)
 
         client = await get_client(attach_handlers)
 
@@ -165,7 +165,7 @@ class TestReadEvenTypesWithMockServer:
                 )
                 return response
 
-            attach_handler('/api/read-event-types', 'POST', handle_read_event_types)
+            attach_handler('/api/v1/read-event-types', 'POST', handle_read_event_types)
 
         client = await get_client(attach_handlers)
 
@@ -184,7 +184,7 @@ class TestReadEvenTypesWithMockServer:
                 response.set_data('cannot be parsed')
                 return response
 
-            attach_handler('/api/read-event-types', 'POST', handle_read_event_types)
+            attach_handler('/api/v1/read-event-types', 'POST', handle_read_event_types)
 
         client = await get_client(attach_handlers)
 
@@ -204,7 +204,7 @@ class TestReadEvenTypesWithMockServer:
                     '{ "type": "clown", "payload": { "task": "emotional support" }')
                 return response
 
-            attach_handler('/api/read-event-types', 'POST', handle_read_event_types)
+            attach_handler('/api/v1/read-event-types', 'POST', handle_read_event_types)
 
         client = await get_client(attach_handlers)
 
@@ -224,7 +224,7 @@ class TestReadEvenTypesWithMockServer:
                     '{ "type": "error", "payload": { "error": "some error happened" }')
                 return response
 
-            attach_handler('/api/read-event-types', 'POST', handle_read_event_types)
+            attach_handler('/api/v1/read-event-types', 'POST', handle_read_event_types)
 
         client = await get_client(attach_handlers)
 

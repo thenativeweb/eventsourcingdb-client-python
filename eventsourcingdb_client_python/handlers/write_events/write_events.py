@@ -42,7 +42,7 @@ async def write_events(
     response: Response
     try:
         response = await client.http_client.post(
-            path='/api/write-events',
+            path='/api/v1/write-events',
             request_body=request_body,
         )
     except CustomError as custom_error:

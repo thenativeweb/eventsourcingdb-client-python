@@ -37,7 +37,7 @@ async def read_subjects(
     response: Response
     try:
         response = await client.http_client.post(
-            path='/api/read-subjects',
+            path='/api/v1/read-subjects',
             request_body=request_body,
         )
     except CustomError as custom_error:

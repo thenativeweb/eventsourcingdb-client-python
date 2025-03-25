@@ -50,7 +50,7 @@ async def observe_events(
     response: Response
     try:
         response = await client.http_client.post(
-            path='/api/observe-events',
+            path='/api/v1/observe-events',
             request_body=request_body,
         )
     except CustomError as custom_error:

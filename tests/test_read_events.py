@@ -453,7 +453,7 @@ class TestReadEventsWithMockServer:
                 response.set_data(HTTPStatus.BAD_GATEWAY.phrase)
                 return response
 
-            attach_handler('/api/read-events', 'POST', handle_read_events)
+            attach_handler('/api/v1/read-events', 'POST', handle_read_events)
 
         client = await get_client(attach_handlers)
 
@@ -478,7 +478,7 @@ class TestReadEventsWithMockServer:
                 response.set_data(HTTPStatus.UNPROCESSABLE_ENTITY.phrase)
                 return response
 
-            attach_handler('/api/read-events', 'POST', handle_read_events)
+            attach_handler('/api/v1/read-events', 'POST', handle_read_events)
 
         client = await get_client(attach_handlers)
 
@@ -502,7 +502,7 @@ class TestReadEventsWithMockServer:
                 response.set_data(HTTPStatus.NOT_FOUND.phrase)
                 return response
 
-            attach_handler('/api/read-events', 'POST', handle_read_events)
+            attach_handler('/api/v1/read-events', 'POST', handle_read_events)
 
         client = await get_client(attach_handlers)
 
@@ -526,7 +526,7 @@ class TestReadEventsWithMockServer:
                 response.set_data(HTTPStatus.ACCEPTED.phrase)
                 return response
 
-            attach_handler('/api/read-events', 'POST', handle_read_events)
+            attach_handler('/api/v1/read-events', 'POST', handle_read_events)
 
         client = await get_client(attach_handlers)
 
@@ -550,7 +550,7 @@ class TestReadEventsWithMockServer:
                 response.set_data('cannot be parsed')
                 return response
 
-            attach_handler('/api/read-events', 'POST', handle_read_events)
+            attach_handler('/api/v1/read-events', 'POST', handle_read_events)
 
         client = await get_client(attach_handlers)
 
@@ -574,7 +574,7 @@ class TestReadEventsWithMockServer:
                 response.set_data('{"type": "clown", "payload": {"foo": "bar"}}')
                 return response
 
-            attach_handler('/api/read-events', 'POST', handle_read_events)
+            attach_handler('/api/v1/read-events', 'POST', handle_read_events)
 
         client = await get_client(attach_handlers)
 
@@ -598,7 +598,7 @@ class TestReadEventsWithMockServer:
                 response.set_data('{"type": "error", "payload": {"error": "it is just broken"}}')
                 return response
 
-            attach_handler('/api/read-events', 'POST', handle_read_events)
+            attach_handler('/api/v1/read-events', 'POST', handle_read_events)
 
         client = await get_client(attach_handlers)
 
@@ -622,7 +622,7 @@ class TestReadEventsWithMockServer:
                 response.set_data('{"type": "error", "payload": {"not very correct": "indeed"}}')
                 return response
 
-            attach_handler('/api/read-events', 'POST', handle_read_events)
+            attach_handler('/api/v1/read-events', 'POST', handle_read_events)
 
         client = await get_client(attach_handlers)
 
