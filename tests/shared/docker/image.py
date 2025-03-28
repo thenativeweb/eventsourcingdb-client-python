@@ -16,17 +16,8 @@ class Image:
         if is_detached:
             docker_command.append('-d')
 
-        
         if do_expose_ports:
             docker_command.append('-P')
-        
-        """if do_expose_ports:
-            # -P behalten und explizite Ports hinzufügen
-            docker_command.append('-P')
-            docker_command.extend(['-p', '3000:3000'])"""
-            
-
-
 
         docker_command.append(self.__get_full_name())
         docker_command.extend(command)
