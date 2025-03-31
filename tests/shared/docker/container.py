@@ -40,21 +40,17 @@ class Container:
             if process.returncode != 0:
                 raise DockerCommandFailedError(
                     f'Inspect failed with output: {stderr.decode("utf-8")}')
-            
             # Parse the JSON output to get the port mapping
             try:
                 port_mappings = json.loads(stdout.decode('utf-8').strip())
                 port_key = f"{internal_port}/tcp"
-                
                 if port_key not in port_mappings or not port_mappings[port_key]:
                     # Wait briefly and try to restart/refresh the container
                     time.sleep(1)
                     self.restart()
                     time.sleep(2)  # Wait for container to be ready
-                    
                     # Try one more time after restart
                     return self.get_exposed_port(internal_port)
-                    
                 return int(port_mappings[port_key][0]['HostPort'])
             except (json.JSONDecodeError, KeyError, IndexError, TypeError) as e:
                 raise DockerCommandFailedError(
@@ -69,6 +65,5 @@ class Container:
             stderr=subprocess.PIPE
         ) as process:
             process.communicate()
-            
             if process.returncode != 0:
                 raise DockerCommandFailedError('Failed to restart container')
