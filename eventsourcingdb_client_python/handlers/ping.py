@@ -13,17 +13,17 @@ async def ping(client: AbstractBaseClient) -> None:
 
     if response.status_code != HTTPStatus.OK:
         raise ServerError(f'Received unexpected response: {response_body}')
-        
+
     # Check old format (plain "OK")
     if response_body == OK_RESPONSE:
         return
-        
-    # Check new format (JSON {"status":"ok"})
+
     try:
         response_json = json.loads(response_body)
-        if isinstance(response_json, dict) and response_json.get('status') == STATUS_OK:
-            return
     except json.JSONDecodeError:
         pass
-        
+    else:
+        if isinstance(response_json, dict) and response_json.get('status') == STATUS_OK:
+            return
+
     raise ServerError(f'Received unexpected response: {response_body}')
