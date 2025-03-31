@@ -59,7 +59,9 @@ class Container:
                 return int(port_mappings[port_key][0]['HostPort'])
             except (KeyError, IndexError, TypeError) as e:
                 raise DockerCommandFailedError(
-                    f'Failed to parse port mapping: {stdout.decode("utf-8")}. Error: {str(e)}') from e
+                        f'Failed to parse port mapping: {stdout.decode("utf-8")}. '
+                        f'Error: {str(e)}'
+                    ) from e
 
     def restart(self):
         """Restart the container"""
