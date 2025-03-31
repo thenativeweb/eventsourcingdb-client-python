@@ -4,7 +4,6 @@ import json
 import time
 
 from .docker_command_failed_error import DockerCommandFailedError
-from ..util.remove_whitespace import remove_whitespace
 
 
 @dataclass
@@ -26,7 +25,7 @@ class Container:
         docker_command = [
             'docker',
             'inspect',
-            f'--format={{{{json .NetworkSettings.Ports}}}}',
+            '--format={{json .NetworkSettings.Ports}}',
             self.id
         ]
 
@@ -43,18 +42,24 @@ class Container:
             # Parse the JSON output to get the port mapping
             try:
                 port_mappings = json.loads(stdout.decode('utf-8').strip())
-                port_key = f"{internal_port}/tcp"
-                if port_key not in port_mappings or not port_mappings[port_key]:
-                    # Wait briefly and try to restart/refresh the container
-                    time.sleep(1)
-                    self.restart()
-                    time.sleep(2)  # Wait for container to be ready
-                    # Try one more time after restart
-                    return self.get_exposed_port(internal_port)
-                return int(port_mappings[port_key][0]['HostPort'])
-            except (json.JSONDecodeError, KeyError, IndexError, TypeError) as e:
+            except json.JSONDecodeError as e:
                 raise DockerCommandFailedError(
-                    f'Failed to parse port mapping: {stdout.decode("utf-8")}. Error: {str(e)}')
+                    f'Failed to decode JSON: {stdout.decode("utf-8")}. Error: {str(e)}')
+
+            port_key = f"{internal_port}/tcp"
+            if port_key not in port_mappings or not port_mappings[port_key]:
+                # Wait briefly and try to restart/refresh the container
+                time.sleep(1)
+                self.restart()
+                time.sleep(2)  # Wait for container to be ready
+                # Try one more time after restart
+                return self.get_exposed_port(internal_port)
+
+            try:
+                return int(port_mappings[port_key][0]['HostPort'])
+            except (KeyError, IndexError, TypeError) as e:
+                raise DockerCommandFailedError(
+                    f'Failed to parse port mapping: {stdout.decode("utf-8")}. Error: {str(e)}') from e
 
     def restart(self):
         """Restart the container"""
