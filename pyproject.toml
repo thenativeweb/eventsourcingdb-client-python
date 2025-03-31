@@ -4,7 +4,7 @@ version = "0.7.0"
 description = "The Python client for the EventSourcingDB."
 authors = [ "Alexander Kampf", "Golo Roden", "Noah Hummel" ]
 readme = "README.md"
-license = "MIT License"
+license = "MIT"
 packages = [{include = "eventsourcingdb_client_python"}]
 
 [tool.poetry.dependencies]
