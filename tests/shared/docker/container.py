@@ -44,7 +44,7 @@ class Container:
                 port_mappings = json.loads(stdout.decode('utf-8').strip())
             except json.JSONDecodeError as e:
                 raise DockerCommandFailedError(
-                    f'Failed to decode JSON: {stdout.decode("utf-8")}. Error: {str(e)}')
+                    f'Failed to decode JSON: {stdout.decode("utf-8")}. Error: {str(e)}') from e
 
             port_key = f"{internal_port}/tcp"
             if port_key not in port_mappings or not port_mappings[port_key]:
