@@ -7,6 +7,11 @@ from ..errors.server_error import ServerError
 OK_RESPONSE = "OK"
 STATUS_OK = "ok"
 
+# CloudEvent field names
+SPECVERSION_FIELD = "specversion"
+TYPE_FIELD = "type"
+PING_RECEIVED_TYPE = "io.eventsourcingdb.ping-received"
+
 
 async def ping(client: AbstractBaseClient) -> None:
     response = await client.http_client.get("/api/v1/ping")
@@ -21,8 +26,8 @@ async def ping(client: AbstractBaseClient) -> None:
 
     try:
         response_json = json.loads(response_body)
-    except json.JSONDecodeError:
-        raise ServerError(f"Received unexpected response: {response_body}")
+    except json.JSONDecodeError as exc:
+        raise ServerError(f"Received unexpected response: {response_body}") from exc
 
     # Check if it's a JSON with status field
     if isinstance(response_json, dict) and response_json.get("status") == STATUS_OK:
@@ -31,10 +36,10 @@ async def ping(client: AbstractBaseClient) -> None:
     # Check if it's a CloudEvent format (has specversion, type fields)
     if (
         isinstance(response_json, dict)
-        and "specversion" in response_json
-        and "type" in response_json
+        and SPECVERSION_FIELD in response_json
+        and TYPE_FIELD in response_json
     ):
-        if response_json.get("type") == "io.eventsourcingdb.ping-received":
+        if response_json.get(TYPE_FIELD) == PING_RECEIVED_TYPE:
             return
 
     raise ServerError(f"Received unexpected response: {response_body}")
