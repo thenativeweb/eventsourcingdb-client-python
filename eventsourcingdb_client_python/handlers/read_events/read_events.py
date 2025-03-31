@@ -11,7 +11,7 @@ from ...errors.validation_error import ValidationError
 from ...event.event import Event
 from ...event.validate_subject import validate_subject
 from ...http_client.response import Response
-from ..is_item import is_item
+from ..is_event import is_event
 from ..is_stream_error import is_stream_error
 from ..parse_raw_message import parse_raw_message
 from ..store_item import StoreItem
@@ -69,10 +69,10 @@ async def read_events(
             if is_stream_error(message):
                 raise ServerError(f'{message["payload"]["error"]}.')
 
-            if is_item(message):
+            if is_event(message):
                 event = Event.parse(message['payload']['event'])
 
-                yield StoreItem(event, message['payload']['hash'])
+                yield StoreItem(event, message['payload']['hash']) # type: ignore
                 continue
 
             raise ServerError(

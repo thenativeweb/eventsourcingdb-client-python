@@ -58,7 +58,7 @@ class TestObserveEvents:
 
             total_store_items_count = 4
             if observed_items_count == total_store_items_count:
-                break
+                break 
 
     @staticmethod
     @pytest.mark.asyncio

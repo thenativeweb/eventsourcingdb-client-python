@@ -3,7 +3,7 @@ from collections.abc import AsyncGenerator
 from http import HTTPStatus
 
 from ..is_heartbeat import is_heartbeat
-from ..is_item import is_item
+from ..is_event import is_event
 from ..is_stream_error import is_stream_error
 from ..parse_raw_message import parse_raw_message
 from ...abstract_base_client import AbstractBaseClient
@@ -73,8 +73,8 @@ async def observe_events(
             if is_stream_error(message):
                 raise ServerError(f'{message["payload"]["error"]}.')
 
-            if is_item(message):
-                event = Event.parse(message['payload']['event'])
+            if is_event(message):
+                event = Event.parse(message['payload'])
 
                 yield StoreItem(event, message['payload']['hash'])
                 continue
