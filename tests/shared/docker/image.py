@@ -17,6 +17,8 @@ class Image:
             docker_command.append('-d')
 
         if do_expose_ports:
+            # Expose the default HTTP port (3000)
+            docker_command.extend(['-p', '3000'])
             docker_command.append('-P')
 
         docker_command.append(self.__get_full_name())
