@@ -70,7 +70,7 @@ async def read_events(
                 raise ServerError(f'{message["payload"]["error"]}.')
 
             if is_event(message):
-                event = Event.parse(message['payload']['event'])
+                event = Event.parse(message['payload'])
 
                 yield StoreItem(event, message['payload']['hash']) # type: ignore
                 continue

@@ -216,7 +216,7 @@ class TestReadEvents:
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_read_events_starting_from_lower_bound_id(
+    async def test_read_events_starting_from_lower_bound(
         prepared_database: Database,
         test_data: TestData
     ):
@@ -227,7 +227,7 @@ class TestReadEvents:
             '/users',
             ReadEventsOptions(
                 recursive=True,
-                lower_bound_id='2'
+                lower_bound='2'
             )
         ):
             result.append(event)
@@ -255,7 +255,7 @@ class TestReadEvents:
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_read_events_up_to_the_upper_bound_id(
+    async def test_read_events_up_to_the_upper_bound(
         prepared_database: Database,
         test_data: TestData
     ):
@@ -266,7 +266,7 @@ class TestReadEvents:
             '/users',
             ReadEventsOptions(
                 recursive=True,
-                upper_bound_id='1'
+                upper_bound='1'
             )
         ):
             result.append(event)
@@ -309,7 +309,7 @@ class TestReadEvents:
                         type='com.foo.bar',
                         if_event_is_missing=IfEventIsMissingDuringRead.READ_EVERYTHING
                     ),
-                    lower_bound_id='0'
+                    lower_bound='0'
                 )
             ):
                 pass
@@ -332,7 +332,7 @@ class TestReadEvents:
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_throws_error_for_invalid_lower_bound_id(
+    async def test_throws_error_for_invalid_lower_bound(
         prepared_database: Database
     ):
         client = prepared_database.with_authorization.client
@@ -342,14 +342,14 @@ class TestReadEvents:
                 '/',
                 ReadEventsOptions(
                     recursive=True,
-                    lower_bound_id='hello'
+                    lower_bound='hello'
                 )
             ):
                 pass
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_throws_error_for_negative_lower_bound_id(
+    async def test_throws_error_for_negative_lower_bound(
         prepared_database: Database
     ):
         client = prepared_database.with_authorization.client
@@ -359,14 +359,14 @@ class TestReadEvents:
                 '/',
                 ReadEventsOptions(
                     recursive=True,
-                    lower_bound_id='-1'
+                    lower_bound='-1'
                 )
             ):
                 pass
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_throws_error_for_invalid_upper_bound_id(
+    async def test_throws_error_for_invalid_upper_bound(
         prepared_database: Database
     ):
         client = prepared_database.with_authorization.client
@@ -376,14 +376,14 @@ class TestReadEvents:
                 '/',
                 ReadEventsOptions(
                     recursive=True,
-                    upper_bound_id='hello'
+                    upper_bound='hello'
                 )
             ):
                 pass
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_throws_error_for_negative_upper_bound_id(
+    async def test_throws_error_for_negative_upper_bound(
         prepared_database: Database
     ):
         client = prepared_database.with_authorization.client
@@ -393,7 +393,7 @@ class TestReadEvents:
                 '/',
                 ReadEventsOptions(
                     recursive=True,
-                    upper_bound_id='-1'
+                    upper_bound='-1'
                 )
             ):
                 pass

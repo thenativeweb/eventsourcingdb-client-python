@@ -10,17 +10,17 @@ from .observe_from_latest_event import ObserveFromLatestEvent
 @dataclass
 class ObserveEventsOptions:
     recursive: bool
-    lower_bound_id: str | None = None
+    lower_bound: str | None = None
     from_latest_event: ObserveFromLatestEvent | None = None
 
     def validate(self) -> None:
-        if self.lower_bound_id is not None and not is_non_negative_integer(self.lower_bound_id):
+        if self.lower_bound is not None and not is_non_negative_integer(self.lower_bound):
             raise ValidationError(
-                'ReadEventOptions are invalid: lower_bound_id must be 0 or greater.'
+                'ReadEventOptions are invalid: lower_bound must be 0 or greater.'
             )
 
         if self.from_latest_event is not None:
-            if self.lower_bound_id is not None:
+            if self.lower_bound is not None:
                 raise ValidationError(
                     'ReadEventsOptions are invalid: '
                     'lowerBoundId and fromLatestEvent are mutually exclusive'
@@ -47,8 +47,8 @@ class ObserveEventsOptions:
             'recursive': self.recursive
         }
 
-        if self.lower_bound_id is not None:
-            json['lowerBoundId'] = self.lower_bound_id
+        if self.lower_bound is not None:
+            json['lowerBoundId'] = self.lower_bound
         if self.from_latest_event is not None:
             json['fromLatestEvent'] = self.from_latest_event.to_json()
 

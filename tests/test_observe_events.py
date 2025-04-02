@@ -251,7 +251,7 @@ class TestObserveEvents:
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_observes_event_starting_from_given_lower_bound_id(
+    async def test_observes_event_starting_from_given_lower_bound(
         prepared_database: Database,
         test_data: TestData
     ):
@@ -263,7 +263,7 @@ class TestObserveEvents:
             '/users',
             ObserveEventsOptions(
                 recursive=True,
-                lower_bound_id='2'
+                lower_bound='2'
             )
         ):
             observed_items.append(event)
@@ -322,7 +322,7 @@ class TestObserveEvents:
                 '/users',
                 ObserveEventsOptions(
                     recursive=True,
-                    lower_bound_id='3',
+                    lower_bound='3',
                     from_latest_event=ObserveFromLatestEvent(
                         subject='/',
                         type='com.foo.bar',
@@ -344,7 +344,7 @@ class TestObserveEvents:
                 '/users',
                 ObserveEventsOptions(
                     recursive=True,
-                    lower_bound_id='hello',
+                    lower_bound='hello',
                 )
             ):
                 pass
@@ -361,7 +361,7 @@ class TestObserveEvents:
                 '/users',
                 ObserveEventsOptions(
                     recursive=True,
-                    lower_bound_id='-1',
+                    lower_bound='-1',
                 )
             ):
                 pass
