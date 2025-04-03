@@ -89,6 +89,11 @@ async def read_events(
                     # For exclusive, include events with ID < upper bound
                     if options.upper_bound.type == 'exclusive' and event_id >= options.upper_bound.id:
                         continue
-                
+
                 yield StoreItem(event, message['payload']['hash'])
                 continue
+            
+            raise ServerError(
+                f'Failed to read events, an unexpected stream item was received: '
+                f'{message}.'
+            )

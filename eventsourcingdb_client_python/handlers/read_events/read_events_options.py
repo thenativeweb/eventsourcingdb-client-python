@@ -36,8 +36,20 @@ class ReadEventsOptions:
                     'lowerBound and fromLatestEvent are mutually exclusive'
                 )
 
-            # Rest of validation remains the same
-            # ...
+            try:
+                validate_subject(self.from_latest_event.subject)
+            except ValidationError as validation_error:
+                raise ValidationError(
+                    f'ReadEventsOptions are invalid: '
+                    f'from_latest_event.subject: {str(validation_error)}'
+                ) from validation_error
+
+            # Add validation for empty type too
+            if not self.from_latest_event.type:
+                raise ValidationError(
+                    'ReadEventsOptions are invalid: '
+                    'from_latest_event.type cannot be empty'
+                )
 
     def to_json(self):
         json = {

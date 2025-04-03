@@ -2,8 +2,10 @@ from dataclasses import dataclass
 
 from ..lower_bound import LowerBound
 from ...errors.validation_error import ValidationError
+from ...event.validate_subject import validate_subject
+from ...event.validate_type import validate_type
+from ...util.is_non_negativ_integer import is_non_negative_integer
 from .observe_from_latest_event import ObserveFromLatestEvent
-
 
 @dataclass
 class ObserveEventsOptions:
@@ -18,8 +20,29 @@ class ObserveEventsOptions:
                 'ObserveEventsOptions are invalid: lower_bound must be a LowerBound object.'
             )
             
-        # Rest of validation logic
-        # ...
+        if self.from_latest_event is not None:
+            if self.lower_bound is not None:
+                raise ValidationError(
+                    'ReadEventsOptions are invalid: '
+                    'lowerBoundId and fromLatestEvent are mutually exclusive'
+                )
+
+            try:
+                validate_subject(self.from_latest_event.subject)
+            except ValidationError as validation_error:
+                raise ValidationError(
+                    f'ReadEventsOptions are invalid: '
+                    f'Failed to validate \'from_latest_event\': {str(validation_error)}'
+                ) from validation_error
+
+            try:
+                validate_type(self.from_latest_event.type)
+            except ValidationError as validation_error:
+                raise ValidationError(
+                    f'ReadEventsOptions are invalid: '
+                    f'Failed to validate \'from_latest_event\': {str(validation_error)}'
+                ) from validation_error
+
 
     def to_json(self):
         json = {

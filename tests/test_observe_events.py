@@ -7,6 +7,7 @@ from eventsourcingdb_client_python.client import Client
 from eventsourcingdb_client_python.errors.client_error import ClientError
 from eventsourcingdb_client_python.errors.invalid_parameter_error import InvalidParameterError
 from eventsourcingdb_client_python.errors.server_error import ServerError
+from eventsourcingdb_client_python.handlers.lower_bound import LowerBound
 from eventsourcingdb_client_python.handlers.observe_events import \
     ObserveEventsOptions, \
     ObserveFromLatestEvent, \
@@ -263,7 +264,10 @@ class TestObserveEvents:
             '/users',
             ObserveEventsOptions(
                 recursive=True,
-                lower_bound='2'
+                lower_bound=LowerBound(
+                    id=2,
+                    type='inclusive'
+                )
             )
         ):
             observed_items.append(event)
@@ -322,7 +326,10 @@ class TestObserveEvents:
                 '/users',
                 ObserveEventsOptions(
                     recursive=True,
-                    lower_bound='3',
+                    lower_bound=LowerBound(
+                        id=3,
+                        type='excl'
+                    ),
                     from_latest_event=ObserveFromLatestEvent(
                         subject='/',
                         type='com.foo.bar',
@@ -331,23 +338,23 @@ class TestObserveEvents:
                 )
             ):
                 pass
-
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_throws_error_for_non_integer_lower_bound(
-        prepared_database: Database
-    ):
-        client = prepared_database.with_authorization.client
-
-        with pytest.raises(InvalidParameterError):
-            async for _ in client.observe_events(
-                '/users',
-                ObserveEventsOptions(
-                    recursive=True,
-                    lower_bound='hello',
-                )
-            ):
-                pass
+    # TODO: Test restructured. String not used in the new code.
+    # @staticmethod
+    # @pytest.mark.asyncio
+    # async def test_throws_error_for_non_integer_lower_bound(
+    #     prepared_database: Database
+    # ):
+    #     client = prepared_database.with_authorization.client
+    #
+    #     with pytest.raises(InvalidParameterError):
+    #         async for _ in client.observe_events(
+    #             '/users',
+    #             ObserveEventsOptions(
+    #                 recursive=True,
+    #                 lower_bound='hello',
+    #             )
+    #         ):
+    #            pass
 
     @staticmethod
     @pytest.mark.asyncio
@@ -361,7 +368,10 @@ class TestObserveEvents:
                 '/users',
                 ObserveEventsOptions(
                     recursive=True,
-                    lower_bound='-1',
+                    lower_bound=LowerBound(
+                        id=-1,
+                        type='inclusive'
+                    ),
                 )
             ):
                 pass

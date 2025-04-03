@@ -75,6 +75,16 @@ async def observe_events(
 
             if is_event(message):
                 event = Event.parse(message['payload'])
+                # Add client-side filtering by event ID
+                event_id = int(message['payload']['id'])
+                
+                if options.lower_bound is not None:
+                    # For inclusive, include events with ID >= lower bound
+                    if options.lower_bound.type == 'inclusive' and event_id < options.lower_bound.id:
+                        continue
+                    # For exclusive, include events with ID > lower bound
+                    if options.lower_bound.type == 'exclusive' and event_id <= options.lower_bound.id:
+                        continue
 
                 yield StoreItem(event, message['payload']['hash'])
                 continue

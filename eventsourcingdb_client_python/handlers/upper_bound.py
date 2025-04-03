@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+from eventsourcingdb_client_python.errors.invalid_parameter_error import InvalidParameterError
+
 
 @dataclass
 class UpperBound:
@@ -8,4 +10,7 @@ class UpperBound:
 
     def __post_init__(self):
         if self.type not in {"inclusive", "exclusive"}:
-            raise ValueError("type must be either 'inclusive' or 'exclusive'")
+            raise InvalidParameterError(
+                parameter_name="UpperBound",
+                reason="type must be either 'inclusive' or 'exclusive'"
+            )
