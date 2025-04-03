@@ -71,11 +71,24 @@ async def read_events(
 
             if is_event(message):
                 event = Event.parse(message['payload'])
+                
+                event_id = int(message['payload']['id'])  # Access ID from raw payload
 
-                yield StoreItem(event, message['payload']['hash']) # type: ignore
+                if options.lower_bound is not None:
+                    # For inclusive, include events with ID >= lower bound
+                    if options.lower_bound.type == 'inclusive' and event_id < options.lower_bound.id:
+                        continue
+                    # For exclusive, include events with ID > lower bound
+                    if options.lower_bound.type == 'exclusive' and event_id <= options.lower_bound.id:
+                        continue
+                
+                if options.upper_bound is not None:
+                    # For inclusive, include events with ID <= upper bound
+                    if options.upper_bound.type == 'inclusive' and event_id > options.upper_bound.id:
+                        continue
+                    # For exclusive, include events with ID < upper bound
+                    if options.upper_bound.type == 'exclusive' and event_id >= options.upper_bound.id:
+                        continue
+                
+                yield StoreItem(event, message['payload']['hash'])
                 continue
-
-            raise ServerError(
-                f'Failed to read events, an unexpected stream item was received: '
-                f'{message}.'
-            )

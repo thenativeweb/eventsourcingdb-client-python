@@ -7,11 +7,13 @@ from eventsourcingdb_client_python.client import Client
 from eventsourcingdb_client_python.errors.client_error import ClientError
 from eventsourcingdb_client_python.errors.invalid_parameter_error import InvalidParameterError
 from eventsourcingdb_client_python.errors.server_error import ServerError
+from eventsourcingdb_client_python.handlers.lower_bound import LowerBound
 from eventsourcingdb_client_python.handlers.read_events import \
     ReadEventsOptions, \
     ReadFromLatestEvent, \
     IfEventIsMissingDuringRead
 from eventsourcingdb_client_python.handlers.read_events.order import Order
+from eventsourcingdb_client_python.handlers.upper_bound import UpperBound
 from .conftest import TestData
 
 from .shared.database import Database
@@ -227,7 +229,7 @@ class TestReadEvents:
             '/users',
             ReadEventsOptions(
                 recursive=True,
-                lower_bound='2'
+                lower_bound=LowerBound(id=2, type='inclusive')
             )
         ):
             result.append(event)
@@ -266,7 +268,7 @@ class TestReadEvents:
             '/users',
             ReadEventsOptions(
                 recursive=True,
-                upper_bound='1'
+                upper_bound=UpperBound(id=2, type='exclusive')
             )
         ):
             result.append(event)
