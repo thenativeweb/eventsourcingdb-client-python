@@ -83,13 +83,13 @@ async def observe_events(
                 if options.lower_bound is not None:
                     # For inclusive, include events with ID >= lower bound
                     if (
-                        options.lower_bound.type == 'inclusive' and # pylint: disable=R2004
+                        options.lower_bound.type == 'inclusive' and  # pylint: disable=R2004
                         int(event_id) < int(options.lower_bound.id)
                     ):
                         continue
                     # For exclusive, include events with ID > lower bound
                     if (
-                        options.lower_bound.type == 'exclusive' and # pylint: disable=R2004
+                        options.lower_bound.type == 'exclusive' and  # pylint: disable=R2004
                         int(event_id) <= int(options.lower_bound.id)
                     ):
                         continue
