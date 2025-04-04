@@ -1,5 +1,5 @@
 # Python folders
-# __pycache__/
+__pycache__/
 
 # OS generated files and folders
 .DS_Store
