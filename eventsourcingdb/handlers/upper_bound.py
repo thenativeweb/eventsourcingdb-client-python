@@ -14,3 +14,8 @@ class UpperBound:
                 parameter_name='UpperBound',
                 reason='type must be either "inclusive" or "exclusive"'
             )
+        if int(self.id) < 0:
+            raise InvalidParameterError(
+                parameter_name='UpperBound',
+                reason='id must be non-negative'
+            )

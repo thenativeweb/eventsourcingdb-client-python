@@ -338,7 +338,7 @@ class TestReadEvents:
     ):
         client = prepared_database.with_authorization.client
 
-        with pytest.raises(InvalidParameterError):
+        with pytest.raises(ValueError):
             async for _ in client.read_events(
                 '/',
                 ReadEventsOptions(
@@ -372,7 +372,7 @@ class TestReadEvents:
     ):
         client = prepared_database.with_authorization.client
 
-        with pytest.raises(InvalidParameterError):
+        with pytest.raises(ValueError):
             async for _ in client.read_events(
                 '/',
                 ReadEventsOptions(
