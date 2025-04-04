@@ -8,11 +8,11 @@ def is_event(message: Any) -> bool:
     if isinstance(message, dict) and message.get('type') == EVENT_TYPE:
         payload = message.get('payload')
         return isinstance(payload, dict) and isinstance(payload.get('hash'), str)
-        
+
     # Otherwise check for old format (just for backward compatibility)
     if not isinstance(message, dict):
         return False
-        
+
     payload = message.get('payload')
     return (
         isinstance(payload, dict)

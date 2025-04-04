@@ -19,6 +19,8 @@ from ...event.validate_subject import validate_subject
 # for better readability. Even though it is not necessary,
 # it makes the return type clear without needing to read any
 # documentation or code.
+
+
 async def read_subjects(
     client: AbstractBaseClient,
     base_subject: str

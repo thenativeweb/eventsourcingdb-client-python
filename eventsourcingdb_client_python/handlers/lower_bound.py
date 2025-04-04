@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from eventsourcingdb_client_python.errors.invalid_parameter_error import InvalidParameterError
 
-# TODO: id must be a string.
+
 @dataclass
 class LowerBound:
     id: str
@@ -14,7 +14,6 @@ class LowerBound:
                 parameter_name="LowerBound",
                 reason='type must be either "inclusive" or "exclusive"'
             )
-        
         if int(self.id) < 0:
             raise InvalidParameterError(
                 parameter_name='LowerBound',

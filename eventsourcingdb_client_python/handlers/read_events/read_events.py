@@ -22,6 +22,8 @@ from .read_events_options import ReadEventsOptions
 # for better readability. Even though it is not necessary,
 # it makes the return type clear without needing to read any
 # documentation or code.
+
+
 async def read_events(
     client: AbstractBaseClient,
     subject: str,
@@ -71,28 +73,40 @@ async def read_events(
 
             if is_event(message):
                 event = Event.parse(message['payload'])
-                
+
                 event_id = int(message['payload']['id'])  # Access ID from raw payload
 
                 if options.lower_bound is not None:
                     # For inclusive, include events with ID >= lower bound
-                    if options.lower_bound.type == 'inclusive' and event_id < options.lower_bound.id:
+                    if (
+                        options.lower_bound.type == 'inclusive' and # pylint: disable=R2004
+                        int(event_id) < int(options.lower_bound.id)
+                    ):
                         continue
                     # For exclusive, include events with ID > lower bound
-                    if options.lower_bound.type == 'exclusive' and event_id <= options.lower_bound.id:
+                    if (
+                        options.lower_bound.type == 'exclusive' and # pylint: disable=R2004
+                        int(event_id) <= int(options.lower_bound.id)
+                    ):
                         continue
-                
+
                 if options.upper_bound is not None:
                     # For inclusive, include events with ID <= upper bound
-                    if options.upper_bound.type == 'inclusive' and event_id > options.upper_bound.id:
+                    if (
+                        options.upper_bound.type == 'inclusive' and # pylint: disable=R2004
+                        int(event_id) > int(options.upper_bound.id)
+                    ):
                         continue
                     # For exclusive, include events with ID < upper bound
-                    if options.upper_bound.type == 'exclusive' and event_id >= options.upper_bound.id:
+                    if (
+                        options.upper_bound.type == 'exclusive' and # pylint: disable=R2004
+                        int(event_id) >= int(options.upper_bound.id)
+                    ):
                         continue
 
                 yield StoreItem(event, message['payload']['hash'])
                 continue
-            
+
             raise ServerError(
                 f'Failed to read events, an unexpected stream item was received: '
                 f'{message}.'

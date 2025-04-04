@@ -17,6 +17,8 @@ from ...http_client.response import Response
 # for better readability. Even though it is not necessary,
 # it makes the return type clear without needing to read any
 # documentation or code.
+
+
 async def read_event_types(
     client: AbstractBaseClient,
 ) -> AsyncGenerator[EventType, None]:

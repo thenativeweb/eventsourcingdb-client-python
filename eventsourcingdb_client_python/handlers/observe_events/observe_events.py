@@ -23,6 +23,8 @@ from ...http_client.response import Response
 # for better readability. Even though it is not necessary,
 # it makes the return type clear without needing to read any
 # documentation or code.
+
+
 async def observe_events(
     client: AbstractBaseClient,
     subject: str,
@@ -77,13 +79,19 @@ async def observe_events(
                 event = Event.parse(message['payload'])
                 # Add client-side filtering by event ID
                 event_id = int(message['payload']['id'])
-                
+
                 if options.lower_bound is not None:
                     # For inclusive, include events with ID >= lower bound
-                    if options.lower_bound.type == 'inclusive' and event_id < options.lower_bound.id:
+                    if (
+                        options.lower_bound.type == 'inclusive' and # pylint: disable=R2004
+                        int(event_id) < int(options.lower_bound.id)
+                    ):
                         continue
                     # For exclusive, include events with ID > lower bound
-                    if options.lower_bound.type == 'exclusive' and event_id <= options.lower_bound.id:
+                    if (
+                        options.lower_bound.type == 'exclusive' and # pylint: disable=R2004
+                        int(event_id) <= int(options.lower_bound.id)
+                    ):
                         continue
 
                 yield StoreItem(event, message['payload']['hash'])

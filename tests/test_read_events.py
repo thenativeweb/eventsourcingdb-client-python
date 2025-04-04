@@ -136,7 +136,6 @@ class TestReadEvents:
             None
         )
 
-
     @staticmethod
     @pytest.mark.asyncio
     async def test_read_events_in_antichronological_order(

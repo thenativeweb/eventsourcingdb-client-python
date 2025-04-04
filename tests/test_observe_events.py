@@ -59,7 +59,7 @@ class TestObserveEvents:
 
             total_store_items_count = 4
             if observed_items_count == total_store_items_count:
-                break 
+                break
 
     @staticmethod
     @pytest.mark.asyncio
@@ -338,23 +338,6 @@ class TestObserveEvents:
                 )
             ):
                 pass
-    # TODO: Test restructured. String not used in the new code.
-    # @staticmethod
-    # @pytest.mark.asyncio
-    # async def test_throws_error_for_non_integer_lower_bound(
-    #     prepared_database: Database
-    # ):
-    #     client = prepared_database.with_authorization.client
-    #
-    #     with pytest.raises(InvalidParameterError):
-    #         async for _ in client.observe_events(
-    #             '/users',
-    #             ObserveEventsOptions(
-    #                 recursive=True,
-    #                 lower_bound='hello',
-    #             )
-    #         ):
-    #            pass
 
     @staticmethod
     @pytest.mark.asyncio
@@ -362,7 +345,6 @@ class TestObserveEvents:
         prepared_database: Database
     ):
         client = prepared_database.with_authorization.client
-
         with pytest.raises(InvalidParameterError):
             async for _ in client.observe_events(
                 '/users',
@@ -418,6 +400,7 @@ class TestObserveEvents:
             ):
                 pass
 
+
 class TestObserveEventsWithMockServer:
 
     @staticmethod
@@ -433,7 +416,7 @@ class TestObserveEventsWithMockServer:
 
             attach_handler('/api/v1/observe-events', 'POST', handle_observe_events)
 
-        client= await get_client(attach_handlers)
+        client = await get_client(attach_handlers)
 
         with pytest.raises(ServerError):
             async for _ in client.observe_events(

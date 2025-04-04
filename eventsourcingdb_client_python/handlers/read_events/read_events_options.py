@@ -5,7 +5,6 @@ from ..upper_bound import UpperBound
 from .order import Order
 from ...errors.validation_error import ValidationError
 from ...event.validate_subject import validate_subject
-from ...event.validate_type import validate_type
 from .read_from_latest_event import ReadFromLatestEvent
 
 
@@ -23,7 +22,7 @@ class ReadEventsOptions:
             raise ValidationError(
                 'ReadEventOptions are invalid: lower_bound must be a LowerBound object.'
             )
-        
+
         if self.upper_bound is not None and not isinstance(self.upper_bound, UpperBound):
             raise ValidationError(
                 'ReadEventOptions are invalid: upper_bound must be a UpperBound object.'
@@ -58,20 +57,20 @@ class ReadEventsOptions:
 
         if self.order is not None:
             json['order'] = self.order.value
-            
+
         # Directly use the objects
         if self.lower_bound is not None:
             json['lowerBound'] = {
                 'id': str(self.lower_bound.id),  # Ensure ID is a string
                 'type': self.lower_bound.type
             }
-            
+
         if self.upper_bound is not None:
             json['upperBound'] = {
                 'id': str(self.upper_bound.id),  # Ensure ID is a string
                 'type': self.upper_bound.type
             }
-            
+
         if self.from_latest_event is not None:
             json['fromLatestEvent'] = self.from_latest_event.to_json()
 
