@@ -3,7 +3,7 @@ name = "eventsourcingdb"
 version = "0.8.1"
 description = "eventsourcingdb is the official client for EventSourcingDB."
 authors = [
-	{name = "the native web GmbH", email = "hello@thenativeweb.io"}
+	{name = "the native web GmbH", email = "hello@thenativeweb.io"},
 ]
 readme = "README.md"
 license = "MIT"
