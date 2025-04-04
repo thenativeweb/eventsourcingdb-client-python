@@ -27,7 +27,11 @@ jobs:
         python-version: '3.13'
     - name: Install dependencies
       run: |
+        # First install Poetry in latest version, then install
+        # build and twine in matching versions. The following
+        # commands should not be run in a single line.
         pip install poetry
+        pip install build twine
         poetry install
     - name: Run QA
       run: make qa
@@ -45,3 +49,14 @@ jobs:
         git push
         git tag ${{ steps.get_next_version.outputs.version }}
         git push origin ${{ steps.get_next_version.outputs.version }}
+    - name: Build package
+      if: ${{ steps.get_next_version.outputs.hasNextVersion == 'true' }}
+      run: |
+        python -m build
+    - name: Publish package
+      if: ${{ steps.get_next_version.outputs.hasNextVersion == 'true' }}
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.TOKEN_GITHUB_TO_PYPI_RW }}
+      run: |
+        twine upload dist/*
