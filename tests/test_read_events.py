@@ -7,11 +7,13 @@ from eventsourcingdb.client import Client
 from eventsourcingdb.errors.client_error import ClientError
 from eventsourcingdb.errors.invalid_parameter_error import InvalidParameterError
 from eventsourcingdb.errors.server_error import ServerError
+from eventsourcingdb.handlers.lower_bound import LowerBound
 from eventsourcingdb.handlers.read_events import \
     ReadEventsOptions, \
     ReadFromLatestEvent, \
     IfEventIsMissingDuringRead
 from eventsourcingdb.handlers.read_events.order import Order
+from eventsourcingdb.handlers.upper_bound import UpperBound
 from .conftest import TestData
 
 from .shared.database import Database
@@ -134,7 +136,6 @@ class TestReadEvents:
             None
         )
 
-
     @staticmethod
     @pytest.mark.asyncio
     async def test_read_events_in_antichronological_order(
@@ -216,7 +217,7 @@ class TestReadEvents:
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_read_events_starting_from_lower_bound_id(
+    async def test_read_events_starting_from_lower_bound(
         prepared_database: Database,
         test_data: TestData
     ):
@@ -227,7 +228,7 @@ class TestReadEvents:
             '/users',
             ReadEventsOptions(
                 recursive=True,
-                lower_bound_id='2'
+                lower_bound=LowerBound(id=2, type='inclusive')
             )
         ):
             result.append(event)
@@ -255,7 +256,7 @@ class TestReadEvents:
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_read_events_up_to_the_upper_bound_id(
+    async def test_read_events_up_to_the_upper_bound(
         prepared_database: Database,
         test_data: TestData
     ):
@@ -266,7 +267,7 @@ class TestReadEvents:
             '/users',
             ReadEventsOptions(
                 recursive=True,
-                upper_bound_id='1'
+                upper_bound=UpperBound(id=2, type='exclusive')
             )
         ):
             result.append(event)
@@ -309,7 +310,7 @@ class TestReadEvents:
                         type='com.foo.bar',
                         if_event_is_missing=IfEventIsMissingDuringRead.READ_EVERYTHING
                     ),
-                    lower_bound_id='0'
+                    lower_bound=LowerBound(id='0', type='exclusive'),
                 )
             ):
                 pass
@@ -332,24 +333,24 @@ class TestReadEvents:
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_throws_error_for_invalid_lower_bound_id(
+    async def test_throws_error_for_invalid_lower_bound(
         prepared_database: Database
     ):
         client = prepared_database.with_authorization.client
 
-        with pytest.raises(InvalidParameterError):
+        with pytest.raises(ValueError):
             async for _ in client.read_events(
                 '/',
                 ReadEventsOptions(
                     recursive=True,
-                    lower_bound_id='hello'
+                    lower_bound=LowerBound(id='hello', type='inclusive')
                 )
             ):
                 pass
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_throws_error_for_negative_lower_bound_id(
+    async def test_throws_error_for_negative_lower_bound(
         prepared_database: Database
     ):
         client = prepared_database.with_authorization.client
@@ -359,31 +360,31 @@ class TestReadEvents:
                 '/',
                 ReadEventsOptions(
                     recursive=True,
-                    lower_bound_id='-1'
+                    lower_bound=LowerBound(id='-1', type='inclusive')
                 )
             ):
                 pass
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_throws_error_for_invalid_upper_bound_id(
+    async def test_throws_error_for_invalid_upper_bound(
         prepared_database: Database
     ):
         client = prepared_database.with_authorization.client
 
-        with pytest.raises(InvalidParameterError):
+        with pytest.raises(ValueError):
             async for _ in client.read_events(
                 '/',
                 ReadEventsOptions(
                     recursive=True,
-                    upper_bound_id='hello'
+                    upper_bound=UpperBound(id='hello', type='exclusive')
                 )
             ):
                 pass
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_throws_error_for_negative_upper_bound_id(
+    async def test_throws_error_for_negative_upper_bound(
         prepared_database: Database
     ):
         client = prepared_database.with_authorization.client
@@ -393,7 +394,7 @@ class TestReadEvents:
                 '/',
                 ReadEventsOptions(
                     recursive=True,
-                    upper_bound_id='-1'
+                    upper_bound=UpperBound(id='-1', type='exclusive')
                 )
             ):
                 pass
@@ -453,7 +454,7 @@ class TestReadEventsWithMockServer:
                 response.set_data(HTTPStatus.BAD_GATEWAY.phrase)
                 return response
 
-            attach_handler('/api/read-events', 'POST', handle_read_events)
+            attach_handler('/api/v1/read-events', 'POST', handle_read_events)
 
         client = await get_client(attach_handlers)
 
@@ -478,7 +479,7 @@ class TestReadEventsWithMockServer:
                 response.set_data(HTTPStatus.UNPROCESSABLE_ENTITY.phrase)
                 return response
 
-            attach_handler('/api/read-events', 'POST', handle_read_events)
+            attach_handler('/api/v1/read-events', 'POST', handle_read_events)
 
         client = await get_client(attach_handlers)
 
@@ -502,7 +503,7 @@ class TestReadEventsWithMockServer:
                 response.set_data(HTTPStatus.NOT_FOUND.phrase)
                 return response
 
-            attach_handler('/api/read-events', 'POST', handle_read_events)
+            attach_handler('/api/v1/read-events', 'POST', handle_read_events)
 
         client = await get_client(attach_handlers)
 
@@ -526,7 +527,7 @@ class TestReadEventsWithMockServer:
                 response.set_data(HTTPStatus.ACCEPTED.phrase)
                 return response
 
-            attach_handler('/api/read-events', 'POST', handle_read_events)
+            attach_handler('/api/v1/read-events', 'POST', handle_read_events)
 
         client = await get_client(attach_handlers)
 
@@ -550,7 +551,7 @@ class TestReadEventsWithMockServer:
                 response.set_data('cannot be parsed')
                 return response
 
-            attach_handler('/api/read-events', 'POST', handle_read_events)
+            attach_handler('/api/v1/read-events', 'POST', handle_read_events)
 
         client = await get_client(attach_handlers)
 
@@ -574,7 +575,7 @@ class TestReadEventsWithMockServer:
                 response.set_data('{"type": "clown", "payload": {"foo": "bar"}}')
                 return response
 
-            attach_handler('/api/read-events', 'POST', handle_read_events)
+            attach_handler('/api/v1/read-events', 'POST', handle_read_events)
 
         client = await get_client(attach_handlers)
 
@@ -598,7 +599,7 @@ class TestReadEventsWithMockServer:
                 response.set_data('{"type": "error", "payload": {"error": "it is just broken"}}')
                 return response
 
-            attach_handler('/api/read-events', 'POST', handle_read_events)
+            attach_handler('/api/v1/read-events', 'POST', handle_read_events)
 
         client = await get_client(attach_handlers)
 
@@ -622,7 +623,7 @@ class TestReadEventsWithMockServer:
                 response.set_data('{"type": "error", "payload": {"not very correct": "indeed"}}')
                 return response
 
-            attach_handler('/api/read-events', 'POST', handle_read_events)
+            attach_handler('/api/v1/read-events', 'POST', handle_read_events)
 
         client = await get_client(attach_handlers)
 

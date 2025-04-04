@@ -29,6 +29,7 @@ class ContainerizedTestingDatabase:
         access_token: str,
         options: ClientOptions = ClientOptions(),
     ) -> 'ContainerizedTestingDatabase':
+        command.extend(['--http-enabled', '--https-enabled=false'])
         container = image.run(command, True, True)
         exposed_port = container.get_exposed_port(3_000)
         base_url = f'http://127.0.0.1:{exposed_port}'

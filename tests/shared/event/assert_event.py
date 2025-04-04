@@ -5,6 +5,8 @@ from eventsourcingdb.event.event import Event
 # due to its business context. Splitting it into smaller
 # methods would increase cognitive load and make the
 # code less readable.
+
+
 def assert_event_equals(
         event: Event,
         source: str,

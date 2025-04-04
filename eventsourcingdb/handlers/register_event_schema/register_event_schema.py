@@ -33,7 +33,7 @@ async def register_event_schema(
     response: Response
     try:
         response = await client.http_client.post(
-            path='/api/register-event-schema',
+            path='/api/v1/register-event-schema',
             request_body=request_body,
         )
     except CustomError as custom_error:

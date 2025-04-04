@@ -7,6 +7,7 @@ from eventsourcingdb.client import Client
 from eventsourcingdb.errors.client_error import ClientError
 from eventsourcingdb.errors.invalid_parameter_error import InvalidParameterError
 from eventsourcingdb.errors.server_error import ServerError
+from eventsourcingdb.handlers.lower_bound import LowerBound
 from eventsourcingdb.handlers.observe_events import \
     ObserveEventsOptions, \
     ObserveFromLatestEvent, \
@@ -251,7 +252,7 @@ class TestObserveEvents:
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_observes_event_starting_from_given_lower_bound_id(
+    async def test_observes_event_starting_from_given_lower_bound(
         prepared_database: Database,
         test_data: TestData
     ):
@@ -263,7 +264,10 @@ class TestObserveEvents:
             '/users',
             ObserveEventsOptions(
                 recursive=True,
-                lower_bound_id='2'
+                lower_bound=LowerBound(
+                    id=2,
+                    type='inclusive'
+                )
             )
         ):
             observed_items.append(event)
@@ -322,7 +326,10 @@ class TestObserveEvents:
                 '/users',
                 ObserveEventsOptions(
                     recursive=True,
-                    lower_bound_id='3',
+                    lower_bound=LowerBound(
+                        id=3,
+                        type='excl'
+                    ),
                     from_latest_event=ObserveFromLatestEvent(
                         subject='/',
                         type='com.foo.bar',
@@ -334,34 +341,19 @@ class TestObserveEvents:
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_throws_error_for_non_integer_lower_bound(
-        prepared_database: Database
-    ):
-        client = prepared_database.with_authorization.client
-
-        with pytest.raises(InvalidParameterError):
-            async for _ in client.observe_events(
-                '/users',
-                ObserveEventsOptions(
-                    recursive=True,
-                    lower_bound_id='hello',
-                )
-            ):
-                pass
-
-    @staticmethod
-    @pytest.mark.asyncio
     async def test_throws_error_for_negative_lower_bound(
         prepared_database: Database
     ):
         client = prepared_database.with_authorization.client
-
         with pytest.raises(InvalidParameterError):
             async for _ in client.observe_events(
                 '/users',
                 ObserveEventsOptions(
                     recursive=True,
-                    lower_bound_id='-1',
+                    lower_bound=LowerBound(
+                        id=-1,
+                        type='inclusive'
+                    ),
                 )
             ):
                 pass
@@ -408,6 +400,7 @@ class TestObserveEvents:
             ):
                 pass
 
+
 class TestObserveEventsWithMockServer:
 
     @staticmethod
@@ -421,9 +414,9 @@ class TestObserveEventsWithMockServer:
                 response.set_data(HTTPStatus.BAD_GATEWAY.phrase)
                 return response
 
-            attach_handler('/api/observe-events', 'POST', handle_observe_events)
+            attach_handler('/api/v1/observe-events', 'POST', handle_observe_events)
 
-        client= await get_client(attach_handlers)
+        client = await get_client(attach_handlers)
 
         with pytest.raises(ServerError):
             async for _ in client.observe_events(
@@ -446,7 +439,7 @@ class TestObserveEventsWithMockServer:
                 response.set_data(HTTPStatus.UNPROCESSABLE_ENTITY.phrase)
                 return response
 
-            attach_handler('/api/observe-events', 'POST', handle_observe_events)
+            attach_handler('/api/v1/observe-events', 'POST', handle_observe_events)
 
         client = await get_client(attach_handlers)
 
@@ -470,7 +463,7 @@ class TestObserveEventsWithMockServer:
                 response.set_data(HTTPStatus.NOT_FOUND.phrase)
                 return response
 
-            attach_handler('/api/observe-events', 'POST', handle_observe_events)
+            attach_handler('/api/v1/observe-events', 'POST', handle_observe_events)
 
         client = await get_client(attach_handlers)
 
@@ -494,7 +487,7 @@ class TestObserveEventsWithMockServer:
                 response.set_data(HTTPStatus.ACCEPTED.phrase)
                 return response
 
-            attach_handler('/api/observe-events', 'POST', handle_observe_events)
+            attach_handler('/api/v1/observe-events', 'POST', handle_observe_events)
 
         client = await get_client(attach_handlers)
 
@@ -518,7 +511,7 @@ class TestObserveEventsWithMockServer:
                 response.set_data('cannot be parsed')
                 return response
 
-            attach_handler('/api/observe-events', 'POST', handle_observe_events)
+            attach_handler('/api/v1/observe-events', 'POST', handle_observe_events)
 
         client = await get_client(attach_handlers)
 
@@ -542,7 +535,7 @@ class TestObserveEventsWithMockServer:
                 response.set_data('{"type": "clown", "payload": {"foo": "bar"}}')
                 return response
 
-            attach_handler('/api/observe-events', 'POST', handle_observe_events)
+            attach_handler('/api/v1/observe-events', 'POST', handle_observe_events)
 
         client = await get_client(attach_handlers)
 
@@ -566,7 +559,7 @@ class TestObserveEventsWithMockServer:
                 response.set_data('{"type": "error", "payload": {"error": "it is just broken"}}')
                 return response
 
-            attach_handler('/api/observe-events', 'POST', handle_observe_events)
+            attach_handler('/api/v1/observe-events', 'POST', handle_observe_events)
 
         client = await get_client(attach_handlers)
 
@@ -590,7 +583,7 @@ class TestObserveEventsWithMockServer:
                 response.set_data('{"type": "error", "payload": {"not very correct": "indeed"}}')
                 return response
 
-            attach_handler('/api/observe-events', 'POST', handle_observe_events)
+            attach_handler('/api/v1/observe-events', 'POST', handle_observe_events)
 
         client = await get_client(attach_handlers)
 

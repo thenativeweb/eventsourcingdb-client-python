@@ -230,7 +230,7 @@ class TestWriteEventsWithMockServer:
                 response.set_data(HTTPStatus.BAD_GATEWAY.phrase)
                 return response
 
-            attach_handler('/api/write-events', 'POST', handle_write_events)
+            attach_handler('/api/v1/write-events', 'POST', handle_write_events)
 
         client = await get_client(attach_handlers)
 
@@ -250,7 +250,7 @@ class TestWriteEventsWithMockServer:
                 response.set_data(HTTPStatus.UNPROCESSABLE_ENTITY.phrase)
                 return response
 
-            attach_handler('/api/write-events', 'POST', handle_write_events)
+            attach_handler('/api/v1/write-events', 'POST', handle_write_events)
 
         client = await get_client(attach_handlers)
 
@@ -269,7 +269,7 @@ class TestWriteEventsWithMockServer:
                 response.set_data(HTTPStatus.NOT_FOUND.phrase)
                 return response
 
-            attach_handler('/api/write-events', 'POST', handle_write_events)
+            attach_handler('/api/v1/write-events', 'POST', handle_write_events)
 
         client = await get_client(attach_handlers)
 
@@ -288,7 +288,7 @@ class TestWriteEventsWithMockServer:
                 response.set_data(HTTPStatus.ACCEPTED.phrase)
                 return response
 
-            attach_handler('/api/write-events', 'POST', handle_write_events)
+            attach_handler('/api/v1/write-events', 'POST', handle_write_events)
 
         client = await get_client(attach_handlers)
 
@@ -306,7 +306,7 @@ class TestWriteEventsWithMockServer:
                 response.set_data('this is not data')
                 return response
 
-            attach_handler('/api/write-events', 'POST', handle_write_events)
+            attach_handler('/api/v1/write-events', 'POST', handle_write_events)
 
         client = await get_client(attach_handlers)
 

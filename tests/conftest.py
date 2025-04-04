@@ -20,6 +20,7 @@ pytest_plugins = ('pytest_asyncio', )
 if not hasattr(_pytest.fixtures.FixtureDef, "unittest"):
     _pytest.fixtures.FixtureDef.unittest = False
 
+
 def pytest_sessionstart():
     build_database('tests/shared/docker/eventsourcingdb')
 
@@ -134,6 +135,7 @@ async def prepared_database(
     ])
 
     return database
+
 
 @pytest_asyncio.fixture
 async def events_for_mocked_server(

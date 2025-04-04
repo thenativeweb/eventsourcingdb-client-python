@@ -119,7 +119,7 @@ class TestReadSubjectsWithMockServer:
                 response.set_data(HTTPStatus.BAD_GATEWAY.phrase)
                 return response
 
-            attach_handler('/api/read-subjects', 'POST', handle_read_subjects)
+            attach_handler('/api/v1/read-subjects', 'POST', handle_read_subjects)
 
         client = await get_client(attach_handlers)
 
@@ -139,7 +139,7 @@ class TestReadSubjectsWithMockServer:
                 response.set_data(HTTPStatus.UNPROCESSABLE_ENTITY.phrase)
                 return response
 
-            attach_handler('/api/read-subjects', 'POST', handle_read_subjects)
+            attach_handler('/api/v1/read-subjects', 'POST', handle_read_subjects)
 
         client = await get_client(attach_handlers)
 
@@ -158,7 +158,7 @@ class TestReadSubjectsWithMockServer:
                 response.set_data(HTTPStatus.NOT_FOUND.phrase)
                 return response
 
-            attach_handler('/api/read-subjects', 'POST', handle_read_subjects)
+            attach_handler('/api/v1/read-subjects', 'POST', handle_read_subjects)
 
         client = await get_client(attach_handlers)
 
@@ -179,7 +179,7 @@ class TestReadSubjectsWithMockServer:
                 )
                 return response
 
-            attach_handler('/api/read-subjects', 'POST', handle_read_subjects)
+            attach_handler('/api/v1/read-subjects', 'POST', handle_read_subjects)
 
         client = await get_client(attach_handlers)
 
@@ -198,7 +198,7 @@ class TestReadSubjectsWithMockServer:
                 response.set_data('cannot be parsed')
                 return response
 
-            attach_handler('/api/read-subjects', 'POST', handle_read_subjects)
+            attach_handler('/api/v1/read-subjects', 'POST', handle_read_subjects)
 
         client = await get_client(attach_handlers)
 
@@ -218,7 +218,7 @@ class TestReadSubjectsWithMockServer:
                     '{ "type": "clown", "payload": { "task": "emotional support" }')
                 return response
 
-            attach_handler('/api/read-subjects', 'POST', handle_read_subjects)
+            attach_handler('/api/v1/read-subjects', 'POST', handle_read_subjects)
 
         client = await get_client(attach_handlers)
 
@@ -238,7 +238,7 @@ class TestReadSubjectsWithMockServer:
                     '{ "type": "error", "payload": { "error": "some error happened" }')
                 return response
 
-            attach_handler('/api/read-subjects', 'POST', handle_read_subjects)
+            attach_handler('/api/v1/read-subjects', 'POST', handle_read_subjects)
 
         client = await get_client(attach_handlers)
 

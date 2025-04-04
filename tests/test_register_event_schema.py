@@ -92,7 +92,7 @@ class TestRegisterEventSchemaWithMockServer:
                 response.set_data(HTTPStatus.BAD_GATEWAY.phrase)
                 return response
 
-            attach_handler('/api/register-event-schema', 'POST', handle_register_event_schema)
+            attach_handler('/api/v1/register-event-schema', 'POST', handle_register_event_schema)
 
         client = await get_client(attach_handlers)
 
@@ -111,7 +111,7 @@ class TestRegisterEventSchemaWithMockServer:
                 response.set_data(HTTPStatus.UNPROCESSABLE_ENTITY.phrase)
                 return response
 
-            attach_handler('/api/register-event-schema', 'POST', handle_register_event_schema)
+            attach_handler('/api/v1/register-event-schema', 'POST', handle_register_event_schema)
 
         client = await get_client(attach_handlers)
 
@@ -129,7 +129,7 @@ class TestRegisterEventSchemaWithMockServer:
                 response.set_data(HTTPStatus.NOT_FOUND.phrase)
                 return response
 
-            attach_handler('/api/register-event-schema', 'POST', handle_register_event_schema)
+            attach_handler('/api/v1/register-event-schema', 'POST', handle_register_event_schema)
 
         client = await get_client(attach_handlers)
 
@@ -149,7 +149,7 @@ class TestRegisterEventSchemaWithMockServer:
                 )
                 return response
 
-            attach_handler('/api/register-event-schema', 'POST', handle_register_event_schema)
+            attach_handler('/api/v1/register-event-schema', 'POST', handle_register_event_schema)
 
         client = await get_client(attach_handlers)
 

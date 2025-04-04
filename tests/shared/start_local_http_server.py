@@ -30,7 +30,7 @@ class LocalHttpServer():
 
         attach_handlers(attach_handler)
 
-        @self.app.get('/__python_test__/api/ping')
+        @self.app.get('/__python_test__/api/v1/ping')
         def ping():
             return "OK"
 
@@ -48,8 +48,8 @@ async def start_local_http_server(attach_handlers: AttachHandlers) -> tuple[Clie
         async with session:
             try:
                 response = await session.get(
-                    f'http://localhost:{local_http_server.port}/__python_test__/api/ping', timeout=1
-                )
+                    f'http://localhost:{local_http_server.port}/__python_test__/api/v1/ping',
+                    timeout=aiohttp.ClientTimeout(total=1))
             except aiohttp.ClientError as error:
                 return Retry(cause=error)
             if not response.ok:
