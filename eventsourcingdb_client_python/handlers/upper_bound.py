@@ -5,7 +5,7 @@ from eventsourcingdb_client_python.errors.invalid_parameter_error import Invalid
 
 @dataclass
 class UpperBound:
-    id: int
+    id: str
     type: str
 
     def __post_init__(self):

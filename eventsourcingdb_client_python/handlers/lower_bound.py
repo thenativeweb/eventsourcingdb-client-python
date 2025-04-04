@@ -5,7 +5,7 @@ from eventsourcingdb_client_python.errors.invalid_parameter_error import Invalid
 # TODO: id must be a string.
 @dataclass
 class LowerBound:
-    id: int
+    id: str
     type: str
 
     def __post_init__(self):
@@ -15,7 +15,7 @@ class LowerBound:
                 reason='type must be either "inclusive" or "exclusive"'
             )
         
-        if self.id < 0:
+        if int(self.id) < 0:
             raise InvalidParameterError(
                 parameter_name='LowerBound',
                 reason='id must be non-negative'
