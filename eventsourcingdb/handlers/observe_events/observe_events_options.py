@@ -10,11 +10,10 @@ from .observe_from_latest_event import ObserveFromLatestEvent
 @dataclass
 class ObserveEventsOptions:
     recursive: bool
-    lower_bound: LowerBound | None = None  # Changed from str to LowerBound
+    lower_bound: LowerBound | None = None 
     from_latest_event: ObserveFromLatestEvent | None = None
 
     def validate(self) -> None:
-        # Update validation logic
         if self.lower_bound is not None and not isinstance(self.lower_bound, LowerBound):
             raise ValidationError(
                 'ObserveEventsOptions are invalid: lower_bound must be a LowerBound object.'

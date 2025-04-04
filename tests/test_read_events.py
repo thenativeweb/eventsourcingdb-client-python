@@ -310,7 +310,7 @@ class TestReadEvents:
                         type='com.foo.bar',
                         if_event_is_missing=IfEventIsMissingDuringRead.READ_EVERYTHING
                     ),
-                    lower_bound='0'
+                    lower_bound=LowerBound(id='0', type='exclusive'),
                 )
             ):
                 pass
@@ -343,7 +343,7 @@ class TestReadEvents:
                 '/',
                 ReadEventsOptions(
                     recursive=True,
-                    lower_bound='hello'
+                    lower_bound=LowerBound(id='hello', type='inclusive')
                 )
             ):
                 pass
@@ -360,7 +360,7 @@ class TestReadEvents:
                 '/',
                 ReadEventsOptions(
                     recursive=True,
-                    lower_bound='-1'
+                    lower_bound=LowerBound(id='-1', type='inclusive')
                 )
             ):
                 pass
@@ -377,7 +377,7 @@ class TestReadEvents:
                 '/',
                 ReadEventsOptions(
                     recursive=True,
-                    upper_bound='hello'
+                    upper_bound=UpperBound(id='hello', type='exclusive')
                 )
             ):
                 pass
@@ -394,7 +394,7 @@ class TestReadEvents:
                 '/',
                 ReadEventsOptions(
                     recursive=True,
-                    upper_bound='-1'
+                    upper_bound=UpperBound(id='-1', type='exclusive')
                 )
             ):
                 pass
