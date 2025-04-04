@@ -1,16 +1,21 @@
-[tool.poetry]
-name = "eventsourcingdb-client-python"
-version = "0.8.1"
-description = "The Python client for the EventSourcingDB."
-authors = [ "Alexander Kampf", "Golo Roden", "Noah Hummel" ]
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[project]
+name = "eventsourcingdb"
+version = "0.8.2"
+description = "eventsourcingdb is the official client for EventSourcingDB."
+authors = [
+	{ name = "the native web GmbH", email = "hello@thenativeweb.io" }
+]
 readme = "README.md"
 license = "MIT"
-packages = [{include = "eventsourcingdb_client_python"}]
+packages = [{include = "eventsourcingdb"}]
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.13"
 aiohttp = "3.11.13"
-
 
 [tool.poetry.group.dev.dependencies]
 pytest = "8.3.5"
@@ -19,7 +24,3 @@ pylint = "3.3.5"
 autopep8 = "2.3.2"
 pytest-timeout = "2.3.1"
 pytest-asyncio = "0.25.3"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"

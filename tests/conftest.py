@@ -4,10 +4,10 @@ import pytest_asyncio
 # Reason: This is a false positive. The module is imported to access a private attribute.
 import _pytest.fixtures
 
-from eventsourcingdb_client_python.client import Client
-from eventsourcingdb_client_python.event.event_candidate import EventCandidate
-from eventsourcingdb_client_python.event.source import Source
-from eventsourcingdb_client_python.http_client.http_client import HttpClient
+from eventsourcingdb.client import Client
+from eventsourcingdb.event.event_candidate import EventCandidate
+from eventsourcingdb.event.source import Source
+from eventsourcingdb.http_client.http_client import HttpClient
 from .shared.build_database import build_database
 from .shared.database import Database
 

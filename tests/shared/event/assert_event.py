@@ -1,4 +1,4 @@
-from eventsourcingdb_client_python.event.event import Event
+from eventsourcingdb.event.event import Event
 
 # pylint: disable=R0917
 # Reason: This method is expected to have many parameters

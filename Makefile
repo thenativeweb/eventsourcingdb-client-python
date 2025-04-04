@@ -1,7 +1,7 @@
 qa: analyze test
 
 analyze:
-	@poetry run pylint eventsourcingdb_client_python tests
+	@poetry run pylint eventsourcingdb tests
 
 fix:
 	@poetry run autopep8 --in-place --aggressive --max-line-length=100 --recursive eventsourcingdb_client_python tests

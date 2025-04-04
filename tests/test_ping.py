@@ -3,8 +3,8 @@ from http import HTTPStatus
 
 import pytest
 
-from eventsourcingdb_client_python.client import Client
-from eventsourcingdb_client_python.errors.server_error import ServerError
+from eventsourcingdb.client import Client
+from eventsourcingdb.errors.server_error import ServerError
 from .shared.database import Database
 from .shared.start_local_http_server import \
     AttachHandler, \
