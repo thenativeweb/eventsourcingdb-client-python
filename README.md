@@ -1,3 +1,3 @@
-# eventsourcingdb-client-python
+# eventsourcingdb
 
-eventsourcingdb-client-python is the Python client for EventSourcingDB.
+eventsourcingdb is the official client for EventSourcingDB.

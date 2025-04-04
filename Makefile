@@ -1,7 +1,7 @@
 qa: analyze test
 
 analyze:
-	@poetry run pylint eventsourcingdb_client_python tests
+	@poetry run pylint eventsourcingdb tests
 
 test:
 	@poetry run pytest --maxfail=1

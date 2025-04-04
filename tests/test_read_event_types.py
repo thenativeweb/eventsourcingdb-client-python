@@ -4,10 +4,10 @@ from http import HTTPStatus
 import pytest
 from flask import Response
 
-from eventsourcingdb_client_python.client import Client
-from eventsourcingdb_client_python.errors.client_error import ClientError
-from eventsourcingdb_client_python.errors.server_error import ServerError
-from eventsourcingdb_client_python.handlers.read_event_types.event_type import EventType
+from eventsourcingdb.client import Client
+from eventsourcingdb.errors.client_error import ClientError
+from eventsourcingdb.errors.server_error import ServerError
+from eventsourcingdb.handlers.read_event_types.event_type import EventType
 from .conftest import TestData
 from .shared.build_database import build_database
 from .shared.database import Database

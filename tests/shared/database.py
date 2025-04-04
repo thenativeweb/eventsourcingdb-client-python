@@ -1,7 +1,7 @@
 import uuid
 
-from eventsourcingdb_client_python.client import Client
-from eventsourcingdb_client_python.client_options import ClientOptions
+from eventsourcingdb.client import Client
+from eventsourcingdb.client_options import ClientOptions
 
 from .containerized_testing_database import ContainerizedTestingDatabase
 from .docker.image import Image

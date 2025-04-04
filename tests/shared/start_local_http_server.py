@@ -4,10 +4,10 @@ from multiprocessing import get_context
 import aiohttp
 from flask import Flask, Response, make_response
 
-from eventsourcingdb_client_python.client import Client
-from eventsourcingdb_client_python.client_options import ClientOptions
-from eventsourcingdb_client_python.util.retry.retry_with_backoff import retry_with_backoff
-from eventsourcingdb_client_python.util.retry.retry_result import Retry, Return, RetryResult
+from eventsourcingdb.client import Client
+from eventsourcingdb.client_options import ClientOptions
+from eventsourcingdb.util.retry.retry_with_backoff import retry_with_backoff
+from eventsourcingdb.util.retry.retry_result import Retry, Return, RetryResult
 
 from .util.get_random_available_port import get_random_available_port
 

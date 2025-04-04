@@ -21,16 +21,10 @@ jobs:
       with:
         fetch-depth: '0'
         token: ${{ secrets.TOKEN_GITHUB_TO_GITHUB_REPOSITORIES_RW }}
-    - name: Login to GitHub container registry
-      uses: docker/login-action@v2
-      with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
     - name: Use Python
       uses: actions/setup-python@v4
       with:
-        python-version: "3.10"
+        python-version: '3.13'
     - name: Install dependencies
       run: |
         pip install poetry

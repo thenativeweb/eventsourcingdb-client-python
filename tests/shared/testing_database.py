@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from eventsourcingdb_client_python.client import Client
+from eventsourcingdb.client import Client
 
 
 @dataclass

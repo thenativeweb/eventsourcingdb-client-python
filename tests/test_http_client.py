@@ -3,9 +3,9 @@ from collections.abc import Awaitable, Callable
 
 import pytest
 
-from eventsourcingdb_client_python.errors.client_error import ClientError
-from eventsourcingdb_client_python.errors.server_error import ServerError
-from eventsourcingdb_client_python.http_client.http_client import HttpClient
+from eventsourcingdb.errors.client_error import ClientError
+from eventsourcingdb.errors.server_error import ServerError
+from eventsourcingdb.http_client.http_client import HttpClient
 from .shared.start_local_http_server import \
     AttachHandler, \
     Response, \
