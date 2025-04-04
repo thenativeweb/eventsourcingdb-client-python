@@ -3,17 +3,17 @@ from http import HTTPStatus
 
 import pytest
 
-from eventsourcingdb_client_python.client import Client
-from eventsourcingdb_client_python.errors.client_error import ClientError
-from eventsourcingdb_client_python.errors.invalid_parameter_error import InvalidParameterError
-from eventsourcingdb_client_python.errors.server_error import ServerError
-from eventsourcingdb_client_python.handlers.lower_bound import LowerBound
-from eventsourcingdb_client_python.handlers.read_events import \
+from eventsourcingdb.client import Client
+from eventsourcingdb.errors.client_error import ClientError
+from eventsourcingdb.errors.invalid_parameter_error import InvalidParameterError
+from eventsourcingdb.errors.server_error import ServerError
+from eventsourcingdb.handlers.lower_bound import LowerBound
+from eventsourcingdb.handlers.read_events import \
     ReadEventsOptions, \
     ReadFromLatestEvent, \
     IfEventIsMissingDuringRead
-from eventsourcingdb_client_python.handlers.read_events.order import Order
-from eventsourcingdb_client_python.handlers.upper_bound import UpperBound
+from eventsourcingdb.handlers.read_events.order import Order
+from eventsourcingdb.handlers.upper_bound import UpperBound
 from .conftest import TestData
 
 from .shared.database import Database

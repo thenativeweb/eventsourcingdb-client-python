@@ -3,12 +3,12 @@ from http import HTTPStatus
 
 import pytest
 
-from eventsourcingdb_client_python.client import Client
-from eventsourcingdb_client_python.errors.client_error import ClientError
-from eventsourcingdb_client_python.errors.invalid_parameter_error import InvalidParameterError
-from eventsourcingdb_client_python.errors.server_error import ServerError
-from eventsourcingdb_client_python.handlers.lower_bound import LowerBound
-from eventsourcingdb_client_python.handlers.observe_events import \
+from eventsourcingdb.client import Client
+from eventsourcingdb.errors.client_error import ClientError
+from eventsourcingdb.errors.invalid_parameter_error import InvalidParameterError
+from eventsourcingdb.errors.server_error import ServerError
+from eventsourcingdb.handlers.lower_bound import LowerBound
+from eventsourcingdb.handlers.observe_events import \
     ObserveEventsOptions, \
     ObserveFromLatestEvent, \
     IfEventIsMissingDuringObserve

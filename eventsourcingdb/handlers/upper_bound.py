@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from eventsourcingdb_client_python.errors.invalid_parameter_error import InvalidParameterError
+from eventsourcingdb.errors.invalid_parameter_error import InvalidParameterError
 
 
 @dataclass
