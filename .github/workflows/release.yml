@@ -20,7 +20,7 @@ jobs:
       uses: actions/checkout@v3
       with:
         fetch-depth: '0'
-        token: ${{ secrets.TOKEN_GITHUB_TO_GITHUB_REPOSITORIES_RW }}
+        token: ${{ secrets.GITHUB_TOKEN }}
     - name: Use Python
       uses: actions/setup-python@v4
       with:
