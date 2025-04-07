@@ -265,7 +265,7 @@ class TestObserveEvents:
             ObserveEventsOptions(
                 recursive=True,
                 lower_bound=LowerBound(
-                    id=2,
+                    id='2',
                     type='inclusive'
                 )
             )
@@ -327,7 +327,7 @@ class TestObserveEvents:
                 ObserveEventsOptions(
                     recursive=True,
                     lower_bound=LowerBound(
-                        id=3,
+                        id='3',
                         type='excl'
                     ),
                     from_latest_event=ObserveFromLatestEvent(
@@ -351,7 +351,7 @@ class TestObserveEvents:
                 ObserveEventsOptions(
                     recursive=True,
                     lower_bound=LowerBound(
-                        id=-1,
+                        id=-'1',
                         type='inclusive'
                     ),
                 )
