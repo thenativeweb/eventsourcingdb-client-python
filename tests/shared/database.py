@@ -27,16 +27,16 @@ class Database:
     async def create(cls) -> 'Database':
         image = Image('eventsourcingdb', 'latest')
 
-        access_token = str(uuid.uuid4())
+        api_token = str(uuid.uuid4())
         with_authorization = await ContainerizedTestingDatabase.create(
             image,
-            ['run', '--api-token', f'{access_token}', '--data-directory-temporary'],
-            access_token,
+            ['run', '--api-token', f'{api_token}', '--data-directory-temporary'],
+            api_token,
             ClientOptions()
         )
 
         with_invalid_url_client = Client(
-            base_url='http://localhost.invalid', access_token=access_token
+            base_url='http://localhost.invalid', api_token=api_token
         )
         await with_invalid_url_client.initialize()
         with_invalid_url = TestingDatabase(

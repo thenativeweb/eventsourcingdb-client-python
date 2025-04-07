@@ -115,7 +115,7 @@ class HttpClient:
     def __get_post_request_headers(self) -> dict[str, str]:
         headers = {
             'X-EventSourcingDB-Protocol-Version': self.__client_configuration.protocol_version,
-            'Authorization': f'Bearer {self.__client_configuration.access_token}',
+            'Authorization': f'Bearer {self.__client_configuration.api_token}',
             'Content-Type': 'application/json'
         }
 
@@ -155,7 +155,7 @@ class HttpClient:
         }
 
         if with_authorization:
-            headers['Authorization'] = f'Bearer {self.__client_configuration.access_token}'
+            headers['Authorization'] = f'Bearer {self.__client_configuration.api_token}'
 
         return headers
 
