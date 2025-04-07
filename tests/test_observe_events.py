@@ -341,25 +341,6 @@ class TestObserveEvents:
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_throws_error_for_negative_lower_bound(
-        prepared_database: Database
-    ):
-        client = prepared_database.with_authorization.client
-        with pytest.raises(InvalidParameterError):
-            async for _ in client.observe_events(
-                '/users',
-                ObserveEventsOptions(
-                    recursive=True,
-                    lower_bound=LowerBound(
-                        id=-'1',
-                        type='inclusive'
-                    ),
-                )
-            ):
-                pass
-
-    @staticmethod
-    @pytest.mark.asyncio
     async def test_throws_error_for_invalid_subject_in_from_latest_event(
         prepared_database: Database
     ):

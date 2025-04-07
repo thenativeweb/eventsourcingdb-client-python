@@ -12,8 +12,8 @@ from .read_from_latest_event import ReadFromLatestEvent
 class ReadEventsOptions:
     recursive: bool
     order: Order | None = None
-    lower_bound: LowerBound | None = None  # Changed from str to LowerBound
-    upper_bound: UpperBound | None = None  # Changed from str to UpperBound
+    lower_bound: LowerBound | None = None
+    upper_bound: UpperBound | None = None
     from_latest_event: ReadFromLatestEvent | None = None
 
     def validate(self) -> None:
