@@ -1,3 +1,3 @@
 # eventsourcingdb
 
-The official Python client for EventSourcingDB.
+The official Python client SDK for EventSourcingDB.
