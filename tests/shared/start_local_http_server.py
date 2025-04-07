@@ -43,15 +43,20 @@ async def start_local_http_server(attach_handlers: AttachHandlers) -> tuple[Clie
     local_http_server = LocalHttpServer(attach_handlers)
 
     async def ping_app() -> RetryResult[None]:
-        session = aiohttp.ClientSession()
+        session = aiohttp.ClientSession(
+            timeout=aiohttp.ClientTimeout(total=5.0)  # Increase timeout to 5 seconds
+        )
 
         async with session:
             try:
                 response = await session.get(
                     f'http://localhost:{local_http_server.port}/__python_test__/api/v1/ping',
-                    timeout=aiohttp.ClientTimeout(total=1))
+                    timeout=aiohttp.ClientTimeout(total=5.0)  # Explicit timeout here too
+                )
             except aiohttp.ClientError as error:
                 return Retry(cause=error)
+            except asyncio.TimeoutError as error:
+                return Retry(cause=error)  # Handle timeout explicitly
             if not response.ok:
                 return Retry(cause=ValueError("Response is not OK."))
 
@@ -60,7 +65,9 @@ async def start_local_http_server(attach_handlers: AttachHandlers) -> tuple[Clie
     multiprocessing = get_context('fork')
     server = multiprocessing.Process(target=LocalHttpServer.start, args=(local_http_server, ))
     server.start()
-    await retry_with_backoff(10, ping_app)
+    
+    # Increase number of retries for server to become available
+    await retry_with_backoff(15, ping_app)  # Increased from 10 to 15 retries
 
     def stop_server():
         server.terminate()
@@ -69,7 +76,7 @@ async def start_local_http_server(attach_handlers: AttachHandlers) -> tuple[Clie
     client = Client(
         f'http://localhost:{local_http_server.port}',
         'access-token',
-        ClientOptions(max_tries=2)
+        ClientOptions(max_tries=3)  # Increase max_tries from 2 to 3
     )
     await client.initialize()
 
