@@ -3,7 +3,7 @@ from collections.abc import AsyncGenerator
 from http import HTTPStatus
 
 from ..is_heartbeat import is_heartbeat
-from ..is_item import is_item
+from ..is_event import is_event
 from ..is_stream_error import is_stream_error
 from ..parse_raw_message import parse_raw_message
 from ...abstract_base_client import AbstractBaseClient
@@ -23,6 +23,8 @@ from ...http_client.response import Response
 # for better readability. Even though it is not necessary,
 # it makes the return type clear without needing to read any
 # documentation or code.
+
+
 async def observe_events(
     client: AbstractBaseClient,
     subject: str,
@@ -50,7 +52,7 @@ async def observe_events(
     response: Response
     try:
         response = await client.http_client.post(
-            path='/api/observe-events',
+            path='/api/v1/observe-events',
             request_body=request_body,
         )
     except CustomError as custom_error:
@@ -73,8 +75,24 @@ async def observe_events(
             if is_stream_error(message):
                 raise ServerError(f'{message["payload"]["error"]}.')
 
-            if is_item(message):
-                event = Event.parse(message['payload']['event'])
+            if is_event(message):
+                event = Event.parse(message['payload'])
+                # Add client-side filtering by event ID
+                event_id = int(message['payload']['id'])
+
+                if options.lower_bound is not None:
+                    # For inclusive, include events with ID >= lower bound
+                    if (
+                        options.lower_bound.type == 'inclusive' and  # pylint: disable=R2004
+                        int(event_id) < int(options.lower_bound.id)
+                    ):
+                        continue
+                    # For exclusive, include events with ID > lower bound
+                    if (
+                        options.lower_bound.type == 'exclusive' and  # pylint: disable=R2004
+                        int(event_id) <= int(options.lower_bound.id)
+                    ):
+                        continue
 
                 yield StoreItem(event, message['payload']['hash'])
                 continue

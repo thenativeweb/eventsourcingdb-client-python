@@ -11,6 +11,8 @@ Self = TypeVar("Self", bound="Event")
 # due to its business context. Splitting it into smaller
 # methods would increase cognitive load and make the
 # code less readable.
+
+
 class Event(EventContext):
     def __init__(
         self,

@@ -49,7 +49,7 @@ class TestPingWithMockServer:
                 response.set_data('OK')
                 return response
 
-            attach_handler('/api/ping', 'GET', handle_ping)
+            attach_handler('/api/v1/ping', 'GET', handle_ping)
 
         client = await get_client(attach_handlers)
 
@@ -67,7 +67,7 @@ class TestPingWithMockServer:
                 response.set_data('not OK')
                 return response
 
-            attach_handler('/api/ping', 'GET', handle_ping)
+            attach_handler('/api/v1/ping', 'GET', handle_ping)
 
         client = await get_client(attach_handlers)
 

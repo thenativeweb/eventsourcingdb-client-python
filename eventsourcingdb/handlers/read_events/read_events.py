@@ -11,7 +11,7 @@ from ...errors.validation_error import ValidationError
 from ...event.event import Event
 from ...event.validate_subject import validate_subject
 from ...http_client.response import Response
-from ..is_item import is_item
+from ..is_event import is_event
 from ..is_stream_error import is_stream_error
 from ..parse_raw_message import parse_raw_message
 from ..store_item import StoreItem
@@ -22,6 +22,8 @@ from .read_events_options import ReadEventsOptions
 # for better readability. Even though it is not necessary,
 # it makes the return type clear without needing to read any
 # documentation or code.
+
+
 async def read_events(
     client: AbstractBaseClient,
     subject: str,
@@ -49,7 +51,7 @@ async def read_events(
     response: Response
     try:
         response = await client.http_client.post(
-            path='/api/read-events',
+            path='/api/v1/read-events',
             request_body=request_body,
         )
     except CustomError as custom_error:
@@ -69,8 +71,38 @@ async def read_events(
             if is_stream_error(message):
                 raise ServerError(f'{message["payload"]["error"]}.')
 
-            if is_item(message):
-                event = Event.parse(message['payload']['event'])
+            if is_event(message):
+                event = Event.parse(message['payload'])
+
+                event_id = int(message['payload']['id'])  # Access ID from raw payload
+
+                if options.lower_bound is not None:
+                    # For inclusive, include events with ID >= lower bound
+                    if (
+                        options.lower_bound.type == 'inclusive' and  # pylint: disable=R2004
+                        int(event_id) < int(options.lower_bound.id)
+                    ):
+                        continue
+                    # For exclusive, include events with ID > lower bound
+                    if (
+                        options.lower_bound.type == 'exclusive' and  # pylint: disable=R2004
+                        int(event_id) <= int(options.lower_bound.id)
+                    ):
+                        continue
+
+                if options.upper_bound is not None:
+                    # For inclusive, include events with ID <= upper bound
+                    if (
+                        options.upper_bound.type == 'inclusive' and  # pylint: disable=R2004
+                        int(event_id) > int(options.upper_bound.id)
+                    ):
+                        continue
+                    # For exclusive, include events with ID < upper bound
+                    if (
+                        options.upper_bound.type == 'exclusive' and  # pylint: disable=R2004
+                        int(event_id) >= int(options.upper_bound.id)
+                    ):
+                        continue
 
                 yield StoreItem(event, message['payload']['hash'])
                 continue
