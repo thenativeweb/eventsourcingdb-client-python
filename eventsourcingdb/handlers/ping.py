@@ -29,10 +29,6 @@ async def ping(client: AbstractBaseClient) -> None:
     except json.JSONDecodeError as exc:
         raise ServerError(f"Received unexpected response: {response_body}") from exc
 
-    # Check if it's a JSON with status field
-    if isinstance(response_json, dict) and response_json.get("status") == STATUS_OK:
-        return
-
     # Check if it's a CloudEvent format (has specversion, type fields)
     if (
         isinstance(response_json, dict)

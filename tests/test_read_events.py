@@ -228,7 +228,7 @@ class TestReadEvents:
             '/users',
             ReadEventsOptions(
                 recursive=True,
-                lower_bound=LowerBound(id=2, type='inclusive')
+                lower_bound=LowerBound(id='2', type='inclusive')
             )
         ):
             result.append(event)

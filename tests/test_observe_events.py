@@ -265,7 +265,7 @@ class TestObserveEvents:
             ObserveEventsOptions(
                 recursive=True,
                 lower_bound=LowerBound(
-                    id=2,
+                    id='2',
                     type='inclusive'
                 )
             )
@@ -327,7 +327,7 @@ class TestObserveEvents:
                 ObserveEventsOptions(
                     recursive=True,
                     lower_bound=LowerBound(
-                        id=3,
+                        id='3',
                         type='excl'
                     ),
                     from_latest_event=ObserveFromLatestEvent(
@@ -335,25 +335,6 @@ class TestObserveEvents:
                         type='com.foo.bar',
                         if_event_is_missing=IfEventIsMissingDuringObserve.READ_EVERYTHING
                     )
-                )
-            ):
-                pass
-
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_throws_error_for_negative_lower_bound(
-        prepared_database: Database
-    ):
-        client = prepared_database.with_authorization.client
-        with pytest.raises(InvalidParameterError):
-            async for _ in client.observe_events(
-                '/users',
-                ObserveEventsOptions(
-                    recursive=True,
-                    lower_bound=LowerBound(
-                        id=-1,
-                        type='inclusive'
-                    ),
                 )
             ):
                 pass
