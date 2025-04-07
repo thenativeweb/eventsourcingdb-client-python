@@ -5,7 +5,7 @@ build-backend = "poetry.core.masonry.api"
 [project]
 name = "eventsourcingdb"
 version = "0.9.0"
-description = "eventsourcingdb is the official client for EventSourcingDB."
+description = "The official Python client for EventSourcingDB."
 authors = [
 	{ name = "the native web GmbH", email = "hello@thenativeweb.io" }
 ]
