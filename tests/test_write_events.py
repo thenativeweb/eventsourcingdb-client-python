@@ -20,7 +20,13 @@ from .shared.start_local_http_server import \
     AttachHandlers
 
 
+# TODO:
+# 1. The client should bubble up the errors from the server.
+# 2. The client should write an event.
+# 3. The client should authenticate.
 class TestWriteSubjects:
+
+    # TODO: The client should throw an error if server not reachable.
     @staticmethod
     @pytest.mark.asyncio
     async def test_throws_an_error_if_server_is_not_reachable(
@@ -38,6 +44,7 @@ class TestWriteSubjects:
                 )
             ])
 
+    # TODO: The client should not throw an error. This should be handled by the server.
     @staticmethod
     @pytest.mark.asyncio
     async def test_throws_an_error_for_empty_event_candidates(
@@ -48,6 +55,8 @@ class TestWriteSubjects:
         with pytest.raises(InvalidParameterError):
             await client.write_events([])
 
+
+    # TODO: The server is throwing an error for this case, but the client should handle it.
     @staticmethod
     @pytest.mark.asyncio
     async def test_throws_an_error_for_malformed_subject(
@@ -65,6 +74,7 @@ class TestWriteSubjects:
                 )
             ])
 
+    # TODO: The server is throwing an error for malformed type. 
     @staticmethod
     @pytest.mark.asyncio
     async def test_throws_an_error_for_malformed_type(
@@ -82,6 +92,7 @@ class TestWriteSubjects:
                 )
             ])
 
+    # TODO: Client should test authorization. Independend of the implementation on the server side.
     @staticmethod
     @pytest.mark.asyncio
     async def test_supports_authorization(
@@ -98,6 +109,7 @@ class TestWriteSubjects:
             )
         ])
 
+    # TODO: Is this the right place for this test? From my point of view, this is a test for the server.
     @staticmethod
     @pytest.mark.asyncio
     async def test_is_pristine_precondition_works_for_new_subject(
@@ -115,6 +127,7 @@ class TestWriteSubjects:
             [IsSubjectPristinePrecondition('/')]
         )
 
+    # TODO: Is a test for the server. This is no client test.
     @staticmethod
     @pytest.mark.asyncio
     async def test_is_pristine_precondition_fails_for_existing_subject(
@@ -141,6 +154,7 @@ class TestWriteSubjects:
                 [IsSubjectPristinePrecondition('/')]
             )
 
+    # TODO: Is a test for the server. This is no client test.
     @staticmethod
     @pytest.mark.asyncio
     async def test_is_on_event_id_precondition_works_for_correct_id(
@@ -166,6 +180,7 @@ class TestWriteSubjects:
             [IsSubjectOnEventIdPrecondition('/', '0')]
         )
 
+    # TODO: Does the client need to check the event id? This is a server test.
     @staticmethod
     @pytest.mark.asyncio
     async def test_is_subject_on_event_id_fails_for_wrong_id(
@@ -216,7 +231,7 @@ class TestWriteSubjects:
                 ),
             ])
 
-
+# TODO: Client should tests errors in generell for certain scenaries.
 class TestWriteEventsWithMockServer:
     @staticmethod
     @pytest.mark.asyncio
