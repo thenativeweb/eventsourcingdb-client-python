@@ -12,18 +12,6 @@ updates:
   commit-message:
     prefix: chore
 
-- package-ecosystem: poetry
-  directory: "/"
-  schedule:
-    interval: weekly
-  open-pull-requests-limit: 10
-  assignees:
-  - thenativeweb/internal_dev
-  labels:
-  - Dependencies
-  commit-message:
-    prefix: chore
-
 - package-ecosystem: docker
   directory: "/tests/shared/docker/eventsourcingdb"
   schedule:
