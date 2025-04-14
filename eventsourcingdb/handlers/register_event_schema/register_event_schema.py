@@ -1,6 +1,6 @@
 import json
 from http import HTTPStatus
-from typing import Union, Dict, Any
+from typing import Any
 
 from ...abstract_base_client import AbstractBaseClient
 from ...errors.custom_error import CustomError
@@ -15,7 +15,7 @@ from ...http_client.response import Response
 async def register_event_schema(
     client: AbstractBaseClient,
     event_type: str,
-    json_schema: Union[str, Dict[str, Any]],
+    json_schema: str | dict[str, Any],
 ) -> None:
     try:
         validate_type(event_type)
@@ -25,7 +25,7 @@ async def register_event_schema(
         ) from validation_error
     except Exception as other_error:
         raise InternalError(str(other_error)) from other_error
-    
+
     # Handle both string and dictionary schema formats
     # If json_schema is a string, parse it to ensure it's valid JSON
     # If it's already a dict, use it directly

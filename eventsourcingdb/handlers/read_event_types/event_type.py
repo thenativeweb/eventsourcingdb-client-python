@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import TypeVar, Dict, Any, Union
+from typing import TypeVar, Any
 
 from ...errors.validation_error import ValidationError
 
@@ -10,7 +10,7 @@ Self = TypeVar("Self", bound="EventType")
 class EventType:
     event_type: str
     is_phantom: bool
-    schema: Union[str, Dict[str, Any], None] = None
+    schema: str | dict[str, Any] | None = None
 
     @staticmethod
     def parse(unknown_object: dict) -> Self:
