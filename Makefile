@@ -1,16 +1,19 @@
-qa: analyze test
-
 analyze:
 	@poetry run pylint eventsourcingdb tests
 
-format:
-	@poetry run autopep8 --in-place --aggressive --max-line-length=100 --recursive eventsourcingdb tests
-	
-test:
-	@poetry run pytest --maxfail=1
+build: qa clean
 
 clean:
 
-build: qa clean
+format:
+	@poetry run autopep8 --in-place --aggressive --max-line-length=100 --recursive eventsourcingdb tests
 
-.PHONY: analyze build clean format qa test
+lock:
+	@poetry lock
+
+qa: analyze test
+
+test:
+	@poetry run pytest --maxfail=1
+
+.PHONY: analyze build clean format lock qa test
