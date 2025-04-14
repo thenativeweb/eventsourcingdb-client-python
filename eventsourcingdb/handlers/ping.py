@@ -10,7 +10,7 @@ STATUS_OK = "ok"
 # CloudEvent field names
 SPECVERSION_FIELD = "specversion"
 TYPE_FIELD = "type"
-PING_RECEIVED_TYPE = "io.eventsourcingdb.ping-received"
+PING_RECEIVED_TYPE = "io.eventsourcingdb.api.ping-received"
 
 
 async def ping(client: AbstractBaseClient) -> None:
