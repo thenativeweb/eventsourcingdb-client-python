@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import TypeVar
+from typing import TypeVar, Dict, Any, Union
 
 from ...errors.validation_error import ValidationError
 
@@ -10,7 +10,7 @@ Self = TypeVar("Self", bound="EventType")
 class EventType:
     event_type: str
     is_phantom: bool
-    schema: str | None = None
+    schema: Union[str, Dict[str, Any], None] = None
 
     @staticmethod
     def parse(unknown_object: dict) -> Self:
@@ -27,16 +27,21 @@ class EventType:
             )
 
         schema = unknown_object.get('schema')
-        if schema is not None and not isinstance(schema, str):
+        if schema is not None and not isinstance(schema, (str, dict)):
             raise ValidationError(
-                f"Failed to parse schema '{schema}' to str."
+                f"Failed to parse schema '{schema}'. Schema must be either str or dict."
             )
 
         return EventType(
             event_type=event_type,
             is_phantom=is_phantom,
             schema=schema,
-        )
+        ) # type: ignore
 
     def __hash__(self):
+        # Convert dictionary schema to a hashable form (tuple of items)
+        if isinstance(self.schema, dict):
+            # Sort items to ensure consistent hashing
+            schema_items = tuple(sorted((k, str(v)) for k, v in self.schema.items()))
+            return hash((self.event_type, self.is_phantom, schema_items))
         return hash((self.event_type, self.is_phantom, self.schema))

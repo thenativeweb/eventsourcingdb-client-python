@@ -51,8 +51,14 @@ class TestReadEventTypes:
         ])
 
         # Use Python dictionaries instead of JSON strings
-        await client.register_event_schema("org.ban.ban", {"type": "object"})
-        await client.register_event_schema("org.bing.chilling", {"type": "object"})
+        await client.register_event_schema(
+            "org.ban.ban", 
+            {"type": "object"}
+        )
+        await client.register_event_schema(
+            "org.bing.chilling", 
+            {"type": "object"}
+        )
 
         actual_event_types: set[EventType] = set()
         async for event_type in client.read_event_types():
@@ -82,12 +88,12 @@ class TestReadEventTypes:
             EventType(
                 event_type="org.ban.ban",
                 is_phantom=True,
-                schema='{"type":"object"}',
+                schema={"type": "object"},
             ),
             EventType(
                 event_type="org.bing.chilling",
                 is_phantom=True,
-                schema='{"type":"object"}',
+                schema={"type": "object"},
             ),
         }
 
