@@ -15,7 +15,7 @@ class ReadEventsOptions:
     lower_bound: LowerBound | None = None
     upper_bound: UpperBound | None = None
     from_latest_event: ReadFromLatestEvent | None = None
-
+    # TODO: Done by the server. Catch only server error.
     def validate(self) -> None:
         # Update validation logic for new object types
         if self.lower_bound is not None and not isinstance(self.lower_bound, LowerBound):
@@ -56,22 +56,21 @@ class ReadEventsOptions:
         }
 
         if self.order is not None:
-            json['order'] = self.order.value
+            json['order'] = self.order.value # type: ignore
 
-        # Directly use the objects
         if self.lower_bound is not None:
-            json['lowerBound'] = {
+            json['lowerBound'] = { # type: ignore
                 'id': str(self.lower_bound.id),  # Ensure ID is a string
                 'type': self.lower_bound.type
             }
 
         if self.upper_bound is not None:
-            json['upperBound'] = {
+            json['upperBound'] = { # type: ignore
                 'id': str(self.upper_bound.id),  # Ensure ID is a string
                 'type': self.upper_bound.type
             }
 
         if self.from_latest_event is not None:
-            json['fromLatestEvent'] = self.from_latest_event.to_json()
+            json['fromLatestEvent'] = self.from_latest_event.to_json() # type: ignore
 
         return json

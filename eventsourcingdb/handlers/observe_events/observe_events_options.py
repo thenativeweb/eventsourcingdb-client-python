@@ -12,7 +12,7 @@ class ObserveEventsOptions:
     recursive: bool
     lower_bound: LowerBound | None = None
     from_latest_event: ObserveFromLatestEvent | None = None
-
+    # TODO: Done by the server. Catch only server error.
     def validate(self) -> None:
         if self.lower_bound is not None and not isinstance(self.lower_bound, LowerBound):
             raise ValidationError(

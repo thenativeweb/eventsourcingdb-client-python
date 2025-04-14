@@ -24,7 +24,7 @@ from ...event.validate_subject import validate_subject
 async def read_subjects(
     client: AbstractBaseClient,
     base_subject: str
-) -> AsyncGenerator[str, None, None]:
+) -> AsyncGenerator[str, None]:
     try:
         validate_subject(base_subject)
     except ValidationError as validation_error:

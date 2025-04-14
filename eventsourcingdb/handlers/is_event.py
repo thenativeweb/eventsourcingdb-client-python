@@ -9,11 +9,13 @@ def is_event(message: Any) -> bool:
         payload = message.get('payload')
         return isinstance(payload, dict) and isinstance(payload.get('hash'), str)
 
+    # TODO: no backward compatibility for the old format
     # Otherwise check for old format (just for backward compatibility)
     if not isinstance(message, dict):
         return False
 
     payload = message.get('payload')
+    # TODO: no backward compatbility for the old format
     return (
         isinstance(payload, dict)
         and isinstance(payload.get('event'), dict)

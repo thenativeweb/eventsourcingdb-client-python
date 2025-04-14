@@ -1,4 +1,4 @@
-from collections.abc import Generator
+from collections.abc import AsyncGenerator
 import json
 from http import HTTPStatus
 
@@ -28,7 +28,7 @@ async def read_events(
     client: AbstractBaseClient,
     subject: str,
     options: ReadEventsOptions
-) -> Generator[StoreItem, None, None]:
+) -> AsyncGenerator[StoreItem, None]:
     try:
         validate_subject(subject)
     except ValidationError as validation_error:
@@ -75,7 +75,7 @@ async def read_events(
                 event = Event.parse(message['payload'])
 
                 event_id = int(message['payload']['id'])  # Access ID from raw payload
-
+                # TODO: Done by the server. Catch only server error.
                 if options.lower_bound is not None:
                     # For inclusive, include events with ID >= lower bound
                     if (
@@ -89,7 +89,7 @@ async def read_events(
                         int(event_id) <= int(options.lower_bound.id)
                     ):
                         continue
-
+                # TODO: Done by the server. Catch only server error.
                 if options.upper_bound is not None:
                     # For inclusive, include events with ID <= upper bound
                     if (

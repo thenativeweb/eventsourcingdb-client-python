@@ -8,6 +8,7 @@ class LowerBound:
     id: str
     type: str
 
+    # TODO: validation done by server.
     def __post_init__(self):
         if self.type not in {'inclusive', 'exclusive'}:
             raise InvalidParameterError(

@@ -36,7 +36,7 @@ class EventType:
             event_type=event_type,
             is_phantom=is_phantom,
             schema=schema,
-        )
+        ) # type: ignore
 
     def __hash__(self):
         return hash((self.event_type, self.is_phantom, self.schema))
