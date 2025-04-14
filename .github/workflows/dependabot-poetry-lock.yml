@@ -1,0 +1,35 @@
+name: Update Poetry Lock file
+
+on:
+  pull_request:
+    paths:
+      - 'pyproject.toml'
+
+jobs:
+  update-poetry-lock:
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]'
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.head_ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: 1.5.1
+          
+      - name: Update poetry.lock
+        run: poetry lock --no-update
+        
+      - name: Commit and push changes
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "chore: update poetry.lock"
+          file_pattern: "poetry.lock"

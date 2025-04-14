@@ -11,6 +11,14 @@ updates:
   - Dependencies
   commit-message:
     prefix: chore
+  # Exclude poetry.lock to handle it manually
+  ignore:
+    - dependency-name: "*"
+      update-types: ["version-update:semver-patch"]
+  # Don't update lockfile automatically
+  versioning-strategy: increase
+  allow:
+    - dependency-type: "direct"
 
 - package-ecosystem: docker
   directory: "/tests/shared/docker/eventsourcingdb"

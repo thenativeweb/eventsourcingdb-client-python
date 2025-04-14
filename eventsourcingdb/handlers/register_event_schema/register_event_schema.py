@@ -15,7 +15,7 @@ from ...http_client.response import Response
 async def register_event_schema(
     client: AbstractBaseClient,
     event_type: str,
-    json_schema: str | dict[str, Any],
+    json_schema: dict[str, Any],
 ) -> None:
     try:
         validate_type(event_type)
@@ -26,21 +26,12 @@ async def register_event_schema(
     except Exception as other_error:
         raise InternalError(str(other_error)) from other_error
 
-    # Handle both string and dictionary schema formats
-    # If json_schema is a string, parse it to ensure it's valid JSON
-    # If it's already a dict, use it directly
+    # Convert string schema to dict if needed
     schema_obj = json_schema
-    if isinstance(json_schema, str):
-        try:
-            schema_obj = json.loads(json_schema)
-        except json.JSONDecodeError as json_error:
-            raise InvalidParameterError(
-                'json_schema', f'Invalid JSON schema: {str(json_error)}'
-            ) from json_error
 
     request_body = json.dumps({
         'eventType': event_type,
-        'schema': schema_obj,
+        'schema': schema_obj,  # Now always a Python object, not a JSON string
     })
 
     response: Response
