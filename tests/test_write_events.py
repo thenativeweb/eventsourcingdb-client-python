@@ -202,7 +202,7 @@ class TestWriteSubjects:
 
         await client.register_event_schema(
             "com.super.duper",
-            '{"type":"object","additionalProperties":false}'
+            {"type": "object", "additionalProperties": False}
         )
 
         with pytest.raises(ClientError, match="event candidate does not match schema"):
