@@ -1,5 +1,6 @@
 import json
 from http import HTTPStatus
+from typing import Any
 
 from ...abstract_base_client import AbstractBaseClient
 from ...errors.custom_error import CustomError
@@ -14,7 +15,7 @@ from ...http_client.response import Response
 async def register_event_schema(
     client: AbstractBaseClient,
     event_type: str,
-    json_schema: str,
+    json_schema: dict[str, Any],
 ) -> None:
     try:
         validate_type(event_type)
@@ -27,7 +28,7 @@ async def register_event_schema(
 
     request_body = json.dumps({
         'eventType': event_type,
-        'schema': json_schema,
+        'schema': json_schema, 
     })
 
     response: Response

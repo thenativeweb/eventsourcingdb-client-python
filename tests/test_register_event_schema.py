@@ -25,7 +25,10 @@ class TestRegisterEventSchema:
     ):
         client = database.with_authorization.client
 
-        await client.register_event_schema("com.bar.baz", '{"type":"object"}')
+        await client.register_event_schema(
+            "com.bar.baz", 
+            {"type": "object"}
+        )
 
     @staticmethod
     @pytest.mark.asyncio
@@ -48,7 +51,7 @@ class TestRegisterEventSchema:
         with pytest.raises(ClientError, match="additionalProperties"):
             await client.register_event_schema(
                 "com.gornisht.ekht",
-                '{"type":"object","additionalProperties":false}'
+                {"type": "object", "additionalProperties": False}
             )
 
     @staticmethod
@@ -60,13 +63,13 @@ class TestRegisterEventSchema:
 
         await client.register_event_schema(
             "com.gornisht.ekht",
-            '{"type":"object","additionalProperties":false}'
+            {"type": "object", "additionalProperties": False}
         )
 
         with pytest.raises(ClientError, match="schema already exists"):
             await client.register_event_schema(
                 "com.gornisht.ekht",
-                '{"type":"object","additionalProperties":false}'
+                {"type": "object", "additionalProperties": False}
             )
 
     @staticmethod
@@ -77,7 +80,7 @@ class TestRegisterEventSchema:
         client = database.with_authorization.client
 
         with pytest.raises(ClientError, match="'/type' does not validate"):
-            await client.register_event_schema("com.gornisht.ekht", '{"type":"gurkenwasser"}')
+            await client.register_event_schema("com.gornisht.ekht", {"type": "gurkenwasser"})
 
 
 class TestRegisterEventSchemaWithMockServer:
