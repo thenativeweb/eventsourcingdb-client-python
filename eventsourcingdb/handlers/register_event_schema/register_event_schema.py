@@ -26,12 +26,9 @@ async def register_event_schema(
     except Exception as other_error:
         raise InternalError(str(other_error)) from other_error
 
-    # Convert string schema to dict if needed
-    schema_obj = json_schema
-
     request_body = json.dumps({
         'eventType': event_type,
-        'schema': schema_obj,  # Now always a Python object, not a JSON string
+        'schema': json_schema, 
     })
 
     response: Response
