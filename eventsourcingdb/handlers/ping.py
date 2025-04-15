@@ -10,7 +10,7 @@ STATUS_OK = "ok"
 # CloudEvent field names
 SPECVERSION_FIELD = "specversion"
 TYPE_FIELD = "type"
-PING_RECEIVED_TYPE = "io.eventsourcingdb.ping-received"
+PING_RECEIVED_TYPE = "io.eventsourcingdb.api.ping-received"
 
 
 async def ping(client: AbstractBaseClient) -> None:
@@ -34,8 +34,9 @@ async def ping(client: AbstractBaseClient) -> None:
         isinstance(response_json, dict)
         and SPECVERSION_FIELD in response_json
         and TYPE_FIELD in response_json
+        and response_json.get(TYPE_FIELD) == PING_RECEIVED_TYPE
     ):
-        if response_json.get(TYPE_FIELD) == PING_RECEIVED_TYPE:
-            return
+        return
+
 
     raise ServerError(f"Received unexpected response: {response_body}")
