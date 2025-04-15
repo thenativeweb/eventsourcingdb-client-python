@@ -13,7 +13,7 @@ class EventType:
     schema: dict[str, Any] | None = None
 
     @staticmethod
-    def parse(unknown_object: dict) -> Self:
+    def parse(unknown_object: dict) -> "EventType":
         event_type = unknown_object.get('eventType')
         if not isinstance(event_type, str):
             raise ValidationError(
