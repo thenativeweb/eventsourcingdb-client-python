@@ -1,4 +1,6 @@
 from collections.abc import AsyncGenerator
+from types import TracebackType
+from typing import Optional, Type, TypeVar, AsyncIterator
 
 from .client_configuration import ClientConfiguration
 from .event.event_candidate import EventCandidate
@@ -16,34 +18,36 @@ from .handlers.store_item import StoreItem
 from .handlers.write_events import Precondition, write_events
 
 
-# pylint: disable=R6007
-# Reason: This class explicitly specifies the return type as None
-# for better readability. Even though it is not necessary,
-# it makes the return type clear without needing to read any
-# documentation or code.
-class Client():
+T = TypeVar('T')
+
+class Client:
     def __init__(
         self,
         base_url: str,
         api_token: str,
     ):
-        configuration = ClientConfiguration(
-            base_url=base_url,
-            api_token=api_token,
-        )
+        self.__http_client = HttpClient(base_url=base_url, api_token=api_token)
 
-        self.__http_client = HttpClient(configuration)
-
-    #TODO: is this necessary? __enter__, __exit__
-    async def initialize(self) -> None:
+    async def __aenter__(self):
         await self.__http_client.initialize()
+        return self
 
-     #TODO: is this necessary? magic method __enter__, __exit__
-    async def close(self) -> None:
+    async def __aexit__(
+        self, 
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType]
+    ) -> None:
         await self.__http_client.close()
 
-    @property
-    def http_client(self) -> HttpClient:
+    # Keeping these for backward compatibility and explicit resource management
+    """async def initialize(self) -> None:
+        await self.__http_client.initialize()
+
+    async def close(self) -> None:
+        await self.__http_client.close() # TODO: should we mix object orientation and functional programming?
+    """
+    def http_client(self) -> # TODO: should we mix object orientation and functional programming?tpClient:
         return self.__http_client
 
     # TODO: should we mix object orientation and functional programming?
@@ -89,9 +93,13 @@ class Client():
             return http.status(200);
         }
 """
-        async for event in read_events(self, subject, options):
-            yield event
-
+        """Read events with proper cancellation support."""
+        generator = read_events(self, subject, options)
+        try:
+            async for item in generator:
+                yield item
+        finally:
+            await generator.aclose()
     # TODO: run eventql query
     async def run_eventql_query(self, query: str) -> AsyncGenerator[Event, None]:
         """
@@ -106,26 +114,42 @@ class Client():
         """
         TODO: the same issue like read_events. contextmanager
         """
-        async for event in observe_events(self, subject, options):
-            yield event
+    async def observe_events(
+        self,
+        subject: str,
+        options: ObserveEventsOptions
+    ) -> AsyncGenerator[StoreItem, None]:
+        generator = observe_events(self, subject, options)
+        try:
+            async for item in generator:
+                yield item
+        finally:
+            await generator.aclose()
 
-    async def register_event_schema(self, event_type: str, json_schema: str) -> None: # TODO: no json_schema is dict no string anymore
-        # no context manager liek read_events
+    async def register_event_schema(self, event_type: str, json_schema: dict) -> None:
+        # Updated type hint to reflect it should be a dict
         await register_event_schema(self, event_type, json_schema)
 
     async def read_subjects(
         self,
         base_subject: str
     ) -> AsyncGenerator[str, None]:
-        # TODO: the same issue like read_events. contextmanager
-        async for subject in read_subjects(self, base_subject):
-            yield subject
-
+        """Read subjects with proper cancellation support."""
+        generator = read_subjects(self, base_subject)
+        try:
+            async for item in generator:
+                yield item
+        finally:
+            await generator.aclose()
     
     async def read_event_types(self) -> AsyncGenerator[EventType, None]:
-        # TODO: the same issue like read_events. contextmanager
-        async for event_type in read_event_types(self):
-            yield event_type
+        """Read event types with proper cancellation support."""
+        generator = read_event_types(self)
+        try:
+            async for item in generator:
+                yield item
+        finally:
+            await generator.aclose()
 
 
 
