@@ -10,9 +10,9 @@ from .observe_from_latest_event import ObserveFromLatestEvent
 @dataclass
 class ObserveEventsOptions:
     recursive: bool
-    lower_bound: LowerBound | None = None
+    lower_bound: LowerBound | None = None # TODO: LowerBound to Bound
     from_latest_event: ObserveFromLatestEvent | None = None
-    # TODO: Done by the server. Catch only server error.
+    # TODO: can be removed
     def validate(self) -> None:
         if self.lower_bound is not None and not isinstance(self.lower_bound, LowerBound):
             raise ValidationError(

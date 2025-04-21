@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import TypeVar, Generic
 
+# TODO: Can be removed
 DataT = TypeVar('DataT')
 
 

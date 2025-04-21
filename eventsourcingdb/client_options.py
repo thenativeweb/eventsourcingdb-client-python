@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-
+# TODO: Can be removed
 @dataclass
 class ClientOptions:
     timeout_seconds: int = 10

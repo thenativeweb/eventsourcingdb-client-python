@@ -1,6 +1,7 @@
 from ...errors.custom_error import CustomError
 
 
+# TODO: Can be removed
 class RetryError(CustomError):
     def __init__(self):
         self.__errors = []

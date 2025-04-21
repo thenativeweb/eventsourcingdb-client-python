@@ -7,6 +7,7 @@ from .retry_result import RetryResult, Return
 from ..get_randomized_duration import get_randomized_duration
 
 
+# TODO: Can be removed
 ReturnT = TypeVar('ReturnT')
 
 

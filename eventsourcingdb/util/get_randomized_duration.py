@@ -1,6 +1,7 @@
 import random
 
 
+# TODO: Can be MAYBE removed. Have to be checked
 def get_randomized_duration(
     duration_milliseconds: int,
     deviation_milliseconds: int

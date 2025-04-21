@@ -10,7 +10,7 @@ Self = TypeVar("Self", bound="EventType")
 class EventType:
     event_type: str
     is_phantom: bool
-    schema: str | None = None
+    schema: str | None = None # TODO: schema is dict.
 
     @staticmethod
     def parse(unknown_object: dict) -> Self:

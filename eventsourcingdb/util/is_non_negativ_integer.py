@@ -1,3 +1,5 @@
+
+# TODO: Can be MAYBE removed. Have to be checked
 def is_non_negative_integer(value: str) -> bool:
     value_as_int: int
     try:
