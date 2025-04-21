@@ -1,7 +1,6 @@
 import uuid
 
 from eventsourcingdb.client import Client
-from eventsourcingdb.client_options import ClientOptions
 
 from .containerized_testing_database import ContainerizedTestingDatabase
 from .docker.image import Image
@@ -32,7 +31,6 @@ class Database:
             image,
             ['run', '--api-token', f'{api_token}', '--data-directory-temporary'],
             api_token,
-            ClientOptions()
         )
 
         with_invalid_url_client = Client(

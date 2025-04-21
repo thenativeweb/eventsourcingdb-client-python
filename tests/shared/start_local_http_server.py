@@ -6,7 +6,6 @@ import aiohttp
 from flask import Flask, Response, make_response
 
 from eventsourcingdb.client import Client
-from eventsourcingdb.client_options import ClientOptions
 from eventsourcingdb.util.retry.retry_with_backoff import retry_with_backoff
 from eventsourcingdb.util.retry.retry_result import Retry, Return, RetryResult
 
@@ -77,7 +76,6 @@ async def start_local_http_server(attach_handlers: AttachHandlers) -> tuple[Clie
     client = Client(
         f'http://localhost:{local_http_server.port}',
         'access-token',
-        ClientOptions(max_tries=3)  # Increase max_tries from 2 to 3
     )
     await client.initialize()
 

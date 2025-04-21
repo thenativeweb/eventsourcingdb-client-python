@@ -1,5 +1,4 @@
 from eventsourcingdb.client import Client
-from eventsourcingdb.client_options import ClientOptions
 
 from .docker.container import Container
 from .docker.image import Image
@@ -27,13 +26,12 @@ class ContainerizedTestingDatabase:
         image: Image,
         command: [str],
         api_token: str,
-        options: ClientOptions = ClientOptions(),
     ) -> 'ContainerizedTestingDatabase':
         command.extend(['--http-enabled', '--https-enabled=false'])
         container = image.run(command, True, True)
         exposed_port = container.get_exposed_port(3_000)
         base_url = f'http://127.0.0.1:{exposed_port}'
-        client = Client(base_url, api_token=api_token, options=options)
+        client = Client(base_url, api_token=api_token)
         await client.initialize()
 
         await client.ping()
