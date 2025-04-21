@@ -1,7 +1,7 @@
 from http import HTTPStatus
 import json
 
-from ...abstract_base_client import AbstractBaseClient
+from ...client import Client
 from ...errors.custom_error import CustomError
 from ...errors.internal_error import InternalError
 from ...errors.invalid_parameter_error import InvalidParameterError
@@ -14,7 +14,7 @@ from .preconditions import Precondition
 
 
 async def write_events(
-    client: AbstractBaseClient,
+    client: Client,
     event_candidates: list[EventCandidate],
     preconditions: list[Precondition]
 ) -> list[EventContext]:

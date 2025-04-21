@@ -6,7 +6,7 @@ from ..is_heartbeat import is_heartbeat
 from ..is_event import is_event
 from ..is_stream_error import is_stream_error
 from ..parse_raw_message import parse_raw_message
-from ...abstract_base_client import AbstractBaseClient
+from ...client import Client
 from ...errors.custom_error import CustomError
 from ...errors.internal_error import InternalError
 from ...errors.invalid_parameter_error import InvalidParameterError
@@ -26,7 +26,7 @@ from ...http_client.response import Response
 
 
 async def observe_events(
-    client: AbstractBaseClient,
+    client: Client,
     subject: str,
     options: ObserveEventsOptions
 ) -> AsyncGenerator[StoreItem, None]:

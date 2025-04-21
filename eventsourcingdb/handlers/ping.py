@@ -1,6 +1,6 @@
 from http import HTTPStatus
 import json
-from ..abstract_base_client import AbstractBaseClient
+from ..client import Client
 from ..errors.server_error import ServerError
 
 # Define constants for response values
@@ -13,7 +13,7 @@ TYPE_FIELD = "type"
 PING_RECEIVED_TYPE = "io.eventsourcingdb.api.ping-received"
 
 
-async def ping(client: AbstractBaseClient) -> None:
+async def ping(client: Client) -> None:
     response = await client.http_client.get("/api/v1/ping")
     response_body = bytes.decode(await response.body.read(), encoding="utf-8")
 

@@ -2,7 +2,7 @@ from collections.abc import Generator
 import json
 from http import HTTPStatus
 
-from ...abstract_base_client import AbstractBaseClient
+from ...client import Client
 from ...errors.custom_error import CustomError
 from ...errors.internal_error import InternalError
 from ...errors.invalid_parameter_error import InvalidParameterError
@@ -25,7 +25,7 @@ from .read_events_options import ReadEventsOptions
 
 
 async def read_events(
-    client: AbstractBaseClient,
+    client: Client,
     subject: str,
     options: ReadEventsOptions
 ) -> Generator[StoreItem, None, None]:

@@ -1,6 +1,5 @@
 from collections.abc import AsyncGenerator
 
-from .abstract_base_client import AbstractBaseClient
 from .client_configuration import ClientConfiguration
 from .client_options import ClientOptions
 from .event.event_candidate import EventCandidate
@@ -23,7 +22,7 @@ from .handlers.write_events import Precondition, write_events
 # for better readability. Even though it is not necessary,
 # it makes the return type clear without needing to read any
 # documentation or code.
-class Client(AbstractBaseClient):
+class Client():
     def __init__(
         self,
         base_url: str,

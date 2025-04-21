@@ -2,7 +2,7 @@ from collections.abc import AsyncGenerator
 import json
 from http import HTTPStatus
 
-from ...abstract_base_client import AbstractBaseClient
+from ...client import Client
 from ...errors.custom_error import CustomError
 from ...errors.internal_error import InternalError
 from ...errors.invalid_parameter_error import InvalidParameterError
@@ -22,7 +22,7 @@ from ...event.validate_subject import validate_subject
 
 
 async def read_subjects(
-    client: AbstractBaseClient,
+    client: Client,
     base_subject: str
 ) -> AsyncGenerator[str, None, None]:
     try:
