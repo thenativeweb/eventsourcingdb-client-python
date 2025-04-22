@@ -1,4 +1,5 @@
 import asyncio
+import time
 from collections.abc import Callable
 from multiprocessing import get_context
 
@@ -39,24 +40,38 @@ class LocalHttpServer():
 async def start_local_http_server(attach_handlers: AttachHandlers) -> tuple[Client, StopServer]:
     local_http_server = LocalHttpServer(attach_handlers)
 
-    async def ping_app():
-        session = aiohttp.ClientSession(
-            timeout=aiohttp.ClientTimeout(total=5.0)  # Increase timeout to 5 seconds
-        )
-
-        async with session:
-            await session.get(
-                f'http://localhost:{local_http_server.port}/__python_test__/api/v1/ping',
-                timeout=aiohttp.ClientTimeout(total=5.0)  # Explicit timeout here too
-            )
-
-
     multiprocessing = get_context('fork')
     server = multiprocessing.Process(target=LocalHttpServer.start, args=(local_http_server, ))
     server.start()
 
-    # Increase number of retries for server to become available
-    await ping_app()
+    # Warte auf den Server, bis er bereit ist
+    async def ping_app():
+        retry_count = 0
+        max_retries = 5
+        retry_delay = 0.5
+        
+        async with aiohttp.ClientSession() as session:
+            while retry_count < max_retries:
+                try:
+                    await session.get(
+                        f"http://localhost:{local_http_server.port}/__python_test__/api/v1/ping", 
+                        timeout=2
+                    )
+                    # Wenn die Anfrage erfolgreich ist, brechen wir die Schleife ab
+                    return True
+                except (aiohttp.ClientError, asyncio.TimeoutError):
+                    retry_count += 1
+                    await asyncio.sleep(retry_delay)
+            
+            # Wenn alle Versuche fehlschlagen, geben wir False zurück
+            return False
+
+    # Versuche, den Server zu erreichen
+    server_ready = await ping_app()
+    if not server_ready:
+        server.terminate()
+        server.join()
+        raise RuntimeError(f"Failed to start HTTP server on port {local_http_server.port}")
 
     def stop_server():
         server.terminate()
