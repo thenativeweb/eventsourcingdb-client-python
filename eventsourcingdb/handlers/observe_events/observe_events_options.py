@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from ..lower_bound import LowerBound
+from ..bound import Bound
 from ...errors.validation_error import ValidationError
 from ...event.validate_subject import validate_subject
 from ...event.validate_type import validate_type
@@ -10,13 +10,13 @@ from .observe_from_latest_event import ObserveFromLatestEvent
 @dataclass
 class ObserveEventsOptions:
     recursive: bool
-    lower_bound: LowerBound | None = None
+    lower_bound: Bound | None = None
     from_latest_event: ObserveFromLatestEvent | None = None
 
     def validate(self) -> None:
-        if self.lower_bound is not None and not isinstance(self.lower_bound, LowerBound):
+        if self.lower_bound is not None and not isinstance(self.lower_bound, Bound):
             raise ValidationError(
-                'ObserveEventsOptions are invalid: lower_bound must be a LowerBound object.'
+                'ObserveEventsOptions are invalid: lower_bound must be a Bound object.'
             )
 
         if self.from_latest_event is not None:
@@ -43,18 +43,18 @@ class ObserveEventsOptions:
                 ) from validation_error
 
     def to_json(self):
-        json = {
+        result = {
             'recursive': self.recursive
         }
 
         # Directly use the object
         if self.lower_bound is not None:
-            json['lowerBound'] = {
+            result['lowerBound'] = {
                 'id': str(self.lower_bound.id),  # Ensure ID is a string
                 'type': self.lower_bound.type
             }
 
         if self.from_latest_event is not None:
-            json['fromLatestEvent'] = self.from_latest_event.to_json()
+            result['fromLatestEvent'] = self.from_latest_event.to_json()
 
-        return json
+        return result

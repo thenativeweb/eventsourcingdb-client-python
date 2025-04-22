@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import TypeVar
+from typing import Any, TypeVar
 
 from ..errors.internal_error import InternalError
 from ..errors.validation_error import ValidationError
@@ -20,11 +20,11 @@ class EventContext:
     time: datetime
     data_content_type: str
     predecessor_hash: str
-    trace_parent: str = None
-    trace_state: str = None
+    trace_parent: str | None  = None
+    trace_state: str | None  = None
 
     @staticmethod
-    def parse(unknown_object: dict) -> Self:
+    def parse(unknown_object: dict) -> "EventContext":
         source = unknown_object.get('source')
         if not isinstance(source, str):
             raise ValidationError(
@@ -100,7 +100,7 @@ class EventContext:
             trace_state=trace_state,
         )
 
-    def to_json(self):
+    def to_json(self) -> dict[Any, Any]:
         json = {
             'specversion': self.spec_version,
             'id': self.event_id,

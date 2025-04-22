@@ -7,7 +7,7 @@ from eventsourcingdb.client import Client
 from eventsourcingdb.errors.client_error import ClientError
 from eventsourcingdb.errors.invalid_parameter_error import InvalidParameterError
 from eventsourcingdb.errors.server_error import ServerError
-from eventsourcingdb.handlers.lower_bound import LowerBound
+from eventsourcingdb.handlers.bound import Bound, BoundType
 from eventsourcingdb.handlers.observe_events import \
     ObserveEventsOptions, \
     ObserveFromLatestEvent, \
@@ -264,9 +264,9 @@ class TestObserveEvents:
             '/users',
             ObserveEventsOptions(
                 recursive=True,
-                lower_bound=LowerBound(
+                lower_bound=Bound(
                     id='2',
-                    type='inclusive'
+                    type=BoundType.INCLUSIVE
                 )
             )
         ):
@@ -326,9 +326,9 @@ class TestObserveEvents:
                 '/users',
                 ObserveEventsOptions(
                     recursive=True,
-                    lower_bound=LowerBound(
+                    lower_bound=Bound(
                         id='3',
-                        type='excl'
+                        type=BoundType.EXCLUSIVE
                     ),
                     from_latest_event=ObserveFromLatestEvent(
                         subject='/',

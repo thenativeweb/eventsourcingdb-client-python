@@ -2,7 +2,7 @@
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
-[project]
+[project] 
 name = "eventsourcingdb"
 version = "0.10.1"
 description = "The official Python client SDK for EventSourcingDB."

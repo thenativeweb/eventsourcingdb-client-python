@@ -6,12 +6,6 @@ from .event_context import EventContext
 
 Self = TypeVar("Self", bound="Event")
 
-# pylint: disable=R0917
-# Reason: This class is expected to have many parameters
-# due to its business context. Splitting it into smaller
-# methods would increase cognitive load and make the
-# code less readable.
-
 
 class Event(EventContext):
     def __init__(
@@ -25,8 +19,8 @@ class Event(EventContext):
         time: datetime,
         data_content_type: str,
         predecessor_hash: str,
-        trace_parent: str = None,
-        trace_state: str = None
+        trace_parent: str | None = None,
+        trace_state: str | None  = None
     ):
         super().__init__(
             source,
@@ -43,7 +37,7 @@ class Event(EventContext):
         self.data = data
 
     @staticmethod
-    def parse(unknown_object: dict) -> Self:
+    def parse(unknown_object: dict) -> "Event":
         event_context = super(Event, Event).parse(unknown_object)
 
         data = unknown_object.get('data')

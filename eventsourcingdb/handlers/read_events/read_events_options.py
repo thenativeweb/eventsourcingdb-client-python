@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 
-from ..lower_bound import LowerBound
-from ..upper_bound import UpperBound
+from ..bound import Bound
 from .order import Order
 from ...errors.validation_error import ValidationError
 from ...event.validate_subject import validate_subject
@@ -12,20 +11,20 @@ from .read_from_latest_event import ReadFromLatestEvent
 class ReadEventsOptions:
     recursive: bool
     order: Order | None = None
-    lower_bound: LowerBound | None = None
-    upper_bound: UpperBound | None = None
+    lower_bound: Bound | None = None
+    upper_bound: Bound | None = None
     from_latest_event: ReadFromLatestEvent | None = None
 
     def validate(self) -> None:
         # Update validation logic for new object types
-        if self.lower_bound is not None and not isinstance(self.lower_bound, LowerBound):
+        if self.lower_bound is not None and not isinstance(self.lower_bound, Bound):
             raise ValidationError(
-                'ReadEventOptions are invalid: lower_bound must be a LowerBound object.'
+                'ReadEventOptions are invalid: lower_bound must be a Bound object.'
             )
 
-        if self.upper_bound is not None and not isinstance(self.upper_bound, UpperBound):
+        if self.upper_bound is not None and not isinstance(self.upper_bound, Bound):
             raise ValidationError(
-                'ReadEventOptions are invalid: upper_bound must be a UpperBound object.'
+                'ReadEventOptions are invalid: upper_bound must be a Bound object.'
             )
 
         if self.from_latest_event is not None:

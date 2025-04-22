@@ -5,7 +5,7 @@ from .event_type import EventType
 from .is_event_type import is_event_type
 from ..is_stream_error import is_stream_error
 from ..parse_raw_message import parse_raw_message
-from ...client import Client
+from ...abstract_base_client import AbstractBaseClient
 from ...errors.custom_error import CustomError
 from ...errors.internal_error import InternalError
 from ...errors.server_error import ServerError
@@ -20,7 +20,7 @@ from ...http_client.response import Response
 
 
 async def read_event_types(
-    client: Client,
+    client: AbstractBaseClient,
 ) -> AsyncGenerator[EventType, None]:
     response: Response
     try:

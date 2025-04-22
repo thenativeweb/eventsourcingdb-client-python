@@ -1,8 +1,9 @@
 from collections.abc import Generator
 import json
 from http import HTTPStatus
+from typing import AsyncGenerator
 
-from ...client import Client
+from ...abstract_base_client import AbstractBaseClient
 from ...errors.custom_error import CustomError
 from ...errors.internal_error import InternalError
 from ...errors.invalid_parameter_error import InvalidParameterError
@@ -14,21 +15,14 @@ from ...http_client.response import Response
 from ..is_event import is_event
 from ..is_stream_error import is_stream_error
 from ..parse_raw_message import parse_raw_message
-from ..store_item import StoreItem
 from .read_events_options import ReadEventsOptions
-
-# pylint: disable=R6007
-# Reason: This method explicitly specifies the return type as None
-# for better readability. Even though it is not necessary,
-# it makes the return type clear without needing to read any
-# documentation or code.
 
 
 async def read_events(
-    client: Client,
+    client: AbstractBaseClient,
     subject: str,
     options: ReadEventsOptions
-) -> Generator[StoreItem, None, None]:
+) -> AsyncGenerator[Event, None]:
     try:
         validate_subject(subject)
     except ValidationError as validation_error:
@@ -104,7 +98,7 @@ async def read_events(
                     ):
                         continue
 
-                yield StoreItem(event, message['payload']['hash'])
+                yield event
                 continue
 
             raise ServerError(

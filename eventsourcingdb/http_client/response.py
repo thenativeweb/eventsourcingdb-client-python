@@ -1,9 +1,8 @@
-import asyncio
 from collections.abc import Mapping
 from http import HTTPStatus
 
 import aiohttp
-from aiohttp import streams as aiohttp_streams
+from aiohttp import StreamReader
 
 Headers = Mapping[str, str]
 
@@ -18,6 +17,12 @@ class Response:
     def __aexit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
     def close(self):
         self.__response.close()
 
@@ -28,6 +33,7 @@ class Response:
     @property
     def headers(self) -> Headers:
         return self.__response.headers
+
     @property
-    def body(self) -> aiohttp_streams.StreamReader:
+    def body(self) -> StreamReader:
         return self.__response.content

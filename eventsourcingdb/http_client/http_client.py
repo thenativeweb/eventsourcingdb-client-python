@@ -51,6 +51,7 @@ class HttpClient:
         if self.__session is not None:
             await self.__session.close()
             self.__session = None
+        return None 
 
     async def __execute_request(
         self,

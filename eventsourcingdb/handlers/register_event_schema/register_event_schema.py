@@ -2,7 +2,7 @@ import json
 from http import HTTPStatus
 from typing import Any
 
-from ...client import Client
+from ...client import AbstractBaseClient
 from ...errors.custom_error import CustomError
 from ...errors.internal_error import InternalError
 from ...errors.invalid_parameter_error import InvalidParameterError
@@ -13,7 +13,7 @@ from ...http_client.response import Response
 
 
 async def register_event_schema(
-    client: Client,
+    client: AbstractBaseClient,
     event_type: str,
     json_schema: dict[str, Any],
 ) -> None:

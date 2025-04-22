@@ -7,13 +7,13 @@ from eventsourcingdb.client import Client
 from eventsourcingdb.errors.client_error import ClientError
 from eventsourcingdb.errors.invalid_parameter_error import InvalidParameterError
 from eventsourcingdb.errors.server_error import ServerError
-from eventsourcingdb.handlers.lower_bound import LowerBound
+from eventsourcingdb.handlers.bound import Bound, BoundType
 from eventsourcingdb.handlers.read_events import \
     ReadEventsOptions, \
     ReadFromLatestEvent, \
     IfEventIsMissingDuringRead
 from eventsourcingdb.handlers.read_events.order import Order
-from eventsourcingdb.handlers.upper_bound import UpperBound
+from eventsourcingdb.handlers.bound import Bound
 from .conftest import TestData
 
 from .shared.database import Database
@@ -228,7 +228,7 @@ class TestReadEvents:
             '/users',
             ReadEventsOptions(
                 recursive=True,
-                lower_bound=LowerBound(id='2', type='inclusive')
+                lower_bound=Bound(id='2', type=BoundType.INCLUSIVE)
             )
         ):
             result.append(event)
@@ -267,7 +267,7 @@ class TestReadEvents:
             '/users',
             ReadEventsOptions(
                 recursive=True,
-                upper_bound=UpperBound(id=2, type='exclusive')
+                upper_bound=Bound(id='2', type=BoundType.EXCLUSIVE)
             )
         ):
             result.append(event)
@@ -310,7 +310,7 @@ class TestReadEvents:
                         type='com.foo.bar',
                         if_event_is_missing=IfEventIsMissingDuringRead.READ_EVERYTHING
                     ),
-                    lower_bound=LowerBound(id='0', type='exclusive'),
+                    lower_bound=Bound(id='0', type=BoundType.INCLUSIVE),
                 )
             ):
                 pass
@@ -343,7 +343,7 @@ class TestReadEvents:
                 '/',
                 ReadEventsOptions(
                     recursive=True,
-                    lower_bound=LowerBound(id='hello', type='inclusive')
+                    lower_bound=Bound(id='hello', type=BoundType.INCLUSIVE)
                 )
             ):
                 pass
@@ -360,7 +360,7 @@ class TestReadEvents:
                 '/',
                 ReadEventsOptions(
                     recursive=True,
-                    lower_bound=LowerBound(id='-1', type='inclusive')
+                    lower_bound=Bound(id='-1', type=BoundType.INCLUSIVE)
                 )
             ):
                 pass
@@ -377,7 +377,7 @@ class TestReadEvents:
                 '/',
                 ReadEventsOptions(
                     recursive=True,
-                    upper_bound=UpperBound(id='hello', type='exclusive')
+                    upper_bound=Bound(id='hello', type=BoundType.INCLUSIVE)
                 )
             ):
                 pass
@@ -394,7 +394,7 @@ class TestReadEvents:
                 '/',
                 ReadEventsOptions(
                     recursive=True,
-                    upper_bound=UpperBound(id='-1', type='exclusive')
+                    upper_bound=Bound(id='-1', type=BoundType.EXCLUSIVE)
                 )
             ):
                 pass
