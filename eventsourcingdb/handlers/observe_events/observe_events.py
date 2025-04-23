@@ -10,11 +10,8 @@ from ..is_stream_error import is_stream_error
 from ..parse_raw_message import parse_raw_message
 from ...errors.custom_error import CustomError
 from ...errors.internal_error import InternalError
-from ...errors.invalid_parameter_error import InvalidParameterError
 from ...errors.server_error import ServerError
-from ...errors.validation_error import ValidationError
 from ...event.event import Event
-from ...event.validate_subject import validate_subject
 from .observe_events_options import ObserveEventsOptions
 from ...http_client.response import Response
 
@@ -24,20 +21,6 @@ async def observe_events(
     subject: str,
     options: ObserveEventsOptions
 ) -> AsyncGenerator[Event, None]:
-    """try:
-        validate_subject(subject)
-    except ValidationError as validation_error:
-        raise InvalidParameterError('subject', str(validation_error)) from validation_error
-    except Exception as other_error:
-        raise InternalError(str(other_error)) from other_error
-
-    try:
-        options.validate()
-    except ValidationError as validation_error:
-        raise InvalidParameterError('options', str(validation_error)) from validation_error
-    except Exception as other_error:
-        raise InternalError(str(other_error)) from other_error
-"""
     request_body = json.dumps({
         'subject': subject,
         'options': options.to_json()

@@ -1,11 +1,9 @@
 from collections.abc import AsyncGenerator
 from types import TracebackType
-from typing import Optional, Type, TypeVar, AsyncIterator
-from eventsourcingdb.json_encoder import EventSourcingDBJSONEncoder
+from typing import Optional, Type, TypeVar
 
 from eventsourcingdb.abstract_base_client import AbstractBaseClient
 
-from .client_configuration import ClientConfiguration
 from .event.event import Event
 from .event.event_candidate import EventCandidate
 from .event.event_context import EventContext

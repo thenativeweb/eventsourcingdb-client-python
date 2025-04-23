@@ -48,7 +48,6 @@ class ObserveEventsOptions:
             'recursive': self.recursive,
         }
 
-        # Directly use the object
         if self.lower_bound is not None:
             result['lowerBound'] = self.lower_bound.to_json()
 
