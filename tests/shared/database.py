@@ -1,11 +1,7 @@
 import uuid
-
 from eventsourcingdb.client import Client
-
-from .containerized_testing_database import ContainerizedTestingDatabase
-from .docker.image import Image
+from eventsourcingdb.container import Container
 from .testing_database import TestingDatabase
-
 
 class Database:
     __create_key = object()
@@ -13,28 +9,37 @@ class Database:
     def __init__(
         self,
         create_key,
-        with_authorization: ContainerizedTestingDatabase,
+        with_authorization: TestingDatabase,
         with_invalid_url: TestingDatabase
     ):
         assert create_key == Database.__create_key, \
             'Database objects must be created using Database.create.'
 
-        self.with_authorization: ContainerizedTestingDatabase = with_authorization
+        self.with_authorization: TestingDatabase = with_authorization
         self.with_invalid_url: TestingDatabase = with_invalid_url
 
     @classmethod
     async def create(cls) -> 'Database':
-        image = Image('eventsourcingdb', 'latest')
-
         api_token = str(uuid.uuid4())
-        with_authorization = await ContainerizedTestingDatabase.create(
-            image,
-            ['run', '--api-token', f'{api_token}', '--data-directory-temporary'],
-            api_token,
+        
+        # Erstellen und Starten des Containers mit der zentralen Container-Klasse
+        container = Container(
+            api_token=api_token
+        )
+        container.start()
+        
+        # Client mit Autorisierung erstellen
+        with_authorization_client = container.get_client()
+        await with_authorization_client.initialize()
+        with_authorization = TestingDatabase(
+            with_authorization_client,
+            container  # Container an TestingDatabase übergeben für cleanup
         )
 
+        # Client mit ungültiger URL erstellen - api_token statt auth_token verwenden
         with_invalid_url_client = Client(
-            base_url='http://localhost.invalid', api_token=api_token
+            base_url='http://localhost.invalid',
+            api_token=api_token
         )
         await with_invalid_url_client.initialize()
         with_invalid_url = TestingDatabase(
