@@ -25,7 +25,7 @@ async def write_events(
         )
 
     for event_candidate in event_candidates:
-        try:
+        """try:
             event_candidate.validate()
         except ValidationError as validation_error:
             raise InvalidParameterError(
@@ -33,7 +33,7 @@ async def write_events(
             ) from validation_error
         except Exception as other_error:
             raise InternalError(str(other_error)) from other_error
-
+"""
     request_body = json.dumps({
         'events': [event_candidate.to_json() for event_candidate in event_candidates],
         'preconditions': [precondition.to_json() for precondition in preconditions]

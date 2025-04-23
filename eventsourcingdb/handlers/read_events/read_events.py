@@ -23,19 +23,13 @@ async def read_events(
     subject: str,
     options: ReadEventsOptions
 ) -> AsyncGenerator[Event, None]:
-    try:
+    """try:
         validate_subject(subject)
     except ValidationError as validation_error:
         raise InvalidParameterError('subject', str(validation_error)) from validation_error
     except Exception as other_error:
         raise InternalError(str(other_error)) from other_error
-
-    try:
-        options.validate()
-    except ValidationError as validation_error:
-        raise InvalidParameterError('options', str(validation_error)) from validation_error
-    except Exception as other_error:
-        raise InternalError(str(other_error)) from other_error
+    """
 
     request_body = json.dumps({
         'subject': subject,

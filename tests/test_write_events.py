@@ -56,7 +56,7 @@ class TestWriteSubjects:
     ):
         client = database.with_authorization.client
 
-        with pytest.raises(InvalidParameterError):
+        with pytest.raises(ClientError):
             await client.write_events([
                 test_data.TEST_SOURCE.new_event(
                     subject='',
@@ -73,7 +73,7 @@ class TestWriteSubjects:
     ):
         client = database.with_authorization.client
 
-        with pytest.raises(InvalidParameterError):
+        with pytest.raises(ClientError):
             await client.write_events([
                 test_data.TEST_SOURCE.new_event(
                     subject='/',

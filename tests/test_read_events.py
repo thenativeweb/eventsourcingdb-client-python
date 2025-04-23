@@ -64,7 +64,7 @@ class TestReadEvents:
         registered_count = 2
         assert len(result) == registered_count
         assert_event_equals(
-            result[0].event,
+            result[0],
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
@@ -73,7 +73,7 @@ class TestReadEvents:
             None
         )
         assert_event_equals(
-            result[1].event,
+            result[1],
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
@@ -100,7 +100,7 @@ class TestReadEvents:
         total_event_count = 4
         assert len(result) == total_event_count
         assert_event_equals(
-            result[0].event,
+            result[0],
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
@@ -109,7 +109,7 @@ class TestReadEvents:
             None
         )
         assert_event_equals(
-            result[1].event,
+            result[1],
             test_data.TEST_SOURCE_STRING,
             test_data.LOGGED_IN_SUBJECT,
             test_data.LOGGED_IN_TYPE,
@@ -118,7 +118,7 @@ class TestReadEvents:
             None
         )
         assert_event_equals(
-            result[2].event,
+            result[2],
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
@@ -127,7 +127,7 @@ class TestReadEvents:
             None
         )
         assert_event_equals(
-            result[3].event,
+            result[3],
             test_data.TEST_SOURCE_STRING,
             test_data.LOGGED_IN_SUBJECT,
             test_data.LOGGED_IN_TYPE,
@@ -154,7 +154,7 @@ class TestReadEvents:
         registered_count = 2
         assert len(result) == registered_count
         assert_event_equals(
-            result[0].event,
+            result[0],
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
@@ -163,7 +163,7 @@ class TestReadEvents:
             None
         )
         assert_event_equals(
-            result[1].event,
+            result[1],
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
@@ -197,7 +197,7 @@ class TestReadEvents:
         john_count = 2
         assert len(result) == john_count
         assert_event_equals(
-            result[0].event,
+            result[0],
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
@@ -206,7 +206,7 @@ class TestReadEvents:
             None
         )
         assert_event_equals(
-            result[1].event,
+            result[1],
             test_data.TEST_SOURCE_STRING,
             test_data.LOGGED_IN_SUBJECT,
             test_data.LOGGED_IN_TYPE,
@@ -236,7 +236,7 @@ class TestReadEvents:
         john_count = 2
         assert len(result) == john_count
         assert_event_equals(
-            result[0].event,
+            result[0],
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
@@ -245,7 +245,7 @@ class TestReadEvents:
             None
         )
         assert_event_equals(
-            result[1].event,
+            result[1],
             test_data.TEST_SOURCE_STRING,
             test_data.LOGGED_IN_SUBJECT,
             test_data.LOGGED_IN_TYPE,
@@ -275,7 +275,7 @@ class TestReadEvents:
         jane_count = 2
         assert len(result) == jane_count
         assert_event_equals(
-            result[0].event,
+            result[0],
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
@@ -284,7 +284,7 @@ class TestReadEvents:
             None
         )
         assert_event_equals(
-            result[1].event,
+            result[1],
             test_data.TEST_SOURCE_STRING,
             test_data.LOGGED_IN_SUBJECT,
             test_data.LOGGED_IN_TYPE,
@@ -300,7 +300,7 @@ class TestReadEvents:
     ):
         client = prepared_database.with_authorization.client
 
-        with pytest.raises(InvalidParameterError):
+        with pytest.raises(ClientError):
             async for _ in client.read_events(
                 '/users',
                 ReadEventsOptions(
@@ -322,7 +322,7 @@ class TestReadEvents:
     ):
         client = prepared_database.with_authorization.client
 
-        with pytest.raises(InvalidParameterError):
+        with pytest.raises(ClientError):
             async for _ in client.read_events(
                 '',
                 ReadEventsOptions(
@@ -338,7 +338,7 @@ class TestReadEvents:
     ):
         client = prepared_database.with_authorization.client
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ClientError):
             async for _ in client.read_events(
                 '/',
                 ReadEventsOptions(
@@ -355,7 +355,7 @@ class TestReadEvents:
     ):
         client = prepared_database.with_authorization.client
 
-        with pytest.raises(InvalidParameterError):
+        with pytest.raises(ServerError):
             async for _ in client.read_events(
                 '/',
                 ReadEventsOptions(
@@ -372,7 +372,7 @@ class TestReadEvents:
     ):
         client = prepared_database.with_authorization.client
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ClientError):
             async for _ in client.read_events(
                 '/',
                 ReadEventsOptions(
@@ -389,7 +389,7 @@ class TestReadEvents:
     ):
         client = prepared_database.with_authorization.client
 
-        with pytest.raises(InvalidParameterError):
+        with pytest.raises(ClientError):
             async for _ in client.read_events(
                 '/',
                 ReadEventsOptions(
@@ -406,7 +406,7 @@ class TestReadEvents:
     ):
         client = prepared_database.with_authorization.client
 
-        with pytest.raises(InvalidParameterError):
+        with pytest.raises(ClientError):
             async for _ in client.read_events(
                 '/',
                 ReadEventsOptions(
@@ -427,7 +427,7 @@ class TestReadEvents:
     ):
         client = prepared_database.with_authorization.client
 
-        with pytest.raises(InvalidParameterError):
+        with pytest.raises(ClientError):
             async for _ in client.read_events(
                 '/',
                 ReadEventsOptions(

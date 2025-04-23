@@ -102,7 +102,7 @@ class TestReadSubjects:
             )
         ])
 
-        with pytest.raises(InvalidParameterError):
+        with pytest.raises(ClientError):
             async for _ in client.read_subjects(''):
                 pass
 

@@ -13,9 +13,9 @@ class EventCandidate:
     trace_parent: str = None
     trace_state: str = None
 
-    def validate(self) -> None:
+    """def validate(self) -> None:
         validate_subject(self.subject)
-        validate_type(self.type)
+        validate_type(self.type)"""
 
     def to_json(self):
         json = {

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Any
 
 from ..bound import Bound
 from .order import Order
@@ -15,42 +16,8 @@ class ReadEventsOptions:
     upper_bound: Bound | None = None
     from_latest_event: ReadFromLatestEvent | None = None
 
-    def validate(self) -> None:
-        # Update validation logic for new object types
-        if self.lower_bound is not None and not isinstance(self.lower_bound, Bound):
-            raise ValidationError(
-                'ReadEventOptions are invalid: lower_bound must be a Bound object.'
-            )
-
-        if self.upper_bound is not None and not isinstance(self.upper_bound, Bound):
-            raise ValidationError(
-                'ReadEventOptions are invalid: upper_bound must be a Bound object.'
-            )
-
-        if self.from_latest_event is not None:
-            if self.lower_bound is not None:
-                raise ValidationError(
-                    'ReadEventsOptions are invalid: '
-                    'lowerBound and fromLatestEvent are mutually exclusive'
-                )
-
-            try:
-                validate_subject(self.from_latest_event.subject)
-            except ValidationError as validation_error:
-                raise ValidationError(
-                    f'ReadEventsOptions are invalid: '
-                    f'from_latest_event.subject: {str(validation_error)}'
-                ) from validation_error
-
-            # Add validation for empty type too
-            if not self.from_latest_event.type:
-                raise ValidationError(
-                    'ReadEventsOptions are invalid: '
-                    'from_latest_event.type cannot be empty'
-                )
-
-    def to_json(self):
-        json = {
+    def to_json(self) -> dict[str, Any]:
+        json: dict[str, Any] = {
             'recursive': self.recursive
         }
 

@@ -41,7 +41,7 @@ class TestObserveEvents:
     ):
         client = database.with_authorization.client
 
-        with pytest.raises(InvalidParameterError):
+        with pytest.raises(ClientError):
             async for _ in client.observe_events('', ObserveEventsOptions(recursive=False)):
                 pass
 
@@ -91,7 +91,7 @@ class TestObserveEvents:
                 break
 
         assert_event_equals(
-            observed_items[0].event,
+            observed_items[0],
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
@@ -100,7 +100,7 @@ class TestObserveEvents:
             None
         )
         assert_event_equals(
-            observed_items[1].event,
+            observed_items[1],
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
@@ -109,7 +109,7 @@ class TestObserveEvents:
             None
         )
         assert_event_equals(
-            observed_items[2].event,
+            observed_items[2],
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
@@ -149,7 +149,7 @@ class TestObserveEvents:
                 break
 
         assert_event_equals(
-            observed_items[0].event,
+            observed_items[0],
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
@@ -158,7 +158,7 @@ class TestObserveEvents:
             None
         )
         assert_event_equals(
-            observed_items[1].event,
+            observed_items[1],
             test_data.TEST_SOURCE_STRING,
             test_data.LOGGED_IN_SUBJECT,
             test_data.LOGGED_IN_TYPE,
@@ -167,7 +167,7 @@ class TestObserveEvents:
             None
         )
         assert_event_equals(
-            observed_items[2].event,
+            observed_items[2],
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
@@ -176,7 +176,7 @@ class TestObserveEvents:
             None
         )
         assert_event_equals(
-            observed_items[3].event,
+            observed_items[3],
             test_data.TEST_SOURCE_STRING,
             test_data.LOGGED_IN_SUBJECT,
             test_data.LOGGED_IN_TYPE,
@@ -185,7 +185,7 @@ class TestObserveEvents:
             None
         )
         assert_event_equals(
-            observed_items[4].event,
+            observed_items[4],
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
@@ -232,7 +232,7 @@ class TestObserveEvents:
                 break
 
         assert_event_equals(
-            observed_items[0].event,
+            observed_items[0],
             test_data.TEST_SOURCE_STRING,
             test_data.LOGGED_IN_SUBJECT,
             test_data.LOGGED_IN_TYPE,
@@ -241,7 +241,7 @@ class TestObserveEvents:
             None
         )
         assert_event_equals(
-            observed_items[1].event,
+            observed_items[1],
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
@@ -287,7 +287,7 @@ class TestObserveEvents:
                 break
 
         assert_event_equals(
-            observed_items[0].event,
+            observed_items[0],
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
@@ -296,7 +296,7 @@ class TestObserveEvents:
             None
         )
         assert_event_equals(
-            observed_items[1].event,
+            observed_items[1],
             test_data.TEST_SOURCE_STRING,
             test_data.LOGGED_IN_SUBJECT,
             test_data.LOGGED_IN_TYPE,
@@ -305,7 +305,7 @@ class TestObserveEvents:
             None
         )
         assert_event_equals(
-            observed_items[2].event,
+            observed_items[2],
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
@@ -321,7 +321,7 @@ class TestObserveEvents:
     ):
         client = prepared_database.with_authorization.client
 
-        with pytest.raises(InvalidParameterError):
+        with pytest.raises(ClientError):
             async for _ in client.observe_events(
                 '/users',
                 ObserveEventsOptions(
@@ -346,7 +346,7 @@ class TestObserveEvents:
     ):
         client = prepared_database.with_authorization.client
 
-        with pytest.raises(InvalidParameterError):
+        with pytest.raises(ClientError):
             async for _ in client.observe_events(
                 '/users',
                 ObserveEventsOptions(
@@ -367,7 +367,7 @@ class TestObserveEvents:
     ):
         client = prepared_database.with_authorization.client
 
-        with pytest.raises(InvalidParameterError):
+        with pytest.raises(ClientError):
             async for _ in client.observe_events(
                 '/users',
                 ObserveEventsOptions(

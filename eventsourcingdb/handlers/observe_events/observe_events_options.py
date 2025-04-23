@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Any
 
 from ..bound import Bound
 from ...errors.validation_error import ValidationError
@@ -42,17 +43,14 @@ class ObserveEventsOptions:
                     f'Failed to validate \'from_latest_event\': {str(validation_error)}'
                 ) from validation_error
 
-    def to_json(self):
-        result = {
-            'recursive': self.recursive
+    def to_json(self) -> dict[str, Any]:
+        result: dict[str, Any] = {
+            'recursive': self.recursive,
         }
 
         # Directly use the object
         if self.lower_bound is not None:
-            result['lowerBound'] = {
-                'id': str(self.lower_bound.id),  # Ensure ID is a string
-                'type': self.lower_bound.type
-            }
+            result['lowerBound'] = self.lower_bound.to_json()
 
         if self.from_latest_event is not None:
             result['fromLatestEvent'] = self.from_latest_event.to_json()
