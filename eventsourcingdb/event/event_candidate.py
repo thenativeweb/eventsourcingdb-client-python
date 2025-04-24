@@ -10,8 +10,8 @@ class EventCandidate:
     subject: str
     type: str
     data: dict
-    trace_parent: str = None
-    trace_state: str = None
+    trace_parent: str | None = None
+    trace_state: str | None = None
 
     """def validate(self) -> None:
         validate_subject(self.subject)

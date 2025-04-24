@@ -54,7 +54,6 @@ async def start_local_http_server(attach_handlers: AttachHandlers) -> tuple[Clie
                 try:
                     await session.get(
                         f"http://localhost:{local_http_server.port}/__python_test__/api/v1/ping", 
-                        timeout=2
                     )
                     # Wenn die Anfrage erfolgreich ist, brechen wir die Schleife ab
                     return True

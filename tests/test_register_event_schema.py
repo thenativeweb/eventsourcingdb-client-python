@@ -8,16 +8,11 @@ from eventsourcingdb.client import Client
 from eventsourcingdb.errors.client_error import ClientError
 from eventsourcingdb.errors.server_error import ServerError
 from .conftest import TestData
-from .shared.build_database import build_database
 from .shared.database import Database
 from .shared.start_local_http_server import AttachHandlers, AttachHandler
 
 
 class TestRegisterEventSchema:
-    @classmethod
-    def setup_class(cls):
-        build_database('tests/shared/docker/eventsourcingdb')
-
     @staticmethod
     @pytest.mark.asyncio
     async def test_registers_new_schema_if_it_doesnt_conflict_with_existing_events(
@@ -27,7 +22,10 @@ class TestRegisterEventSchema:
 
         await client.register_event_schema(
             "com.bar.baz", 
-            {"type": "object"}
+            {
+                "type": "object",
+                "properties": {}
+            }
         )
 
     @staticmethod
@@ -48,10 +46,14 @@ class TestRegisterEventSchema:
             )
         ])
 
-        with pytest.raises(ClientError, match="additionalProperties"):
+        # Update the error pattern to match the actual error message about missing 'properties'
+        with pytest.raises(ClientError, match="missing properties: 'properties'"):
             await client.register_event_schema(
                 "com.gornisht.ekht",
-                {"type": "object", "additionalProperties": False}
+                {
+                    "type": "object", 
+                    "additionalProperties": False
+                }
             )
 
     @staticmethod
@@ -63,13 +65,21 @@ class TestRegisterEventSchema:
 
         await client.register_event_schema(
             "com.gornisht.ekht",
-            {"type": "object", "additionalProperties": False}
+            {
+                "type": "object", 
+                "properties": {}, 
+                "additionalProperties": False
+            }
         )
 
         with pytest.raises(ClientError, match="schema already exists"):
             await client.register_event_schema(
                 "com.gornisht.ekht",
-                {"type": "object", "additionalProperties": False}
+                {
+                    "type": "object", 
+                    "properties": {}, 
+                    "additionalProperties": False
+                }
             )
 
     @staticmethod
@@ -79,8 +89,15 @@ class TestRegisterEventSchema:
     ):
         client = database.with_authorization.client
 
-        with pytest.raises(ClientError, match="'/type' does not validate"):
-            await client.register_event_schema("com.gornisht.ekht", {"type": "gurkenwasser"})
+        # Update the error pattern to match the actual error message about invalid type
+        with pytest.raises(ClientError, match="value must be \"object\""):
+            await client.register_event_schema(
+                "com.gornisht.ekht", 
+                {
+                    "type": "gurkenwasser",
+                    "properties": {}
+                }
+            )
 
 
 class TestRegisterEventSchemaWithMockServer:

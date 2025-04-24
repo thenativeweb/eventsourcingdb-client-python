@@ -8,7 +8,6 @@ from eventsourcingdb.client import Client
 from eventsourcingdb.event.event_candidate import EventCandidate
 from eventsourcingdb.event.source import Source
 from eventsourcingdb.http_client.http_client import HttpClient
-from .shared.build_database import build_database
 from .shared.database import Database
 
 from .shared.start_local_http_server import \
@@ -16,14 +15,6 @@ from .shared.start_local_http_server import \
     StopServer
 
 pytest_plugins = ('pytest_asyncio', )
-
-if not hasattr(_pytest.fixtures.FixtureDef, "unittest"):
-    _pytest.fixtures.FixtureDef.unittest = False
-
-
-def pytest_sessionstart():
-    build_database('tests/shared/docker/eventsourcingdb')
-
 
 @pytest_asyncio.fixture
 async def get_http_client():
@@ -77,7 +68,7 @@ class TestData:
     TEST_SOURCE_STRING = 'tag:thenativeweb.io,2023:eventsourcingdb:test'
     TEST_SOURCE = Source(TEST_SOURCE_STRING)
     REGISTERED_SUBJECT = '/users/registered'
-    LOGGED_IN_SUBJECT = '/users/loggedIn'
+    LOGGED_IN_SUBJECT = '/users/logged-in'
     REGISTERED_TYPE = 'io.thenativeweb.users.registered'
     LOGGED_IN_TYPE = 'io.thenativeweb.users.loggedIn'
     JANE_DATA = {'name': 'jane'}

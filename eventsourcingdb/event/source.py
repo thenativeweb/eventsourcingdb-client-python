@@ -17,8 +17,8 @@ class Source:
         subject: str,
         event_type: str,
         data: dict,
-        trace_parent: str = None,
-        trace_state: str = None
+        trace_parent: str | None = None,
+        trace_state: str | None = None
     ) -> EventCandidate:
         return EventCandidate(
             self.source,

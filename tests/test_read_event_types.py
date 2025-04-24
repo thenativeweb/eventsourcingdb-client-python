@@ -9,16 +9,11 @@ from eventsourcingdb.errors.client_error import ClientError
 from eventsourcingdb.errors.server_error import ServerError
 from eventsourcingdb.handlers.read_event_types.event_type import EventType
 from .conftest import TestData
-from .shared.build_database import build_database
 from .shared.database import Database
 from .shared.start_local_http_server import AttachHandlers, AttachHandler
 
 
 class TestReadEventTypes:
-    @classmethod
-    def setup_class(cls):
-        build_database('tests/shared/docker/eventsourcingdb')
-
     @staticmethod
     @pytest.mark.asyncio
     async def test_reads_all_types_of_existing_events_and_registered_schemas(
@@ -52,11 +47,11 @@ class TestReadEventTypes:
 
         await client.register_event_schema(
             "org.ban.ban", 
-            {"type": "object"} # type: ignore
+            {"type": "object", "properties": {}} # Add required properties field
         )
         await client.register_event_schema(
             "org.bing.chilling", 
-            {"type": "object"} # type: ignore
+            {"type": "object", "properties": {}} # Add required properties field
         )
 
         actual_event_types: set[EventType] = set()
@@ -87,12 +82,12 @@ class TestReadEventTypes:
             EventType(
                 event_type="org.ban.ban",
                 is_phantom=True,
-                schema={"type": "object"},
+                schema={"type": "object", "properties": {}},  # Update expected schema
             ),
             EventType(
                 event_type="org.bing.chilling",
                 is_phantom=True,
-                schema={"type": "object"},
+                schema={"type": "object", "properties": {}},  # Update expected schema
             ),
         }
 

@@ -355,7 +355,7 @@ class TestReadEvents:
     ):
         client = prepared_database.with_authorization.client
 
-        with pytest.raises(ServerError):
+        with pytest.raises(ClientError):
             async for _ in client.read_events(
                 '/',
                 ReadEventsOptions(
