@@ -41,7 +41,7 @@ class Client(AbstractBaseClient):
         exc_val: BaseException | None = None,
         exc_tb: TracebackType | None = None,
     ) -> None:
-        await self.__http_client.__aexit__(exc_tb=exc_tb, exc_val=exc_val, exc_type=exc_type)
+        await self.__http_client.__aexit__(exc_type, exc_val, exc_tb)
 
     async def initialize(self) -> None:
         await self.__http_client.initialize()

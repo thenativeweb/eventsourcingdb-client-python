@@ -1,23 +1,16 @@
-from collections import namedtuple
-from collections.abc import Callable, Coroutine
 from types import TracebackType
-from typing import Any, Optional, Type
 
 import aiohttp
 from aiohttp import ClientSession
 
-from .response import Response
-from ..errors.client_error import ClientError
 from ..errors.custom_error import CustomError
-from ..errors.internal_error import InternalError
-from ..errors.server_error import ServerError
 from ..util import url
 
-Range = namedtuple('Range', 'lower, upper')
-
-
-class UninitializedError(CustomError):
-    pass
+from .execute_request import execute_request
+from .get_get_headers import get_get_headers
+from .get_post_headers import get_post_headers
+from .response import Response
+from .validate_response import validate_response
 
 
 class HttpClient:
@@ -36,9 +29,9 @@ class HttpClient:
 
     async def __aexit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[TracebackType]
+        exc_type: BaseException | None = None,
+        exc_val: BaseException | None = None,
+        exc_tb: TracebackType | None = None,
     ) -> None:
         await self.close()
 
@@ -53,90 +46,36 @@ class HttpClient:
             self.__session = None
         return None
 
-    async def __execute_request(
-        self,
-        execute_request: Callable[[], Coroutine[Any, Any, Response]]
-    ) -> Response:
-        try:
-            result = await execute_request()
-            return result
-        except CustomError as custom_error:
-            raise custom_error
-        except aiohttp.ClientError as request_error:
-            raise ServerError(str(request_error)) from request_error
-        except Exception as other_error:
-            raise InternalError(str(other_error)) from other_error
-
-    @staticmethod
-    async def __get_error_message(response: Response):
-        error_message = f'Request failed with status code \'{response.status_code}\''
-
-        # We want to purposefully ignore all errors here, as we're already error handling,
-        # and this function just tries to get more information on a best-effort basis.
-        try:
-            encoded_error_reason = await response.body.read()
-            error_reason = encoded_error_reason.decode('utf-8')
-            error_message += f" {error_reason}"
-        finally:
-            pass
-
-        error_message += '.'
-
-        return error_message
-
-    async def __validate_response(
-        self,
-        response: Response
-    ) -> Response:
-        server_failure_range = Range(500, 600)
-        if server_failure_range.lower <= response.status_code < server_failure_range.upper:
-            raise ServerError(await self.__get_error_message(response))
-
-        client_failure_range = Range(400, 500)
-        if client_failure_range.lower <= response.status_code < client_failure_range.upper:
-            raise ClientError(await self.__get_error_message(response))
-
-        return response
-
-    def __get_post_request_headers(self) -> dict[str, str]:
-        headers = {
-            'Authorization': f'Bearer {self.__api_token}',
-            'Content-Type': 'application/json'
-        }
-
-        return headers
-
     async def post(self, path: str, request_body: str) -> Response:
         if self.__session is None:
-            raise UninitializedError()
+            raise CustomError()
 
-        async def execute_request() -> Response:
+        async def request_executor() -> Response:
+            # Vorbereitung
+            url_path = url.join_segments(self.__base_url, path)
+            headers = get_post_headers(self.__api_token)
+
+            # Request ausführen
             async_response = await self.__session.post(  # type: ignore
-                url.join_segments(
-                    self.__base_url,
-                    path
-                ),
+                url_path,
                 data=request_body,
-                headers=self.__get_post_request_headers(),
+                headers=headers,
             )
 
+            # Response erstellen
             response = Response(async_response)
+
+            # Split try block to have only one statement
+            validated_response = None
             try:
-                result = await self.__validate_response(response)
-                return result
+                validated_response = await validate_response(response)
             except Exception as error:
                 response.close()
                 raise error
 
-        return await self.__execute_request(execute_request)
+            return validated_response
 
-    def __get_get_request_headers(self, with_authorization: bool) -> dict[str, str]:
-        headers = {}
-
-        if with_authorization:
-            headers['Authorization'] = f'Bearer {self.__api_token}'
-
-        return headers
+        return await execute_request(request_executor)
 
     async def get(
         self,
@@ -144,23 +83,30 @@ class HttpClient:
         with_authorization: bool = True,
     ) -> Response:
         if self.__session is None:
-            raise UninitializedError()
+            raise CustomError()
 
-        async def execute_request() -> Response:
+        async def request_executor() -> Response:
+            # Vorbereitung
+            url_path = url.join_segments(self.__base_url, path)
+            headers = get_get_headers(self.__api_token, with_authorization)
+
+            # Request ausführen
             async_response = await self.__session.get(  # type: ignore
-                url.join_segments(
-                    self.__base_url,
-                    path
-                ),
-                headers=self.__get_get_request_headers(with_authorization),
+                url_path,
+                headers=headers,
             )
 
+            # Response erstellen
             response = Response(async_response)
+
+            # Split try block to have only one statement
+            validated_response = None
             try:
-                result = await self.__validate_response(response)
-                return result
+                validated_response = await validate_response(response)
             except Exception as error:
                 response.close()
                 raise error
 
-        return await self.__execute_request(execute_request)
+            return validated_response
+
+        return await execute_request(request_executor)
