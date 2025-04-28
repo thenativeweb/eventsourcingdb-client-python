@@ -4,7 +4,6 @@ from typing import Any, TypeVar
 
 from ..errors.internal_error import InternalError
 from ..errors.validation_error import ValidationError
-from .validate_subject import validate_subject
 from .validate_type import validate_type
 
 Self = TypeVar("Self", bound="EventContext")
@@ -34,7 +33,6 @@ class EventContext:
         if not isinstance(subject, str):
             raise ValidationError(
                 f'Failed to parse subject \'{subject}\' to string.')
-        validate_subject(subject)
 
         event_type = unknown_object.get('type')
         if not isinstance(event_type, str):

@@ -5,7 +5,6 @@ import pytest
 
 from eventsourcingdb.client import Client
 from eventsourcingdb.errors.client_error import ClientError
-from eventsourcingdb.errors.invalid_parameter_error import InvalidParameterError
 from eventsourcingdb.errors.server_error import ServerError
 from eventsourcingdb.event.event_candidate import EventCandidate
 from .conftest import TestData

@@ -3,8 +3,6 @@ from typing import Any
 
 from ..bound import Bound
 from .order import Order
-from ...errors.validation_error import ValidationError
-from ...event.validate_subject import validate_subject
 from .read_from_latest_event import ReadFromLatestEvent
 
 
@@ -24,16 +22,15 @@ class ReadEventsOptions:
         if self.order is not None:
             json['order'] = self.order.value
 
-        # Directly use the objects
         if self.lower_bound is not None:
             json['lowerBound'] = {
-                'id': str(self.lower_bound.id),  # Ensure ID is a string
+                'id': str(self.lower_bound.id),
                 'type': self.lower_bound.type
             }
 
         if self.upper_bound is not None:
             json['upperBound'] = {
-                'id': str(self.upper_bound.id),  # Ensure ID is a string
+                'id': str(self.upper_bound.id),
                 'type': self.upper_bound.type
             }
 

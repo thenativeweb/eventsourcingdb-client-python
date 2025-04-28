@@ -1,15 +1,9 @@
 import pytest_asyncio
-
-# pylint: disable=C2701
-# Reason: This is a false positive. The module is imported to access a private attribute.
-import _pytest.fixtures
-
 from eventsourcingdb.client import Client
 from eventsourcingdb.event.event_candidate import EventCandidate
 from eventsourcingdb.event.source import Source
 from eventsourcingdb.http_client.http_client import HttpClient
 from .shared.database import Database
-
 from .shared.start_local_http_server import \
     start_local_http_server, \
     StopServer
@@ -42,7 +36,8 @@ async def database():
     testing_db = await Database.create()
     yield testing_db
 
-    await testing_db.stop()
+    if testing_db is not None:
+        await testing_db.stop()
 
 
 @pytest_asyncio.fixture

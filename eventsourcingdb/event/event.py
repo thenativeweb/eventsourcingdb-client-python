@@ -7,6 +7,7 @@ from .event_context import EventContext
 Self = TypeVar("Self", bound="Event")
 
 
+# pylint: disable=too-many-arguments, too-many-positional-arguments
 class Event(EventContext):
     def __init__(
         self,

@@ -24,20 +24,12 @@ async def write_events(
             'event_candidates must contain at least one EventCandidate.'
         )
 
-    for event_candidate in event_candidates:
-        """try:
-            event_candidate.validate()
-        except ValidationError as validation_error:
-            raise InvalidParameterError(
-                'event_candidates', str(validation_error)
-            ) from validation_error
-        except Exception as other_error:
-            raise InternalError(str(other_error)) from other_error
-"""
-    request_body = json.dumps({
-        'events': [event_candidate.to_json() for event_candidate in event_candidates],
-        'preconditions': [precondition.to_json() for precondition in preconditions]
-    })
+    request_body = json.dumps(
+        {
+            'events': [event_candidate.to_json() for event_candidate in event_candidates],
+            'preconditions': [precondition.to_json() for precondition in preconditions]
+        }
+    )
 
     response: Response
     try:

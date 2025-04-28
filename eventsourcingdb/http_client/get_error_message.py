@@ -2,6 +2,7 @@ import aiohttp
 
 from .response import Response
 
+
 async def get_error_message(response: Response) -> str:
     """Extrahiert Fehlermeldung aus der Response."""
     error_message = f'Request failed with status code \'{response.status_code}\''

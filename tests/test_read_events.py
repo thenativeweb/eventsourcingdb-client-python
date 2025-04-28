@@ -5,7 +5,6 @@ import pytest
 
 from eventsourcingdb.client import Client
 from eventsourcingdb.errors.client_error import ClientError
-from eventsourcingdb.errors.invalid_parameter_error import InvalidParameterError
 from eventsourcingdb.errors.server_error import ServerError
 from eventsourcingdb.handlers.bound import Bound, BoundType
 from eventsourcingdb.handlers.read_events import \
@@ -13,7 +12,7 @@ from eventsourcingdb.handlers.read_events import \
     ReadFromLatestEvent, \
     IfEventIsMissingDuringRead
 from eventsourcingdb.handlers.read_events.order import Order
-from eventsourcingdb.handlers.bound import Bound
+
 from .conftest import TestData
 
 from .shared.database import Database

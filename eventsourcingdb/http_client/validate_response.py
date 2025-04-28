@@ -7,6 +7,7 @@ from .response import Response
 
 Range = namedtuple('Range', 'lower, upper')
 
+
 async def validate_response(response: Response) -> Response:
     server_failure_range = Range(500, 600)
     if server_failure_range.lower <= response.status_code < server_failure_range.upper:
