@@ -16,6 +16,7 @@ from .shared.start_local_http_server import \
 
 pytest_plugins = ('pytest_asyncio', )
 
+
 @pytest_asyncio.fixture
 async def get_http_client():
     stop_server: StopServer | None = None

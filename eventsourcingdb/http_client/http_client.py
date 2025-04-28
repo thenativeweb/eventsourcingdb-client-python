@@ -29,11 +29,11 @@ class HttpClient:
         self.__base_url = base_url
         self.__api_token = api_token
         self.__session: ClientSession | None = None
-    
+
     async def __aenter__(self):
         await self.initialize()
         return self
-    
+
     async def __aexit__(
         self,
         exc_type: Optional[Type[BaseException]],
@@ -51,7 +51,7 @@ class HttpClient:
         if self.__session is not None:
             await self.__session.close()
             self.__session = None
-        return None 
+        return None
 
     async def __execute_request(
         self,
@@ -66,7 +66,6 @@ class HttpClient:
             raise ServerError(str(request_error)) from request_error
         except Exception as other_error:
             raise InternalError(str(other_error)) from other_error
-
 
     @staticmethod
     async def __get_error_message(response: Response):
@@ -112,7 +111,7 @@ class HttpClient:
             raise UninitializedError()
 
         async def execute_request() -> Response:
-            async_response = await self.__session.post( # type: ignore
+            async_response = await self.__session.post(  # type: ignore
                 url.join_segments(
                     self.__base_url,
                     path
@@ -148,9 +147,9 @@ class HttpClient:
             raise UninitializedError()
 
         async def execute_request() -> Response:
-            async_response = await self.__session.get( # type: ignore
+            async_response = await self.__session.get(  # type: ignore
                 url.join_segments(
-                    self.__base_url, 
+                    self.__base_url,
                     path
                 ),
                 headers=self.__get_get_request_headers(with_authorization),

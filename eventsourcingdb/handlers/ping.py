@@ -39,5 +39,4 @@ async def ping(client: AbstractBaseClient) -> None:
     ):
         return
 
-
     raise ServerError(f"Received unexpected response: {response_body}")

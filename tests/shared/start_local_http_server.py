@@ -48,19 +48,19 @@ async def start_local_http_server(attach_handlers: AttachHandlers) -> tuple[Clie
         retry_count = 0
         max_retries = 5
         retry_delay = 0.5
-        
+
         async with aiohttp.ClientSession() as session:
             while retry_count < max_retries:
                 try:
                     await session.get(
-                        f"http://localhost:{local_http_server.port}/__python_test__/api/v1/ping", 
+                        f"http://localhost:{local_http_server.port}/__python_test__/api/v1/ping",
                     )
                     # Wenn die Anfrage erfolgreich ist, brechen wir die Schleife ab
                     return True
                 except (aiohttp.ClientError, asyncio.TimeoutError):
                     retry_count += 1
                     await asyncio.sleep(retry_delay)
-            
+
             # Wenn alle Versuche fehlschlagen, geben wir False zurück
             return False
 

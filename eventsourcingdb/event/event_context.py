@@ -20,8 +20,8 @@ class EventContext:
     time: datetime
     data_content_type: str
     predecessor_hash: str
-    trace_parent: str | None  = None
-    trace_state: str | None  = None
+    trace_parent: str | None = None
+    trace_state: str | None = None
 
     @staticmethod
     def parse(unknown_object: dict) -> "EventContext":

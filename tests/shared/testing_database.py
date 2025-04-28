@@ -2,6 +2,7 @@ from typing import Optional
 from eventsourcingdb.client import Client
 from eventsourcingdb.container import Container
 
+
 class TestingDatabase:
     def __init__(
         self,

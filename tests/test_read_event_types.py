@@ -46,12 +46,12 @@ class TestReadEventTypes:
         ])
 
         await client.register_event_schema(
-            "org.ban.ban", 
-            {"type": "object", "properties": {}} # Add required properties field
+            "org.ban.ban",
+            {"type": "object", "properties": {}}  # Add required properties field
         )
         await client.register_event_schema(
-            "org.bing.chilling", 
-            {"type": "object", "properties": {}} # Add required properties field
+            "org.bing.chilling",
+            {"type": "object", "properties": {}}  # Add required properties field
         )
 
         actual_event_types: set[EventType] = set()

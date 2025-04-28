@@ -1,6 +1,7 @@
 from collections.abc import AsyncGenerator
+import contextlib
 from types import TracebackType
-from typing import Optional, Type, TypeVar
+from typing import TypeVar
 
 from eventsourcingdb.abstract_base_client import AbstractBaseClient
 
@@ -21,6 +22,7 @@ from .handlers.write_events import Precondition, write_events
 
 T = TypeVar('T')
 
+
 class Client(AbstractBaseClient):
     def __init__(
         self,
@@ -34,10 +36,10 @@ class Client(AbstractBaseClient):
         return self
 
     async def __aexit__(
-        self, 
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[TracebackType]
+        self,
+        exc_type: BaseException | None = None,
+        exc_val: BaseException | None = None,
+        exc_tb: TracebackType | None = None,
     ) -> None:
         await self.__http_client.__aexit__(exc_tb=exc_tb, exc_val=exc_val, exc_type=exc_type)
 
@@ -45,78 +47,60 @@ class Client(AbstractBaseClient):
         await self.__http_client.initialize()
 
     async def close(self) -> None:
-        await self.__http_client.close() 
-        
+        await self.__http_client.close()
+
     @property
     def http_client(self) -> HttpClient:
         return self.__http_client
 
     async def ping(self) -> None:
         return await ping(self)
-    
+
     async def verify_api_token(self) -> None:
         raise NotImplementedError("verify_api_token is not implemented yet.")
-    
+
     async def write_events(
         self,
         event_candidates: list[EventCandidate],
-        preconditions: list[Precondition] = None # type: ignore
-    ) -> list[EventContext]: # TODO: list[Event] of Events (complete)
+        preconditions: list[Precondition] = None  # type: ignore
+    ) -> list[EventContext]:
         if preconditions is None:
             preconditions = []
         return await write_events(self, event_candidates, preconditions)
-    
+
     async def read_events(
         self,
         subject: str,
         options: ReadEventsOptions
-    ) -> AsyncGenerator[Event, None]: 
-        generator = read_events(self, subject, options)
-        try:
+    ) -> AsyncGenerator[Event]:
+        async with contextlib.aclosing(read_events(self, subject, options)) as generator:
             async for item in generator:
                 yield item
-        finally:
-            await generator.aclose()
-    # TODO: run eventql query
-    async def run_eventql_query(self, query: str) -> AsyncGenerator[Event, None]:
-        """
-        the issue like read_events. can be abort or canceled.
-        """
+
+    async def run_eventql_query(self, query: str) -> AsyncGenerator[Event]:
         raise NotImplementedError("run_eventql_query is not implemented yet.")
 
     async def observe_events(
         self,
         subject: str,
         options: ObserveEventsOptions
-    ) -> AsyncGenerator[Event, None]:
-        generator = observe_events(self, subject, options)
-        try:
+    ) -> AsyncGenerator[Event]:
+        async with contextlib.aclosing(observe_events(self, subject, options)) as generator:
             async for item in generator:
                 yield item
-        finally:
-            await generator.aclose()
 
     async def register_event_schema(self, event_type: str, json_schema: dict) -> None:
-        # Updated type hint to reflect it should be a dict
         await register_event_schema(self, event_type, json_schema)
 
     async def read_subjects(
         self,
         base_subject: str
-    ) -> AsyncGenerator[str, None]:
-        """Read subjects with proper cancellation support."""
-        generator = read_subjects(self, base_subject)
-        try:
+    ) -> AsyncGenerator[str]:
+        async with contextlib.aclosing(read_subjects(self, base_subject)) as generator:
             async for item in generator:
                 yield item
-        finally:
-            await generator.aclose()
-    
-    async def read_event_types(self) -> AsyncGenerator[EventType, None]:
-        """Read event types with proper cancellation support."""
-        generator = read_event_types(self)
-        try:
+
+    async def read_event_types(self) -> AsyncGenerator[EventType]:
+        async with contextlib.aclosing(read_event_types(self)) as generator:
             async for item in generator:
                 yield item
-        finally:
-            await generator.aclose()

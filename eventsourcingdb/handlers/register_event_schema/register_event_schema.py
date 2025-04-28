@@ -28,7 +28,7 @@ async def register_event_schema(
 
     request_body = json.dumps({
         'eventType': event_type,
-        'schema': json_schema, 
+        'schema': json_schema,
     })
 
     response: Response

@@ -1,17 +1,22 @@
+import logging
 import time
+from http import HTTPStatus
+
 import docker
 import requests
-from typing import Optional
 from docker import errors
 
 from eventsourcingdb.client import Client
+
+HOST_PORT_KEY = 'HostPort'
+HTTP_OK = HTTPStatus.OK
 
 
 class Container:
     def __init__(
         self,
         image_name: str = "thenativeweb/eventsourcingdb",
-        image_tag: str = "0.113.2",
+        image_tag: str = "0.120.4",
         api_token: str = "secret",
         internal_port: int = 3000
     ):
@@ -21,7 +26,7 @@ class Container:
         self._api_token = api_token
         self._container = None
         self._docker_client = docker.from_env()
-        self._mapped_port: Optional[int] = None
+        self._mapped_port: int | None = None
         self._host = "localhost"
 
     def with_image_tag(self, tag: str) -> "Container":
@@ -39,7 +44,7 @@ class Container:
     def start(self) -> "Container":
         if self._container is not None:
             return self
-            
+
         try:
             self._docker_client.images.pull(self._image_name, self._image_tag)
         except errors.APIError as e:
@@ -49,17 +54,27 @@ class Container:
         self._create_container()
         self._fetch_mapped_port()
         self._wait_for_http("/api/v1/ping", timeout=20)
-            
+
         return self
 
     def _cleanup_existing_containers(self) -> None:
         try:
-            for container in self._docker_client.containers.list(
-                filters={"ancestor": f"{self._image_name}:{self._image_tag}"}):
+            containers = self._docker_client.containers.list(
+                filters={"ancestor": f"{self._image_name}:{self._image_tag}"})
+        except errors.APIError as e:
+            logging.warning("Warning: Error listing existing containers: %s", e)
+            return
+
+        for container in containers:
+            try:
                 container.stop()
+            except errors.APIError as e:
+                logging.warning("Warning: Error stopping container: %s", e)
+
+            try:
                 container.remove()
-        except Exception as e:
-            print(f"Warning: Error stopping existing containers: {e}")
+            except errors.APIError as e:
+                logging.warning("Warning: Error removing container: %s", e)
 
     def _create_container(self) -> None:
         port_bindings = {f"{self._internal_port}/tcp": None}
@@ -73,64 +88,109 @@ class Container:
                 "--http-enabled",
                 "--https-enabled=false",
             ],
-            ports=port_bindings, # type: ignore
+            ports=port_bindings,  # type: ignore
             detach=True,
-        ) # type: ignore
+        )  # type: ignore
 
     def _fetch_mapped_port(self) -> None:
         if self._container is None:
             raise RuntimeError("Container failed to start")
-            
+
         max_retries, retry_delay = 5, 1
-        
+
         for attempt in range(max_retries):
-            try:
-                container_info = self._docker_client.api.inspect_container(
-                    self._container.id)
-                port_mappings = container_info["NetworkSettings"]["Ports"].get(f"{self._internal_port}/tcp")
-                
-                if port_mappings and "HostPort" in port_mappings[0]:
-                    self._mapped_port = int(port_mappings[0]["HostPort"])
-                    return
-            except (KeyError, IndexError, AttributeError):
-                pass
-                
+            if (port := self._try_get_port_from_container()) is not None:
+                self._mapped_port = port
+                return
+
             if attempt < max_retries - 1:
                 time.sleep(retry_delay)
-                
-        # Failed to get port, clean up
+
         self._stop_and_remove_container()
         raise RuntimeError("Failed to determine mapped port")
+
+    def _try_get_port_from_container(self) -> int | None:
+        if not self._container:
+            return None
+
+        if not (container_info := self._get_container_info()):
+            return None
+
+        return self._extract_port_from_container_info(container_info)
+
+    def _get_container_info(self):
+        if self._container is None:
+            return None
+        return self._docker_client.api.inspect_container(self._container.id)
+
+    def _extract_port_from_container_info(self, container_info):
+        port = None
+        valid_mapping = True
+        port_mappings = None
+
+        try:
+            port_mappings = container_info["NetworkSettings"]["Ports"].get(
+                f"{self._internal_port}/tcp")
+        except KeyError:
+            valid_mapping = False
+
+        if valid_mapping and port_mappings and isinstance(port_mappings, list) and port_mappings:
+            first_mapping = port_mappings[0]
+
+            if HOST_PORT_KEY in first_mapping:
+                port_value = first_mapping[HOST_PORT_KEY]
+                port = int(port_value)
+
+        return port
 
     def _wait_for_http(self, path: str, timeout: int) -> None:
         base_url = self.get_base_url()
         url = f"{base_url}{path}"
         start_time = time.time()
-        
-        while time.time() - start_time < timeout:
+
+        max_attempts = int(timeout * 2)
+        for _ in range(max_attempts):
+            if time.time() - start_time >= timeout:
+                break
+
+            response = None
+            status_code = None
             try:
                 response = requests.get(url, timeout=2)
-                if response.status_code == 200:
-                    return
             except requests.RequestException:
                 pass
+
+            if response is not None:
+                status_code = response.status_code
+
+            if response is not None and status_code == HTTP_OK:
+                return
+
             time.sleep(0.5)
-        
+
         self._stop_and_remove_container()
         raise TimeoutError(f"Service failed to become ready within {timeout} seconds")
 
     def _stop_and_remove_container(self) -> None:
         if self._container is None:
             return
-            
-        try:    
+
+        try:
             self._container.stop()
+        except errors.NotFound as e:
+            print(f"Warning: Container not found while stopping: {e}")
+        except errors.APIError as e:
+            print(f"Warning: API error while stopping container: {e}")
+
+        try:
             self._container.remove()
-        except Exception as e:
-            print(f"Warning: Error stopping container: {e}")
-        finally:
-            self._container = None
-            self._mapped_port = None
+        except errors.NotFound as e:
+            print(f"Warning: Container not found while removing: {e}")
+        except errors.APIError as e:
+            print(f"Warning: API error while removing container: {e}")
+
+        self._container = None
+        self._mapped_port = None
 
     def get_host(self) -> str:
         if self._container is None:

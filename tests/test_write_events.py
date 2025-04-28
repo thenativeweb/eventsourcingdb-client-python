@@ -203,8 +203,8 @@ class TestWriteSubjects:
         await client.register_event_schema(
             "com.super.duper",
             {
-                "type": "object", 
-                "properties": {}, 
+                "type": "object",
+                "properties": {},
                 "additionalProperties": False
             }
         )

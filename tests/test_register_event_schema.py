@@ -21,7 +21,7 @@ class TestRegisterEventSchema:
         client = database.with_authorization.client
 
         await client.register_event_schema(
-            "com.bar.baz", 
+            "com.bar.baz",
             {
                 "type": "object",
                 "properties": {}
@@ -51,7 +51,7 @@ class TestRegisterEventSchema:
             await client.register_event_schema(
                 "com.gornisht.ekht",
                 {
-                    "type": "object", 
+                    "type": "object",
                     "additionalProperties": False
                 }
             )
@@ -66,8 +66,8 @@ class TestRegisterEventSchema:
         await client.register_event_schema(
             "com.gornisht.ekht",
             {
-                "type": "object", 
-                "properties": {}, 
+                "type": "object",
+                "properties": {},
                 "additionalProperties": False
             }
         )
@@ -76,8 +76,8 @@ class TestRegisterEventSchema:
             await client.register_event_schema(
                 "com.gornisht.ekht",
                 {
-                    "type": "object", 
-                    "properties": {}, 
+                    "type": "object",
+                    "properties": {},
                     "additionalProperties": False
                 }
             )
@@ -92,7 +92,7 @@ class TestRegisterEventSchema:
         # Update the error pattern to match the actual error message about invalid type
         with pytest.raises(ClientError, match="value must be \"object\""):
             await client.register_event_schema(
-                "com.gornisht.ekht", 
+                "com.gornisht.ekht",
                 {
                     "type": "gurkenwasser",
                     "properties": {}
