@@ -3,8 +3,7 @@ import contextlib
 from types import TracebackType
 from typing import TypeVar
 
-from eventsourcingdb.abstract_base_client import AbstractBaseClient
-
+from .abstract_base_client import AbstractBaseClient
 from .event.event import Event
 from .event.event_candidate import EventCandidate
 from .event.event_context import EventContext

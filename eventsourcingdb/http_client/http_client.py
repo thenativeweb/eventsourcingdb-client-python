@@ -35,37 +35,30 @@ class HttpClient:
     ) -> None:
         await self.close()
 
-    # Keep for backward compatibility
     async def initialize(self) -> None:
         self.__session = aiohttp.ClientSession()
 
-    # Keep for backward compatibility
     async def close(self):
         if self.__session is not None:
             await self.__session.close()
             self.__session = None
-        return None
 
     async def post(self, path: str, request_body: str) -> Response:
         if self.__session is None:
             raise CustomError()
 
         async def request_executor() -> Response:
-            # Vorbereitung
             url_path = url.join_segments(self.__base_url, path)
             headers = get_post_headers(self.__api_token)
 
-            # Request ausführen
             async_response = await self.__session.post(  # type: ignore
                 url_path,
                 data=request_body,
                 headers=headers,
             )
 
-            # Response erstellen
             response = Response(async_response)
 
-            # Split try block to have only one statement
             validated_response = None
             try:
                 validated_response = await validate_response(response)
@@ -86,20 +79,16 @@ class HttpClient:
             raise CustomError()
 
         async def request_executor() -> Response:
-            # Vorbereitung
             url_path = url.join_segments(self.__base_url, path)
             headers = get_get_headers(self.__api_token, with_authorization)
 
-            # Request ausführen
             async_response = await self.__session.get(  # type: ignore
                 url_path,
                 headers=headers,
             )
 
-            # Response erstellen
             response = Response(async_response)
 
-            # Split try block to have only one statement
             validated_response = None
             try:
                 validated_response = await validate_response(response)

@@ -1,4 +1,4 @@
-from eventsourcingdb.event.event import Event
+from typing import Any
 
 # pylint: disable=R0917
 # Reason: This method is expected to have many parameters
@@ -8,7 +8,7 @@ from eventsourcingdb.event.event import Event
 
 
 def assert_event_equals(
-        event: Event,
+        event: Any,  # Use Any instead of "Event" for type annotation
         source: str,
         subject: str,
         type_: str,

@@ -43,30 +43,24 @@ async def start_local_http_server(attach_handlers: AttachHandlers) -> tuple[Clie
     server = multiprocessing.Process(target=LocalHttpServer.start, args=(local_http_server, ))
     server.start()
 
-    # Warte auf den Server, bis er bereit ist
     async def ping_app():
-        retry_count = 0
         max_retries = 5
         retry_delay = 0.5
 
         async with aiohttp.ClientSession() as session:
-            while retry_count < max_retries:
+            for _ in range(max_retries):
+                url = f"http://localhost:{local_http_server.port}/__python_test__/api/v1/ping"
+                response = None
                 try:
-                    await session.get(
-                        f"http://localhost:{local_http_server.port}/__python_test__/api/v1/ping",
-                    )
-                    # Wenn die Anfrage erfolgreich ist, brechen wir die Schleife ab
-                    return True
+                    response = await session.get(url)
                 except (aiohttp.ClientError, asyncio.TimeoutError):
-                    retry_count += 1
                     await asyncio.sleep(retry_delay)
-
-            # Wenn alle Versuche fehlschlagen, geben wir False zurück
+                    continue
+                if response:
+                    return True
             return False
 
-    # Versuche, den Server zu erreichen
-    server_ready = await ping_app()
-    if not server_ready:
+    if not await ping_app():
         server.terminate()
         server.join()
         raise RuntimeError(f"Failed to start HTTP server on port {local_http_server.port}")

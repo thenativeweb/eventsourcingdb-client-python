@@ -46,7 +46,6 @@ class TestRegisterEventSchema:
             )
         ])
 
-        # Update the error pattern to match the actual error message about missing 'properties'
         with pytest.raises(ClientError, match="missing properties: 'properties'"):
             await client.register_event_schema(
                 "com.gornisht.ekht",
@@ -89,7 +88,6 @@ class TestRegisterEventSchema:
     ):
         client = database.with_authorization.client
 
-        # Update the error pattern to match the actual error message about invalid type
         with pytest.raises(ClientError, match="value must be \"object\""):
             await client.register_event_schema(
                 "com.gornisht.ekht",
@@ -117,7 +115,7 @@ class TestRegisterEventSchemaWithMockServer:
         client = await get_client(attach_handlers)
 
         with pytest.raises(ServerError):
-            await client.register_event_schema("com.foo.bar", '{"type":"object"}')
+            await client.register_event_schema("com.foo.bar", {"type": "object"})
 
     @staticmethod
     @pytest.mark.asyncio
@@ -136,7 +134,7 @@ class TestRegisterEventSchemaWithMockServer:
         client = await get_client(attach_handlers)
 
         with pytest.raises(ClientError):
-            await client.register_event_schema("com.foo.bar", '{"type":"object"}')
+            await client.register_event_schema("com.foo.bar", {"type": "object"})
 
     @staticmethod
     @pytest.mark.asyncio
@@ -154,7 +152,7 @@ class TestRegisterEventSchemaWithMockServer:
         client = await get_client(attach_handlers)
 
         with pytest.raises(ClientError):
-            await client.register_event_schema("com.foo.bar", '{"type":"object"}')
+            await client.register_event_schema("com.foo.bar", {"type": "object"})
 
     @staticmethod
     @pytest.mark.asyncio
@@ -174,4 +172,4 @@ class TestRegisterEventSchemaWithMockServer:
         client = await get_client(attach_handlers)
 
         with pytest.raises(ServerError):
-            await client.register_event_schema("com.foo.bar", '{"type":"object"}')
+            await client.register_event_schema("com.foo.bar", {"type": "object"})
