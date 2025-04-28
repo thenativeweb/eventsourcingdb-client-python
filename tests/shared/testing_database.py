@@ -1,4 +1,3 @@
-from typing import Optional
 from eventsourcingdb.client import Client
 from eventsourcingdb.container import Container
 
@@ -7,7 +6,7 @@ class TestingDatabase:
     def __init__(
         self,
         client: Client,
-        container: Optional[Container] = None
+        container: Container | None = None
     ):
         self.__client = client
         self.__container = container

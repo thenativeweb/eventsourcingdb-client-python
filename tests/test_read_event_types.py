@@ -47,11 +47,11 @@ class TestReadEventTypes:
 
         await client.register_event_schema(
             "org.ban.ban",
-            {"type": "object", "properties": {}}  # Add required properties field
+            {"type": "object", "properties": {}}  # Added required properties field
         )
         await client.register_event_schema(
             "org.bing.chilling",
-            {"type": "object", "properties": {}}  # Add required properties field
+            {"type": "object", "properties": {}}  # Added required properties field
         )
 
         actual_event_types: set[EventType] = set()
@@ -82,12 +82,12 @@ class TestReadEventTypes:
             EventType(
                 event_type="org.ban.ban",
                 is_phantom=True,
-                schema={"type": "object", "properties": {}},  # Update expected schema
+                schema={"type": "object", "properties": {}},  # Updated expected schema
             ),
             EventType(
                 event_type="org.bing.chilling",
                 is_phantom=True,
-                schema={"type": "object", "properties": {}},  # Update expected schema
+                schema={"type": "object", "properties": {}},  # Updated expected schema
             ),
         }
 
