@@ -11,7 +11,6 @@ from .handlers.is_stream_error import is_stream_error
 from .handlers.parse_raw_message import parse_raw_message
 from .handlers.is_event import is_event
 
-from .abstract_base_client import AbstractBaseClient
 from .errors.custom_error import CustomError
 from .errors.internal_error import InternalError
 from .errors.invalid_parameter_error import InvalidParameterError
@@ -33,7 +32,7 @@ from .http_client.response import Response
 T = TypeVar('T')
 
 
-class Client(AbstractBaseClient):
+class Client():
     def __init__(
         self,
         base_url: str,
@@ -164,7 +163,7 @@ class Client(AbstractBaseClient):
         options: ReadEventsOptions
     ) -> AsyncGenerator[Event]:
         async def __read_events(
-            client: AbstractBaseClient,
+            client: Client,
             subject: str,
             options: ReadEventsOptions
         ) -> AsyncGenerator[Event]:
@@ -244,7 +243,7 @@ class Client(AbstractBaseClient):
         options: ObserveEventsOptions
     ) -> AsyncGenerator[Event]:
         async def __observe_events(
-            client: AbstractBaseClient,
+            client: Client,
             subject: str,
             options: ObserveEventsOptions
         ) -> AsyncGenerator[Event]:
@@ -338,7 +337,7 @@ class Client(AbstractBaseClient):
         base_subject: str
     ) -> AsyncGenerator[str]:
         async def __read_subjects(
-            client: AbstractBaseClient,
+            client: Client,
             base_subject: str
         ) -> AsyncGenerator[str]:
             request_body = json.dumps({
@@ -383,7 +382,7 @@ class Client(AbstractBaseClient):
 
     async def read_event_types(self) -> AsyncGenerator[EventType]:
         async def __read_event_types(
-            client: AbstractBaseClient,
+            client: Client,
         ) -> AsyncGenerator[EventType]:
             response: Response
             try:
