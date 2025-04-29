@@ -3,7 +3,6 @@ from typing import Any
 
 from ..bound import Bound
 from ...errors.validation_error import ValidationError
-from ...event.validate_type import validate_type
 from .observe_from_latest_event import ObserveFromLatestEvent
 
 
@@ -25,14 +24,6 @@ class ObserveEventsOptions:
                     'ReadEventsOptions are invalid: '
                     'lowerBoundId and fromLatestEvent are mutually exclusive'
                 )
-
-            try:
-                validate_type(self.from_latest_event.type)
-            except ValidationError as validation_error:
-                raise ValidationError(
-                    f'ReadEventsOptions are invalid: '
-                    f'Failed to validate \'from_latest_event\': {str(validation_error)}'
-                ) from validation_error
 
     def to_json(self) -> dict[str, Any]:
         result: dict[str, Any] = {

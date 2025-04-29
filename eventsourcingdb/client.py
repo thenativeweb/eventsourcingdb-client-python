@@ -6,21 +6,28 @@ from typing import TypeVar
 from http import HTTPStatus
 import json
 
+from .handlers.is_heartbeat import is_heartbeat
+from .handlers.is_stream_error import is_stream_error
+from .handlers.parse_raw_message import parse_raw_message
+from .handlers.is_event import is_event
+
 from .abstract_base_client import AbstractBaseClient
+from .errors.custom_error import CustomError
+from .errors.internal_error import InternalError
+from .errors.invalid_parameter_error import InvalidParameterError
 from .errors.server_error import ServerError
+from .errors.validation_error import ValidationError
 from .event.event import Event
 from .event.event_candidate import EventCandidate
 from .event.event_context import EventContext
-from .handlers.observe_events.observe_events import observe_events
 from .handlers.observe_events.observe_events_options import ObserveEventsOptions
 from .handlers.read_event_types.event_type import EventType
-from .handlers.read_event_types.read_event_types import read_event_types
-from .handlers.register_event_schema.register_event_schema import register_event_schema
+from .handlers.read_event_types.is_event_type import is_event_type
+from .handlers.read_subjects.is_subject import is_subject
 from .http_client.http_client import HttpClient
-from .handlers.ping import ping
-from .handlers.read_events import read_events, ReadEventsOptions
-from .handlers.read_subjects import read_subjects
-from .handlers.write_events import Precondition, write_events
+from .handlers.read_events import ReadEventsOptions
+from .handlers.write_events import Precondition
+from .http_client.response import Response
 
 
 T = TypeVar('T')
@@ -57,12 +64,11 @@ class Client(AbstractBaseClient):
         return self.__http_client
 
     async def ping(self) -> None:
-        OK_RESPONSE = "OK"
-        STATUS_OK = "ok"
-        
-        SPECVERSION_FIELD = "specversion"
-        TYPE_FIELD = "type"
-        PING_RECEIVED_TYPE = "io.eventsourcingdb.api.ping-received"
+        ok_response = "OK"
+
+        specversion_field = "specversion"
+        type_field = "type"
+        ping_received_type = "io.eventsourcingdb.api.ping-received"
 
         response = await self.http_client.get("/api/v1/ping")
         response_body = bytes.decode(await response.body.read(), encoding="utf-8")
@@ -70,7 +76,7 @@ class Client(AbstractBaseClient):
         if response.status_code != HTTPStatus.OK:
             raise ServerError(f"Received unexpected response: {response_body}")
 
-        if response_body == OK_RESPONSE:
+        if response_body == ok_response:
             return
 
         try:
@@ -80,14 +86,13 @@ class Client(AbstractBaseClient):
 
         if (
             isinstance(response_json, dict)
-            and SPECVERSION_FIELD in response_json
-            and TYPE_FIELD in response_json
-            and response_json.get(TYPE_FIELD) == PING_RECEIVED_TYPE
+            and specversion_field in response_json
+            and type_field in response_json
+            and response_json.get(type_field) == ping_received_type
         ):
             return
 
         raise ServerError(f"Received unexpected response: {response_body}")
-
 
     async def verify_api_token(self) -> None:
         raise NotImplementedError("verify_api_token is not implemented yet.")
@@ -99,14 +104,134 @@ class Client(AbstractBaseClient):
     ) -> list[EventContext]:
         if preconditions is None:
             preconditions = []
-        return await write_events(self, event_candidates, preconditions)
+        if len(event_candidates) < 1:
+            raise InvalidParameterError(
+                'event_candidates',
+                'event_candidates must contain at least one EventCandidate.'
+            )
+
+        request_body = json.dumps(
+            {
+                'events': [event_candidate.to_json() for event_candidate in event_candidates],
+                'preconditions': [precondition.to_json() for precondition in preconditions]
+            }
+        )
+
+        response: Response
+        try:
+            response = await self.http_client.post(
+                path='/api/v1/write-events',
+                request_body=request_body,
+            )
+        except CustomError as custom_error:
+            raise custom_error
+        except Exception as other_error:
+            raise InternalError(str(other_error)) from other_error
+
+        if response.status_code != HTTPStatus.OK:
+            raise ServerError(
+                f'Unexpected response status: '
+                f'{response.status_code} {HTTPStatus(response.status_code).phrase}.'
+            )
+
+        response_data = await response.body.read()
+        response_data = bytes.decode(response_data, encoding='utf-8')
+        try:
+            response_data = json.loads(response_data)
+        except json.JSONDecodeError as decode_error:
+            raise ServerError(str(decode_error)) from decode_error
+        except Exception as other_error:
+            raise InternalError(str(other_error)) from other_error
+
+        if not isinstance(response_data, list):
+            raise ServerError(
+                f'Failed to parse response \'{response_data}\' to list.')
+
+        result = []
+        for unparsed_event_context in response_data:
+            try:
+                result.append(EventContext.parse(unparsed_event_context))
+            except ValidationError as validation_error:
+                raise ServerError(str(validation_error)) from validation_error
+            except Exception as other_error:
+                raise InternalError(str(other_error)) from other_error
+
+        return result
 
     async def read_events(
         self,
         subject: str,
         options: ReadEventsOptions
     ) -> AsyncGenerator[Event]:
-        async with contextlib.aclosing(read_events(self, subject, options)) as generator:
+        async def __read_events(
+            client: AbstractBaseClient,
+            subject: str,
+            options: ReadEventsOptions
+        ) -> AsyncGenerator[Event]:
+            request_body = json.dumps({
+                'subject': subject,
+                'options': options.to_json()
+            })
+
+            response: Response
+            try:
+                response = await client.http_client.post(
+                    path='/api/v1/read-events',
+                    request_body=request_body,
+                )
+            except CustomError as custom_error:
+                raise custom_error
+            except Exception as other_error:
+                raise InternalError(str(other_error)) from other_error
+
+            with response:
+                if response.status_code != HTTPStatus.OK:
+                    raise ServerError(
+                        f'Unexpected response status: '
+                        f'{response.status_code} {HTTPStatus(response.status_code).phrase}'
+                    )
+                async for raw_message in response.body:
+                    message = parse_raw_message(raw_message)
+
+                    if is_stream_error(message):
+                        raise ServerError(f'{message["payload"]["error"]}.')
+
+                    if is_event(message):
+                        event = Event.parse(message['payload'])
+                        event_id = int(message['payload']['id'])
+
+                        if options.lower_bound is not None:
+                            if (
+                                options.lower_bound.type == 'inclusive' and  # pylint: disable=R2004
+                                int(event_id) < int(options.lower_bound.id)
+                            ):
+                                continue
+                            if (
+                                options.lower_bound.type == 'exclusive' and  # pylint: disable=R2004
+                                int(event_id) <= int(options.lower_bound.id)
+                            ):
+                                continue
+
+                        if options.upper_bound is not None:
+                            if (
+                                options.upper_bound.type == 'inclusive' and  # pylint: disable=R2004
+                                int(event_id) > int(options.upper_bound.id)
+                            ):
+                                continue
+                            if (
+                                options.upper_bound.type == 'exclusive' and  # pylint: disable=R2004
+                                int(event_id) >= int(options.upper_bound.id)
+                            ):
+                                continue
+
+                        yield event
+                        continue
+
+                    raise ServerError(
+                        f'Failed to read events, an unexpected stream item was received: '
+                        f'{message}.'
+                    )
+        async with contextlib.aclosing(__read_events(self, subject, options)) as generator:
             async for item in generator:
                 yield item
 
@@ -118,22 +243,188 @@ class Client(AbstractBaseClient):
         subject: str,
         options: ObserveEventsOptions
     ) -> AsyncGenerator[Event]:
-        async with contextlib.aclosing(observe_events(self, subject, options)) as generator:
+        async def __observe_events(
+            client: AbstractBaseClient,
+            subject: str,
+            options: ObserveEventsOptions
+        ) -> AsyncGenerator[Event]:
+            request_body = json.dumps({
+                'subject': subject,
+                'options': options.to_json()
+            })
+
+            response: Response
+            try:
+                response = await client.http_client.post(
+                    path='/api/v1/observe-events',
+                    request_body=request_body,
+                )
+            except CustomError as custom_error:
+                raise custom_error
+            except Exception as other_error:
+                raise InternalError(str(other_error)) from other_error
+
+            with response:
+                if response.status_code != HTTPStatus.OK:
+                    raise ServerError(
+                        f'Unexpected response status: '
+                        f'{response.status_code} {HTTPStatus(response.status_code).phrase}'
+                    )
+                async for raw_message in response.body:
+                    message = parse_raw_message(raw_message)
+
+                    if is_heartbeat(message):
+                        continue
+
+                    if is_stream_error(message):
+                        raise ServerError(f'{message["payload"]["error"]}.')
+
+                    if is_event(message):
+                        event = Event.parse(message['payload'])
+                        event_id = int(message['payload']['id'])
+
+                        if options.lower_bound is not None:
+                            if (
+                                options.lower_bound.type == 'inclusive' and  # pylint: disable=R2004
+                                int(event_id) < int(options.lower_bound.id)
+                            ):
+                                continue
+                            if (
+                                options.lower_bound.type == 'exclusive' and  # pylint: disable=R2004
+                                int(event_id) <= int(options.lower_bound.id)
+                            ):
+                                continue
+
+                        yield event
+                        continue
+
+                    raise ServerError(
+                        f'Failed to read events, an unexpected stream item was received: '
+                        f'{message}.'
+                    )
+
+        async with contextlib.aclosing(__observe_events(self, subject, options)) as generator:
             async for item in generator:
                 yield item
 
     async def register_event_schema(self, event_type: str, json_schema: dict) -> None:
-        await register_event_schema(self, event_type, json_schema)
+        request_body = json.dumps({
+            'eventType': event_type,
+            'schema': json_schema,
+        })
+
+        response: Response
+        try:
+            response = await self.http_client.post(
+                path='/api/v1/register-event-schema',
+                request_body=request_body,
+            )
+        except CustomError as custom_error:
+            raise custom_error
+        except Exception as other_error:
+            raise InternalError(str(other_error)) from other_error
+
+        with response:
+            if response.status_code != HTTPStatus.OK:
+                raise ServerError(
+                    'Unexpected response status: '
+                    f'{response.status_code} {HTTPStatus(response.status_code).phrase}'
+                )
+
+        return
 
     async def read_subjects(
         self,
         base_subject: str
     ) -> AsyncGenerator[str]:
-        async with contextlib.aclosing(read_subjects(self, base_subject)) as generator:
+        async def __read_subjects(
+            client: AbstractBaseClient,
+            base_subject: str
+        ) -> AsyncGenerator[str]:
+            request_body = json.dumps({
+                'baseSubject': base_subject
+            })
+
+            response: Response
+            try:
+                response = await client.http_client.post(
+                    path='/api/v1/read-subjects',
+                    request_body=request_body,
+                )
+            except CustomError as custom_error:
+                raise custom_error
+            except Exception as other_error:
+                raise InternalError(str(other_error)) from other_error
+
+            with response:
+                if response.status_code != HTTPStatus.OK:
+                    raise ServerError(
+                        'Unexpected response status: '
+                        f'{response.status_code} {HTTPStatus(response.status_code).phrase}'
+                    )
+                async for raw_message in response.body:
+                    message = parse_raw_message(raw_message)
+
+                    if is_stream_error(message):
+                        raise ServerError(message['payload']['error'])
+
+                    if is_subject(message):
+                        yield message['payload']['subject']
+                        continue
+
+                    raise ServerError(
+                        f'Failed to read subjects, an unexpected stream item '
+                        f'was received \'{message}\'.'
+                    )
+
+        async with contextlib.aclosing(__read_subjects(self, base_subject)) as generator:
             async for item in generator:
                 yield item
 
     async def read_event_types(self) -> AsyncGenerator[EventType]:
-        async with contextlib.aclosing(read_event_types(self)) as generator:
+        async def __read_event_types(
+            client: AbstractBaseClient,
+        ) -> AsyncGenerator[EventType]:
+            response: Response
+            try:
+                response = await client.http_client.post(
+                    path='/api/v1/read-event-types',
+                    request_body='',
+                )
+            except CustomError as custom_error:
+                raise custom_error
+            except Exception as other_error:
+                raise InternalError(str(other_error)) from other_error
+
+            with response:
+                if response.status_code != HTTPStatus.OK:
+                    raise ServerError(
+                        'Unexpected response status: '
+                        f'{response.status_code} {HTTPStatus(response.status_code).phrase}'
+                    )
+                async for raw_message in response.body:
+                    message = parse_raw_message(raw_message)
+
+                    if is_stream_error(message):
+                        raise ServerError(message['payload']['error'])
+
+                    if is_event_type(message):
+                        event_type: EventType
+                        try:
+                            event_type = EventType.parse(message['payload'])
+                        except ValidationError as validation_error:
+                            raise ServerError(str(validation_error)) from validation_error
+                        except Exception as other_error:
+                            raise InternalError(str(other_error)) from other_error
+
+                        yield event_type
+                        continue
+
+                    raise ServerError(
+                        f'Failed to read event types, an unexpected '
+                        f'stream item was received \'{message}\'.'
+                    )
+
+        async with contextlib.aclosing(__read_event_types(self)) as generator:
             async for item in generator:
                 yield item
