@@ -3,7 +3,11 @@ import contextlib
 from types import TracebackType
 from typing import TypeVar
 
+from http import HTTPStatus
+import json
+
 from .abstract_base_client import AbstractBaseClient
+from .errors.server_error import ServerError
 from .event.event import Event
 from .event.event_candidate import EventCandidate
 from .event.event_context import EventContext
@@ -30,7 +34,7 @@ class Client(AbstractBaseClient):
     ):
         self.__http_client = HttpClient(base_url=base_url, api_token=api_token)
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> "Client":
         await self.__http_client.__aenter__()
         return self
 
@@ -53,7 +57,37 @@ class Client(AbstractBaseClient):
         return self.__http_client
 
     async def ping(self) -> None:
-        return await ping(self)
+        OK_RESPONSE = "OK"
+        STATUS_OK = "ok"
+        
+        SPECVERSION_FIELD = "specversion"
+        TYPE_FIELD = "type"
+        PING_RECEIVED_TYPE = "io.eventsourcingdb.api.ping-received"
+
+        response = await self.http_client.get("/api/v1/ping")
+        response_body = bytes.decode(await response.body.read(), encoding="utf-8")
+
+        if response.status_code != HTTPStatus.OK:
+            raise ServerError(f"Received unexpected response: {response_body}")
+
+        if response_body == OK_RESPONSE:
+            return
+
+        try:
+            response_json = json.loads(response_body)
+        except json.JSONDecodeError as exc:
+            raise ServerError(f"Received unexpected response: {response_body}") from exc
+
+        if (
+            isinstance(response_json, dict)
+            and SPECVERSION_FIELD in response_json
+            and TYPE_FIELD in response_json
+            and response_json.get(TYPE_FIELD) == PING_RECEIVED_TYPE
+        ):
+            return
+
+        raise ServerError(f"Received unexpected response: {response_body}")
+
 
     async def verify_api_token(self) -> None:
         raise NotImplementedError("verify_api_token is not implemented yet.")
