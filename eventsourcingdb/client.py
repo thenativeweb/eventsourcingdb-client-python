@@ -23,9 +23,9 @@ from .handlers.observe_events.observe_events_options import ObserveEventsOptions
 from .handlers.read_event_types.event_type import EventType
 from .handlers.read_event_types.is_event_type import is_event_type
 from .handlers.read_subjects.is_subject import is_subject
-from .http_client.http_client import HttpClient
 from .handlers.read_events import ReadEventsOptions
 from .handlers.write_events import Precondition
+from .http_client.http_client import HttpClient
 from .http_client.response import Response
 
 
