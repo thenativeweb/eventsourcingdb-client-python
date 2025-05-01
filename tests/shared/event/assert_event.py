@@ -1,4 +1,3 @@
-from typing import Any
 from eventsourcingdb.event.event import Event
 
 # pylint: disable=R0917

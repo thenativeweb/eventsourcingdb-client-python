@@ -11,11 +11,14 @@ class Database:
     __create_key = object()
     __container: Container
 
+    CLIENT_TYPE_WITH_AUTH = 'with_authorization'
+    CLIENT_TYPE_INVALID_URL = 'with_invalid_url'
+
     def __init__(
         self,
         create_key,
         with_authorization_client: Client,
-        with_invalid_url_client: Client,
+        with_invalid_url_client: Client ,
     ):
         assert create_key == Database.__create_key, \
             'Database objects must be created using Database.create.'
@@ -28,6 +31,8 @@ class Database:
     @classmethod
     def _create_container(cls, api_token, image_tag):
         cls.__container = Container()
+        cls.__container.with_image_tag(image_tag)
+        cls.__container.with_api_token(api_token)
         return cls.__container
 
     @staticmethod
@@ -77,7 +82,13 @@ class Database:
                 continue
 
             try:
-                with_authorization_client, with_invalid_url_client = await cls._initialize_clients(container, api_token)
+                (
+                    with_authorization_client,
+                    with_invalid_url_client
+                ) = await cls._initialize_clients(
+                    container,
+                    api_token
+                )
             except Exception as client_error:
                 container.stop()
                 raise client_error
@@ -95,13 +106,15 @@ class Database:
             content = dockerfile.read().strip()
             return content.split(':')[-1]
 
-    def get_client(self, client_type: str = "with_authorization") -> Client:
-        if client_type == "with_authorization":
+    def get_client(self, client_type: str = CLIENT_TYPE_WITH_AUTH) -> Client:
+        if client_type == self.CLIENT_TYPE_WITH_AUTH:
             return self.__with_authorization_client
-        elif client_type == "with_invalid_url":
+        if client_type == self.CLIENT_TYPE_INVALID_URL:
             return self.__with_invalid_url_client
-        else:
-            raise ValueError(f"Unknown client type: {client_type}")
+
+        raise ValueError(f"Unknown client type: {client_type}")
 
     async def stop(self) -> None:
-        self.__class__.__container.stop()
+        # Use walrus operator for concise access and check
+        if (container := getattr(self.__class__, '_Database__container', None)):
+            container.stop()

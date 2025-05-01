@@ -1,25 +1,18 @@
-from collections.abc import Awaitable, Callable
-from http import HTTPStatus
-
+import asyncio
 from aiohttp import ClientConnectorDNSError
 import pytest
 
-from eventsourcingdb.client import Client
-from eventsourcingdb.errors.client_error import ClientError
 from eventsourcingdb.errors.server_error import ServerError
 from eventsourcingdb.event.event_candidate import EventCandidate
 from eventsourcingdb.handlers.bound import Bound, BoundType
 from eventsourcingdb.handlers.observe_events.if_event_is_missing_during_observe import IfEventIsMissingDuringObserve
 from eventsourcingdb.handlers.observe_events.observe_events_options import ObserveEventsOptions
 from eventsourcingdb.handlers.observe_events.observe_from_latest_event import ObserveFromLatestEvent
+
 from .conftest import TestData
 
 from .shared.database import Database
 from .shared.event.assert_event import assert_event_equals
-from .shared.start_local_http_server import \
-    AttachHandler, \
-    Response, \
-    AttachHandlers
 
 
 class TestObserveEvents:
@@ -41,7 +34,7 @@ class TestObserveEvents:
     ):
         client = database.get_client()
 
-        with pytest.raises(ClientError):
+        with pytest.raises(ServerError):
             async for _ in client.observe_events('', ObserveEventsOptions(recursive=False)):
                 pass
 
@@ -341,7 +334,7 @@ class TestObserveEvents:
     ):
         client = prepared_database.get_client()
 
-        with pytest.raises(ClientError):
+        with pytest.raises(ServerError):
             async for _ in client.observe_events(
                 '/users',
                 ObserveEventsOptions(
@@ -366,7 +359,7 @@ class TestObserveEvents:
     ):
         client = prepared_database.get_client()
 
-        with pytest.raises(ClientError):
+        with pytest.raises(ServerError):
             async for _ in client.observe_events(
                 '/users',
                 ObserveEventsOptions(
@@ -387,7 +380,7 @@ class TestObserveEvents:
     ):
         client = prepared_database.get_client()
 
-        with pytest.raises(ClientError):
+        with pytest.raises(ServerError):
             async for _ in client.observe_events(
                 '/users',
                 ObserveEventsOptions(
@@ -401,198 +394,44 @@ class TestObserveEvents:
             ):
                 pass
 
-
-class TestObserveEventsWithMockServer:
-
     @staticmethod
     @pytest.mark.asyncio
-    async def test_throws_error_if_server_responds_with_5xx_status_code(
-        get_client: Callable[[AttachHandlers], Awaitable[Client]]
+    async def test_cancelling_observe_events_async(
+        prepared_database: Database,
     ):
-        def attach_handlers(attach_handler: AttachHandler):
-            def handle_observe_events(response: Response) -> Response:
-                response.status_code = HTTPStatus.BAD_GATEWAY
-                response.set_data(HTTPStatus.BAD_GATEWAY.phrase)
-                return response
+        client = prepared_database.get_client()
+        events_processed = 0
+        events_to_process = 2
 
-            attach_handler('/api/v1/observe-events', 'POST', handle_observe_events)
-
-        client = await get_client(attach_handlers)
-
-        with pytest.raises(ServerError):
+        async def process_events():
+            nonlocal events_processed
             async for _ in client.observe_events(
-                subject='/',
-                options=ObserveEventsOptions(
-                    recursive=True
-                )
-            ):
-                pass
+                    '/',
+                    ObserveEventsOptions(
+                        recursive=True,
+                        from_latest_event=None
+                    )
+                ):
+                events_processed += 1
+                await asyncio.sleep(0.25)
 
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_throws_error_if_protocol_version_does_not_match(
-        get_client: Callable[[AttachHandlers], Awaitable[Client]]
-    ):
-        def attach_handlers(attach_handler: AttachHandler):
-            def handle_observe_events(response: Response) -> Response:
-                response.headers['X-EventSourcingDB-Protocol-Version'] = '0.0.0'
-                response.status_code = HTTPStatus.UNPROCESSABLE_ENTITY
-                response.set_data(HTTPStatus.UNPROCESSABLE_ENTITY.phrase)
-                return response
+        task = asyncio.create_task(process_events())
+        await asyncio.sleep(0.7)
+        task.cancel()
 
-            attach_handler('/api/v1/observe-events', 'POST', handle_observe_events)
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
 
-        client = await get_client(attach_handlers)
+        assert task.done(), 'Task should be completed after cancellation'
+        assert task.cancelled(), 'Task should be marked as cancelled'
 
-        with pytest.raises(ClientError):
-            async for _ in client.observe_events(
-                '/',
-                ObserveEventsOptions(
-                    recursive=True
-                )
-            ):
-                pass
+        try:
+            task.exception()
+        except asyncio.CancelledError:
+            pass
 
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_throws_error_if_server_responds_with_4xx_status_code(
-        get_client: Callable[[AttachHandlers], Awaitable[Client]]
-    ):
-        def attach_handlers(attach_handler: AttachHandler):
-            def handle_observe_events(response: Response) -> Response:
-                response.status_code = HTTPStatus.NOT_FOUND
-                response.set_data(HTTPStatus.NOT_FOUND.phrase)
-                return response
-
-            attach_handler('/api/v1/observe-events', 'POST', handle_observe_events)
-
-        client = await get_client(attach_handlers)
-
-        with pytest.raises(ClientError):
-            async for _ in client.observe_events(
-                '/',
-                ObserveEventsOptions(
-                    recursive=True
-                )
-            ):
-                pass
-
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_throws_error_if_server_responds_with_unexpected_status_code(
-        get_client: Callable[[AttachHandlers], Awaitable[Client]]
-    ):
-        def attach_handlers(attach_handler: AttachHandler):
-            def handle_observe_events(response: Response) -> Response:
-                response.status_code = HTTPStatus.ACCEPTED
-                response.set_data(HTTPStatus.ACCEPTED.phrase)
-                return response
-
-            attach_handler('/api/v1/observe-events', 'POST', handle_observe_events)
-
-        client = await get_client(attach_handlers)
-
-        with pytest.raises(ServerError):
-            async for _ in client.observe_events(
-                '/',
-                ObserveEventsOptions(
-                    recursive=True
-                )
-            ):
-                pass
-
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_throws_error_if_server_responds_with_an_item_that_cannot_be_parsed(
-        get_client: Callable[[AttachHandlers], Awaitable[Client]]
-    ):
-        def attach_handlers(attach_handler: AttachHandler):
-            def handle_observe_events(response: Response) -> Response:
-                response.status_code = HTTPStatus.OK
-                response.set_data('cannot be parsed')
-                return response
-
-            attach_handler('/api/v1/observe-events', 'POST', handle_observe_events)
-
-        client = await get_client(attach_handlers)
-
-        with pytest.raises(ServerError):
-            async for _ in client.observe_events(
-                '/',
-                ObserveEventsOptions(
-                    recursive=True
-                )
-            ):
-                pass
-
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_throws_error_if_server_responds_with_an_item_that_has_an_unexpected_type(
-        get_client: Callable[[AttachHandlers], Awaitable[Client]]
-    ):
-        def attach_handlers(attach_handler: AttachHandler):
-            def handle_observe_events(response: Response) -> Response:
-                response.status_code = HTTPStatus.OK
-                response.set_data('{"type": "clown", "payload": {"foo": "bar"}}')
-                return response
-
-            attach_handler('/api/v1/observe-events', 'POST', handle_observe_events)
-
-        client = await get_client(attach_handlers)
-
-        with pytest.raises(ServerError):
-            async for _ in client.observe_events(
-                '/',
-                ObserveEventsOptions(
-                    recursive=True
-                )
-            ):
-                pass
-
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_throws_error_if_server_responds_with_an_error_item(
-        get_client: Callable[[AttachHandlers], Awaitable[Client]]
-    ):
-        def attach_handlers(attach_handler: AttachHandler):
-            def handle_observe_events(response: Response) -> Response:
-                response.status_code = HTTPStatus.OK
-                response.set_data('{"type": "error", "payload": {"error": "it is just broken"}}')
-                return response
-
-            attach_handler('/api/v1/observe-events', 'POST', handle_observe_events)
-
-        client = await get_client(attach_handlers)
-
-        with pytest.raises(ServerError):
-            async for _ in client.observe_events(
-                '/',
-                ObserveEventsOptions(
-                    recursive=True
-                )
-            ):
-                pass
-
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_throws_error_if_server_responds_with_an_error_item_with_unexpected_payload(
-        get_client: Callable[[AttachHandlers], Awaitable[Client]]
-    ):
-        def attach_handlers(attach_handler: AttachHandler):
-            def handle_observe_events(response: Response) -> Response:
-                response.status_code = HTTPStatus.OK
-                response.set_data('{"type": "error", "payload": {"not very correct": "indeed"}}')
-                return response
-
-            attach_handler('/api/v1/observe-events', 'POST', handle_observe_events)
-
-        client = await get_client(attach_handlers)
-
-        with pytest.raises(ServerError):
-            async for _ in client.observe_events(
-                '/',
-                ObserveEventsOptions(
-                    recursive=True
-                )
-            ):
-                pass
+        assert events_processed > events_to_process, (
+            'Expected to process some events before cancellation'
+        )

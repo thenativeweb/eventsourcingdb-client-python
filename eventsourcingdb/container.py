@@ -129,9 +129,18 @@ class Container:
             return self
 
         try:
+            # Try to pull the latest image
             self._docker_client.images.pull(self._image_name, self._image_tag)
         except errors.APIError as e:
-            raise RuntimeError(f'Warning: Could not pull image: {e}') from e
+            # Check if we already have the image locally
+            try:
+                image_name = f"{self._image_name}:{self._image_tag}"
+                self._docker_client.images.get(image_name)
+                # If we get here, the image exists locally, so we can continue
+                logging.warning(f"Warning: Could not pull image: {e}. Using locally cached image.")
+            except errors.ImageNotFound:
+                # If the image isn't available locally either, we can't continue
+                raise RuntimeError(f'Could not pull image and no local image available: {e}') from e
 
         self._cleanup_existing_containers()
         self._create_container()

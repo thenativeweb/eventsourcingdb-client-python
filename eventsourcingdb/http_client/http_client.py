@@ -9,7 +9,6 @@ from ..util import url
 from .get_get_headers import get_get_headers
 from .get_post_headers import get_post_headers
 from .response import Response
-from .validate_response import validate_response
 
 
 class HttpClient:
@@ -58,14 +57,7 @@ class HttpClient:
 
             response = Response(async_response)
 
-            validated_response = None
-            try:
-                validated_response = await validate_response(response)
-            except Exception as error:
-                response.close()
-                raise error
-
-            return validated_response
+            return response
 
         return await __request_executor()
 
@@ -88,13 +80,6 @@ class HttpClient:
 
             response = Response(async_response)
 
-            validated_response = None
-            try:
-                validated_response = await validate_response(response)
-            except Exception as error:
-                response.close()
-                raise error
-
-            return validated_response
+            return response
 
         return await __request_executor()

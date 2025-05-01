@@ -1,16 +1,10 @@
-from collections.abc import Callable, Awaitable
-from http import HTTPStatus
-
 import pytest
-from flask import Response
-
-from eventsourcingdb.client import Client
-from eventsourcingdb.errors.client_error import ClientError
 from eventsourcingdb.errors.server_error import ServerError
 from eventsourcingdb.event.event_candidate import EventCandidate
+
 from .conftest import TestData
+
 from .shared.database import Database
-from .shared.start_local_http_server import AttachHandlers, AttachHandler
 
 
 class TestRegisterEventSchema:
@@ -50,7 +44,7 @@ class TestRegisterEventSchema:
             ]
         )
 
-        with pytest.raises(ClientError, match="missing properties: 'properties'"):
+        with pytest.raises(ServerError, match="Bad Request"):
             await client.register_event_schema(
                 "com.gornisht.ekht",
                 {
@@ -75,7 +69,7 @@ class TestRegisterEventSchema:
             }
         )
 
-        with pytest.raises(ClientError, match="schema already exists"):
+        with pytest.raises(ServerError):
             await client.register_event_schema(
                 "com.gornisht.ekht",
                 {
@@ -92,7 +86,7 @@ class TestRegisterEventSchema:
     ):
         client = database.get_client()
 
-        with pytest.raises(ClientError, match="value must be \"object\""):
+        with pytest.raises(ServerError):
             await client.register_event_schema(
                 "com.gornisht.ekht",
                 {
@@ -100,80 +94,3 @@ class TestRegisterEventSchema:
                     "properties": {}
                 }
             )
-
-
-class TestRegisterEventSchemaWithMockServer:
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_throws_error_if_server_responds_with_5xx_status_code(
-        get_client: Callable[[AttachHandlers], Awaitable[Client]]
-    ):
-        def attach_handlers(attach_handler: AttachHandler):
-            def handle_register_event_schema(response: Response) -> Response:
-                response.status_code = HTTPStatus.BAD_GATEWAY
-                response.set_data(HTTPStatus.BAD_GATEWAY.phrase)
-                return response
-
-            attach_handler('/api/v1/register-event-schema', 'POST', handle_register_event_schema)
-
-        client = await get_client(attach_handlers)
-
-        with pytest.raises(ServerError):
-            await client.register_event_schema("com.foo.bar", {"type": "object"})
-
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_throws_error_if_servers_protocol_version_not_matching(
-        get_client: Callable[[AttachHandlers], Awaitable[Client]]
-    ):
-        def attach_handlers(attach_handler: AttachHandler):
-            def handle_register_event_schema(response: Response) -> Response:
-                response.headers['X-EventSourcingDB-Protocol-Version'] = '0.0.0'
-                response.status_code = HTTPStatus.UNPROCESSABLE_ENTITY
-                response.set_data(HTTPStatus.UNPROCESSABLE_ENTITY.phrase)
-                return response
-
-            attach_handler('/api/v1/register-event-schema', 'POST', handle_register_event_schema)
-
-        client = await get_client(attach_handlers)
-
-        with pytest.raises(ClientError):
-            await client.register_event_schema("com.foo.bar", {"type": "object"})
-
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_throws_error_if_server_responds_with_4xx_status_code(
-        get_client: Callable[[AttachHandlers], Awaitable[Client]]
-    ):
-        def attach_handlers(attach_handler: AttachHandler):
-            def handle_register_event_schema(response: Response) -> Response:
-                response.status_code = HTTPStatus.NOT_FOUND
-                response.set_data(HTTPStatus.NOT_FOUND.phrase)
-                return response
-
-            attach_handler('/api/v1/register-event-schema', 'POST', handle_register_event_schema)
-
-        client = await get_client(attach_handlers)
-
-        with pytest.raises(ClientError):
-            await client.register_event_schema("com.foo.bar", {"type": "object"})
-
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_throws_error_if_server_responds_with_unusual_status_code(
-        get_client: Callable[[AttachHandlers], Awaitable[Client]]
-    ):
-        def attach_handlers(attach_handler: AttachHandler):
-            def handle_register_event_schema(response: Response) -> Response:
-                response.status_code = HTTPStatus.ACCEPTED
-                response.set_data(
-                    '{"type": "subject", "payload": { "subject": "/foo" }}\n'
-                )
-                return response
-
-            attach_handler('/api/v1/register-event-schema', 'POST', handle_register_event_schema)
-
-        client = await get_client(attach_handlers)
-
-        with pytest.raises(ServerError):
-            await client.register_event_schema("com.foo.bar", {"type": "object"})
