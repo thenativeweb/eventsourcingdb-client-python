@@ -1,16 +1,17 @@
 from collections.abc import Awaitable, Callable
 from http import HTTPStatus
 
+from aiohttp import ClientConnectorDNSError
 import pytest
 
 from eventsourcingdb.client import Client
 from eventsourcingdb.errors.client_error import ClientError
 from eventsourcingdb.errors.server_error import ServerError
+from eventsourcingdb.event.event_candidate import EventCandidate
 from eventsourcingdb.handlers.bound import Bound, BoundType
-from eventsourcingdb.handlers.observe_events import \
-    ObserveEventsOptions, \
-    ObserveFromLatestEvent, \
-    IfEventIsMissingDuringObserve
+from eventsourcingdb.handlers.observe_events.if_event_is_missing_during_observe import IfEventIsMissingDuringObserve
+from eventsourcingdb.handlers.observe_events.observe_events_options import ObserveEventsOptions
+from eventsourcingdb.handlers.observe_events.observe_from_latest_event import ObserveFromLatestEvent
 from .conftest import TestData
 
 from .shared.database import Database
@@ -27,9 +28,9 @@ class TestObserveEvents:
     async def test_throws_error_if_server_is_not_reachable(
         database: Database
     ):
-        client = database.with_invalid_url.client
+        client = database.get_client("with_invalid_url")
 
-        with pytest.raises(ServerError):
+        with pytest.raises(ClientConnectorDNSError):
             async for _ in client.observe_events('/', ObserveEventsOptions(recursive=False)):
                 pass
 
@@ -38,7 +39,7 @@ class TestObserveEvents:
     async def test_throws_error_if_subject_is_invalid(
         database: Database
     ):
-        client = database.with_authorization.client
+        client = database.get_client()
 
         with pytest.raises(ClientError):
             async for _ in client.observe_events('', ObserveEventsOptions(recursive=False)):
@@ -49,7 +50,7 @@ class TestObserveEvents:
     async def test_supports_authorization(
         prepared_database: Database
     ):
-        client = prepared_database.with_authorization.client
+        client = prepared_database.get_client()
 
         observed_items_count = 0
         events = client.observe_events('/', ObserveEventsOptions(recursive=True))
@@ -66,7 +67,7 @@ class TestObserveEvents:
         prepared_database: Database,
         test_data: TestData
     ):
-        client = prepared_database.with_authorization.client
+        client = prepared_database.get_client()
         registered_events_count = 3
 
         observed_items = []
@@ -76,12 +77,17 @@ class TestObserveEvents:
             ObserveEventsOptions(recursive=False)
         )
 
-        await client.write_events([test_data.TEST_SOURCE.new_event(
-            subject=test_data.REGISTERED_SUBJECT,
-            event_type=test_data.REGISTERED_TYPE,
-            data=test_data.APFEL_FRED_DATA,
-            trace_parent=test_data.TRACE_PARENT_5,
-        )])
+        await client.write_events(
+            [
+                EventCandidate(
+                    source=test_data.TEST_SOURCE_STRING,
+                    subject=test_data.REGISTERED_SUBJECT,
+                    type=test_data.REGISTERED_TYPE,
+                    data=test_data.APFEL_FRED_DATA,
+                    trace_parent=test_data.TRACE_PARENT_5,
+                )
+            ]
+        )
 
         async for event in events:
             observed_items.append(event)
@@ -123,7 +129,7 @@ class TestObserveEvents:
         prepared_database: Database,
         test_data: TestData
     ):
-        client = prepared_database.with_authorization.client
+        client = prepared_database.get_client()
         observed_items = []
         did_push_intermediate_event = False
 
@@ -134,12 +140,17 @@ class TestObserveEvents:
             observed_items.append(event)
 
             if not did_push_intermediate_event:
-                await client.write_events([test_data.TEST_SOURCE.new_event(
-                    subject=test_data.REGISTERED_SUBJECT,
-                    event_type=test_data.REGISTERED_TYPE,
-                    data=test_data.APFEL_FRED_DATA,
-                    trace_parent=test_data.TRACE_PARENT_5,
-                )])
+                await client.write_events(
+                    [
+                        EventCandidate(
+                            source=test_data.TEST_SOURCE_STRING,
+                            subject=test_data.REGISTERED_SUBJECT,
+                            type=test_data.REGISTERED_TYPE,
+                            data=test_data.APFEL_FRED_DATA,
+                            trace_parent=test_data.TRACE_PARENT_5,
+                        )
+                    ]
+                )
 
                 did_push_intermediate_event = True
 
@@ -199,7 +210,7 @@ class TestObserveEvents:
         prepared_database: Database,
         test_data: TestData
     ):
-        client = prepared_database.with_authorization.client
+        client = prepared_database.get_client()
         observed_items = []
         did_push_intermediate_event = False
 
@@ -217,12 +228,17 @@ class TestObserveEvents:
             observed_items.append(event)
 
             if not did_push_intermediate_event:
-                await client.write_events([test_data.TEST_SOURCE.new_event(
-                    subject=test_data.REGISTERED_SUBJECT,
-                    event_type=test_data.REGISTERED_TYPE,
-                    data=test_data.APFEL_FRED_DATA,
-                    trace_parent=test_data.TRACE_PARENT_5,
-                )])
+                await client.write_events(
+                    [
+                        EventCandidate(
+                            source=test_data.TEST_SOURCE_STRING,
+                            subject=test_data.REGISTERED_SUBJECT,
+                            type=test_data.REGISTERED_TYPE,
+                            data=test_data.APFEL_FRED_DATA,
+                            trace_parent=test_data.TRACE_PARENT_5,
+                        )
+                    ]
+                )
 
                 did_push_intermediate_event = True
 
@@ -255,7 +271,7 @@ class TestObserveEvents:
         prepared_database: Database,
         test_data: TestData
     ):
-        client = prepared_database.with_authorization.client
+        client = prepared_database.get_client()
         observed_items = []
         did_push_intermediate_event = False
 
@@ -272,12 +288,17 @@ class TestObserveEvents:
             observed_items.append(event)
 
             if not did_push_intermediate_event:
-                await client.write_events([test_data.TEST_SOURCE.new_event(
-                    subject=test_data.REGISTERED_SUBJECT,
-                    event_type=test_data.REGISTERED_TYPE,
-                    data=test_data.APFEL_FRED_DATA,
-                    trace_parent=test_data.TRACE_PARENT_5,
-                )])
+                await client.write_events(
+                    [
+                        EventCandidate(
+                            source=test_data.TEST_SOURCE_STRING,
+                            subject=test_data.REGISTERED_SUBJECT,
+                            type=test_data.REGISTERED_TYPE,
+                            data=test_data.APFEL_FRED_DATA,
+                            trace_parent=test_data.TRACE_PARENT_5,
+                        )
+                    ]
+                )
 
                 did_push_intermediate_event = True
 
@@ -318,7 +339,7 @@ class TestObserveEvents:
     async def test_throws_error_for_mutually_exclusive_options(
         prepared_database: Database
     ):
-        client = prepared_database.with_authorization.client
+        client = prepared_database.get_client()
 
         with pytest.raises(ClientError):
             async for _ in client.observe_events(
@@ -343,7 +364,7 @@ class TestObserveEvents:
     async def test_throws_error_for_invalid_subject_in_from_latest_event(
         prepared_database: Database
     ):
-        client = prepared_database.with_authorization.client
+        client = prepared_database.get_client()
 
         with pytest.raises(ClientError):
             async for _ in client.observe_events(
@@ -364,7 +385,7 @@ class TestObserveEvents:
     async def test_throws_error_for_invalid_type_in_from_latest_event(
         prepared_database: Database
     ):
-        client = prepared_database.with_authorization.client
+        client = prepared_database.get_client()
 
         with pytest.raises(ClientError):
             async for _ in client.observe_events(

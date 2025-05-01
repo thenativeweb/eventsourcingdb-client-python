@@ -1,7 +1,6 @@
 import pytest_asyncio
 from eventsourcingdb.client import Client
 from eventsourcingdb.event.event_candidate import EventCandidate
-from eventsourcingdb.event.source import Source
 from eventsourcingdb.http_client.http_client import HttpClient
 from .shared.database import Database
 from .shared.start_local_http_server import \
@@ -62,11 +61,10 @@ async def get_client():
 
 class TestData:
     TEST_SOURCE_STRING = 'tag:thenativeweb.io,2023:eventsourcingdb:test'
-    TEST_SOURCE = Source(TEST_SOURCE_STRING)
     REGISTERED_SUBJECT = '/users/registered'
     LOGGED_IN_SUBJECT = '/users/logged-in'
     REGISTERED_TYPE = 'io.thenativeweb.users.registered'
-    LOGGED_IN_TYPE = 'io.thenativeweb.users.loggedIn'
+    LOGGED_IN_TYPE = 'io.thenativeweb.users.logged-in'
     JANE_DATA = {'name': 'jane'}
     JOHN_DATA = {'name': 'john'}
     APFEL_FRED_DATA = {'name': 'apfel fred'}
@@ -90,36 +88,38 @@ async def prepared_database(
     test_data: TestData
     # pylint: enable=redefined-outer-name
 ) -> Database:
-    await database.with_authorization.client.write_events([
-        test_data.TEST_SOURCE.new_event(
-            test_data.REGISTERED_SUBJECT,
-            test_data.REGISTERED_TYPE,
-            test_data.JANE_DATA,
-            test_data.TRACE_PARENT_1,
-            None
-        ),
-        test_data.TEST_SOURCE.new_event(
-            test_data.LOGGED_IN_SUBJECT,
-            test_data.LOGGED_IN_TYPE,
-            test_data.JANE_DATA,
-            test_data.TRACE_PARENT_2,
-            None
-        ),
-        test_data.TEST_SOURCE.new_event(
-            test_data.REGISTERED_SUBJECT,
-            test_data.REGISTERED_TYPE,
-            test_data.JOHN_DATA,
-            test_data.TRACE_PARENT_3,
-            None
-        ),
-        test_data.TEST_SOURCE.new_event(
-            test_data.LOGGED_IN_SUBJECT,
-            test_data.LOGGED_IN_TYPE,
-            test_data.JOHN_DATA,
-            test_data.TRACE_PARENT_4,
-            None
-        ),
-    ])
+    await database.get_client().write_events(
+        [
+            EventCandidate(
+                source=test_data.TEST_SOURCE_STRING,
+                subject=test_data.REGISTERED_SUBJECT,
+                type=test_data.REGISTERED_TYPE,
+                data=test_data.JANE_DATA,
+                trace_parent=test_data.TRACE_PARENT_1,
+            ),
+            EventCandidate(
+                source=test_data.TEST_SOURCE_STRING,
+                subject=test_data.LOGGED_IN_SUBJECT,
+                type=test_data.LOGGED_IN_TYPE,
+                data=test_data.JANE_DATA,
+                trace_parent=test_data.TRACE_PARENT_2,
+            ),
+            EventCandidate(
+                source=test_data.TEST_SOURCE_STRING,
+                subject=test_data.REGISTERED_SUBJECT,
+                type=test_data.REGISTERED_TYPE,
+                data=test_data.JOHN_DATA,
+                trace_parent=test_data.TRACE_PARENT_3,
+            ),
+            EventCandidate(
+                source=test_data.TEST_SOURCE_STRING,
+                subject=test_data.LOGGED_IN_SUBJECT,
+                type=test_data.LOGGED_IN_TYPE,
+                data=test_data.JOHN_DATA,
+                trace_parent=test_data.TRACE_PARENT_4,
+            )
+        ]
+    )
 
     return database
 
@@ -131,6 +131,14 @@ async def events_for_mocked_server(
     test_data: TestData
     # pylint: enable=redefined-outer-name
 ) -> list[EventCandidate]:
+
     return [
-        test_data.TEST_SOURCE.new_event('/', 'com.foo.bar', {}, None, None),
+        EventCandidate(
+            source=test_data.TEST_SOURCE_STRING,
+            subject='com.foo.bar',
+            type='com.foo.bar',
+            data={},
+            trace_parent=None,
+            trace_state=None
+        )
     ]

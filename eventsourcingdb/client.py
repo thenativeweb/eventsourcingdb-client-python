@@ -13,12 +13,10 @@ from .handlers.is_event import is_event
 
 from .errors.custom_error import CustomError
 from .errors.internal_error import InternalError
-from .errors.invalid_parameter_error import InvalidParameterError
 from .errors.server_error import ServerError
 from .errors.validation_error import ValidationError
 from .event.event import Event
 from .event.event_candidate import EventCandidate
-from .event.event_context import EventContext
 from .handlers.observe_events.observe_events_options import ObserveEventsOptions
 from .handlers.read_event_types.event_type import EventType
 from .handlers.read_event_types.is_event_type import is_event_type
@@ -63,8 +61,6 @@ class Client():
         return self.__http_client
 
     async def ping(self) -> None:
-        ok_response = "OK"
-
         specversion_field = "specversion"
         type_field = "type"
         ping_received_type = "io.eventsourcingdb.api.ping-received"
@@ -75,14 +71,7 @@ class Client():
         if response.status_code != HTTPStatus.OK:
             raise ServerError(f"Received unexpected response: {response_body}")
 
-        if response_body == ok_response:
-            return
-
-        try:
-            response_json = json.loads(response_body)
-        except json.JSONDecodeError as exc:
-            raise ServerError(f"Received unexpected response: {response_body}") from exc
-
+        response_json = json.loads(response_body)
         if (
             isinstance(response_json, dict)
             and specversion_field in response_json
@@ -94,20 +83,17 @@ class Client():
         raise ServerError(f"Received unexpected response: {response_body}")
 
     async def verify_api_token(self) -> None:
+        # POST Request. Ist wie ping, aber mit POST. Authorization header token
+        # mitschicken. Token gültig dann event, Token ungültig 401
         raise NotImplementedError("verify_api_token is not implemented yet.")
 
     async def write_events(
         self,
         event_candidates: list[EventCandidate],
         preconditions: list[Precondition] = None  # type: ignore
-    ) -> list[EventContext]:
+    ) -> list[Event]:
         if preconditions is None:
             preconditions = []
-        if len(event_candidates) < 1:
-            raise InvalidParameterError(
-                'event_candidates',
-                'event_candidates must contain at least one EventCandidate.'
-            )
 
         request_body = json.dumps(
             {
@@ -117,15 +103,10 @@ class Client():
         )
 
         response: Response
-        try:
-            response = await self.http_client.post(
-                path='/api/v1/write-events',
-                request_body=request_body,
-            )
-        except CustomError as custom_error:
-            raise custom_error
-        except Exception as other_error:
-            raise InternalError(str(other_error)) from other_error
+        response = await self.http_client.post(
+            path='/api/v1/write-events',
+            request_body=request_body,
+        )
 
         if response.status_code != HTTPStatus.OK:
             raise ServerError(
@@ -135,12 +116,7 @@ class Client():
 
         response_data = await response.body.read()
         response_data = bytes.decode(response_data, encoding='utf-8')
-        try:
-            response_data = json.loads(response_data)
-        except json.JSONDecodeError as decode_error:
-            raise ServerError(str(decode_error)) from decode_error
-        except Exception as other_error:
-            raise InternalError(str(other_error)) from other_error
+        response_data = json.loads(response_data)
 
         if not isinstance(response_data, list):
             raise ServerError(
@@ -148,13 +124,7 @@ class Client():
 
         result = []
         for unparsed_event_context in response_data:
-            try:
-                result.append(EventContext.parse(unparsed_event_context))
-            except ValidationError as validation_error:
-                raise ServerError(str(validation_error)) from validation_error
-            except Exception as other_error:
-                raise InternalError(str(other_error)) from other_error
-
+            result.append(Event.parse(unparsed_event_context))
         return result
 
     async def read_events(
@@ -173,15 +143,11 @@ class Client():
             })
 
             response: Response
-            try:
-                response = await client.http_client.post(
-                    path='/api/v1/read-events',
-                    request_body=request_body,
-                )
-            except CustomError as custom_error:
-                raise custom_error
-            except Exception as other_error:
-                raise InternalError(str(other_error)) from other_error
+
+            response = await client.http_client.post(
+                path='/api/v1/read-events',
+                request_body=request_body,
+            )
 
             with response:
                 if response.status_code != HTTPStatus.OK:
@@ -235,6 +201,9 @@ class Client():
                 yield item
 
     async def run_eventql_query(self, query: str) -> AsyncGenerator[Event]:
+        # TODO: read events nehmen. Das Responsehandling ist gleich wie
+        # read_events. ein object was eine query property hat, Return ist ein any.
+        # da kann alles mögliche sein.
         raise NotImplementedError("run_eventql_query is not implemented yet.")
 
     async def observe_events(
@@ -253,15 +222,10 @@ class Client():
             })
 
             response: Response
-            try:
-                response = await client.http_client.post(
-                    path='/api/v1/observe-events',
-                    request_body=request_body,
-                )
-            except CustomError as custom_error:
-                raise custom_error
-            except Exception as other_error:
-                raise InternalError(str(other_error)) from other_error
+            response = await client.http_client.post(
+                path='/api/v1/observe-events',
+                request_body=request_body,
+            )
 
             with response:
                 if response.status_code != HTTPStatus.OK:
@@ -345,15 +309,10 @@ class Client():
             })
 
             response: Response
-            try:
-                response = await client.http_client.post(
-                    path='/api/v1/read-subjects',
-                    request_body=request_body,
-                )
-            except CustomError as custom_error:
-                raise custom_error
-            except Exception as other_error:
-                raise InternalError(str(other_error)) from other_error
+            response = await client.http_client.post(
+                path='/api/v1/read-subjects',
+                request_body=request_body,
+            )
 
             with response:
                 if response.status_code != HTTPStatus.OK:

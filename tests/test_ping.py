@@ -1,6 +1,7 @@
 from collections.abc import Callable, Awaitable
 from http import HTTPStatus
 
+import aiohttp
 import pytest
 
 from eventsourcingdb.client import Client
@@ -16,22 +17,21 @@ class TestPing:
     @staticmethod
     @pytest.mark.asyncio
     async def test_throws_no_error_if_server_is_reachable(database: Database):
-        client = database.with_authorization.client
-
+        client = database.get_client("with_authorization")
         await client.ping()
 
     @staticmethod
     @pytest.mark.asyncio
     async def test_throws_error_if_server_is_not_reachable(database: Database):
-        client = database.with_invalid_url.client
+        client = database.get_client("with_invalid_url")
 
-        with pytest.raises(ServerError):
+        with pytest.raises(aiohttp.ClientError):
             await client.ping()
 
     @staticmethod
     @pytest.mark.asyncio
     async def test_supports_authorization(database: Database):
-        client = database.with_authorization.client
+        client = database.get_client()
 
         await client.ping()
 
@@ -64,7 +64,7 @@ class TestPingWithMockServer:
         def attach_handlers(attach_handler: AttachHandler):
             def handle_ping(response: Response) -> Response:
                 response.status_code = HTTPStatus.OK
-                response.set_data('not OK')
+                response.set_data('{"status": "not OK"}')
                 return response
 
             attach_handler('/api/v1/ping', 'GET', handle_ping)

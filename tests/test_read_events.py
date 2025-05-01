@@ -1,10 +1,12 @@
 from collections.abc import Callable, Awaitable
 from http import HTTPStatus
 
+from aiohttp import ClientConnectorDNSError
 import pytest
 
 from eventsourcingdb.client import Client
 from eventsourcingdb.errors.client_error import ClientError
+from eventsourcingdb.errors.internal_error import InternalError
 from eventsourcingdb.errors.server_error import ServerError
 from eventsourcingdb.handlers.bound import Bound, BoundType
 from eventsourcingdb.handlers.read_events import \
@@ -29,9 +31,9 @@ class TestReadEvents:
     async def test_throws_error_if_server_is_not_reachable(
         database: Database
     ):
-        client = database.with_invalid_url.client
+        client = database.get_client("with_invalid_url")
 
-        with pytest.raises(ServerError):
+        with pytest.raises(ClientConnectorDNSError):
             async for _ in client.read_events('/', ReadEventsOptions(recursive=False)):
                 pass
 
@@ -40,7 +42,7 @@ class TestReadEvents:
     async def test_supports_authorization(
         database: Database
     ):
-        client = database.with_authorization.client
+        client = database.get_client()
 
         async for _ in client.read_events('/', ReadEventsOptions(recursive=False)):
             pass
@@ -51,7 +53,7 @@ class TestReadEvents:
         prepared_database: Database,
         test_data: TestData
     ):
-        client = prepared_database.with_authorization.client
+        client = prepared_database.get_client()
 
         result = []
         async for event in client.read_events(
@@ -87,7 +89,7 @@ class TestReadEvents:
         prepared_database: Database,
         test_data: TestData
     ):
-        client = prepared_database.with_authorization.client
+        client = prepared_database.get_client()
 
         result = []
         async for event in client.read_events(
@@ -141,7 +143,7 @@ class TestReadEvents:
         prepared_database: Database,
         test_data: TestData
     ):
-        client = prepared_database.with_authorization.client
+        client = prepared_database.get_client()
 
         result = []
         async for event in client.read_events(
@@ -177,7 +179,7 @@ class TestReadEvents:
         prepared_database: Database,
         test_data: TestData
     ):
-        client = prepared_database.with_authorization.client
+        client = prepared_database.get_client()
 
         result = []
         async for event in client.read_events(
@@ -220,7 +222,7 @@ class TestReadEvents:
         prepared_database: Database,
         test_data: TestData
     ):
-        client = prepared_database.with_authorization.client
+        client = prepared_database.get_client()
 
         result = []
         async for event in client.read_events(
@@ -259,7 +261,7 @@ class TestReadEvents:
         prepared_database: Database,
         test_data: TestData
     ):
-        client = prepared_database.with_authorization.client
+        client = prepared_database.get_client()
 
         result = []
         async for event in client.read_events(
@@ -297,7 +299,7 @@ class TestReadEvents:
     async def test_throws_error_for_exclusive_options(
         prepared_database: Database
     ):
-        client = prepared_database.with_authorization.client
+        client = prepared_database.get_client()
 
         with pytest.raises(ClientError):
             async for _ in client.read_events(
@@ -319,7 +321,7 @@ class TestReadEvents:
     async def test_throws_error_for_invalid_subject(
         prepared_database: Database
     ):
-        client = prepared_database.with_authorization.client
+        client = prepared_database.get_client()
 
         with pytest.raises(ClientError):
             async for _ in client.read_events(
@@ -335,7 +337,7 @@ class TestReadEvents:
     async def test_throws_error_for_invalid_lower_bound(
         prepared_database: Database
     ):
-        client = prepared_database.with_authorization.client
+        client = prepared_database.get_client()
 
         with pytest.raises(ClientError):
             async for _ in client.read_events(
@@ -352,7 +354,7 @@ class TestReadEvents:
     async def test_throws_error_for_negative_lower_bound(
         prepared_database: Database
     ):
-        client = prepared_database.with_authorization.client
+        client = prepared_database.get_client()
 
         with pytest.raises(ClientError):
             async for _ in client.read_events(
@@ -369,7 +371,7 @@ class TestReadEvents:
     async def test_throws_error_for_invalid_upper_bound(
         prepared_database: Database
     ):
-        client = prepared_database.with_authorization.client
+        client = prepared_database.get_client()
 
         with pytest.raises(ClientError):
             async for _ in client.read_events(
@@ -386,7 +388,7 @@ class TestReadEvents:
     async def test_throws_error_for_negative_upper_bound(
         prepared_database: Database
     ):
-        client = prepared_database.with_authorization.client
+        client = prepared_database.get_client()
 
         with pytest.raises(ClientError):
             async for _ in client.read_events(
@@ -403,7 +405,7 @@ class TestReadEvents:
     async def test_throws_error_for_invalid_subject_in_from_latest_event(
         prepared_database: Database
     ):
-        client = prepared_database.with_authorization.client
+        client = prepared_database.get_client()
 
         with pytest.raises(ClientError):
             async for _ in client.read_events(
@@ -424,7 +426,7 @@ class TestReadEvents:
     async def test_throws_error_for_invalid_type_in_from_latest_event(
         prepared_database: Database
     ):
-        client = prepared_database.with_authorization.client
+        client = prepared_database.get_client()
 
         with pytest.raises(ClientError):
             async for _ in client.read_events(

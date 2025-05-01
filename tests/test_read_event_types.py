@@ -7,6 +7,7 @@ from flask import Response
 from eventsourcingdb.client import Client
 from eventsourcingdb.errors.client_error import ClientError
 from eventsourcingdb.errors.server_error import ServerError
+from eventsourcingdb.event.event_candidate import EventCandidate
 from eventsourcingdb.handlers.read_event_types.event_type import EventType
 from .conftest import TestData
 from .shared.database import Database
@@ -20,38 +21,42 @@ class TestReadEventTypes:
         database: Database,
         test_data: TestData,
     ):
-        client = database.with_authorization.client
+        client = database.get_client("with_authorization")
 
         await client.write_events([
-            test_data.TEST_SOURCE.new_event(
+            EventCandidate(
+                source=test_data.TEST_SOURCE_STRING,
                 subject="/account",
-                event_type="com.foo.bar",
+                type="com.foo.bar",
                 data={},
             ),
-            test_data.TEST_SOURCE.new_event(
+            EventCandidate(
+                source=test_data.TEST_SOURCE_STRING,
                 subject="/account/user",
-                event_type="com.bar.baz",
+                type="com.bar.baz",
                 data={},
             ),
-            test_data.TEST_SOURCE.new_event(
+            EventCandidate(
+                source=test_data.TEST_SOURCE_STRING,
                 subject="/account/user",
-                event_type="com.baz.leml",
+                type="com.baz.leml",
                 data={},
             ),
-            test_data.TEST_SOURCE.new_event(
+            EventCandidate(
+                source=test_data.TEST_SOURCE_STRING,
                 subject="/",
-                event_type="com.quux.knax",
+                type="com.quux.knax",
                 data={},
             ),
         ])
 
         await client.register_event_schema(
             "org.ban.ban",
-            {"type": "object", "properties": {}}  # Added required properties field
+            {"type": "object", "properties": {}}
         )
         await client.register_event_schema(
             "org.bing.chilling",
-            {"type": "object", "properties": {}}  # Added required properties field
+            {"type": "object", "properties": {}}
         )
 
         actual_event_types: set[EventType] = set()

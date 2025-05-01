@@ -5,42 +5,35 @@ import uuid
 
 from eventsourcingdb.client import Client
 from eventsourcingdb.container import Container
-from .testing_database import TestingDatabase
 
 
 class Database:
     __create_key = object()
+    __container: Container
 
     def __init__(
         self,
         create_key,
-        with_authorization: TestingDatabase,
-        with_invalid_url: TestingDatabase
+        with_authorization_client: Client,
+        with_invalid_url_client: Client,
     ):
         assert create_key == Database.__create_key, \
             'Database objects must be created using Database.create.'
-
+        self.__with_authorization_client: Client = with_authorization_client
+        self.__with_invalid_url_client: Client = with_invalid_url_client
+        """self.clients["with_authorization"] = clients
         self.with_authorization: TestingDatabase = with_authorization
-        self.with_invalid_url: TestingDatabase = with_invalid_url
+        self.with_invalid_url: TestingDatabase = with_invalid_url"""
 
-    @staticmethod
-    def _create_container(api_token, image_tag):
-        return Container(
-            image_name="thenativeweb/eventsourcingdb",
-            image_tag=image_tag,
-            api_token=api_token,
-            internal_port=3000
-        )
+    @classmethod
+    def _create_container(cls, api_token, image_tag):
+        cls.__container = Container()
+        return cls.__container
 
     @staticmethod
     async def _initialize_clients(container, api_token):
         with_authorization_client = container.get_client()
         await with_authorization_client.initialize()
-
-        with_authorization = TestingDatabase(
-            with_authorization_client,
-            container
-        )
 
         with_invalid_url_client = Client(
             base_url='http://localhost.invalid',
@@ -48,18 +41,7 @@ class Database:
         )
         await with_invalid_url_client.initialize()
 
-        with_invalid_url = TestingDatabase(
-            with_invalid_url_client
-        )
-        return with_authorization, with_invalid_url
-
-    @staticmethod
-    def _stop_container_safely(container):
-        """Safely stop a container, ignoring errors"""
-        try:
-            container.stop()
-        except OSError:
-            pass
+        return with_authorization_client, with_invalid_url_client
 
     @classmethod
     async def create(cls, max_retries=3, retry_delay=2.0) -> 'Database':
@@ -75,14 +57,14 @@ class Database:
                 error = caught_error
                 retry = True
             except Exception as unexpected_error:
-                cls._stop_container_safely(container)
+                container.stop()
                 raise unexpected_error
             else:
                 retry = False
 
             if retry:
                 if attempt == max_retries - 1:
-                    cls._stop_container_safely(container)
+                    container.stop()
                     msg = f"Failed to initialize database container after {max_retries} attempts"
                     raise RuntimeError(f"{msg}: {error}") from error
                 logging.warning(
@@ -90,17 +72,17 @@ class Database:
                     attempt + 1, error, retry_delay
                 )
                 time.sleep(retry_delay)
-                cls._stop_container_safely(container)
+                container.stop()
                 container = cls._create_container(api_token, "latest")
                 continue
 
             try:
-                auth_db, invalid_url_db = await cls._initialize_clients(container, api_token)
+                with_authorization_client, with_invalid_url_client = await cls._initialize_clients(container, api_token)
             except Exception as client_error:
-                cls._stop_container_safely(container)
+                container.stop()
                 raise client_error
 
-            return cls(Database.__create_key, auth_db, invalid_url_db)
+            return cls(Database.__create_key, with_authorization_client, with_invalid_url_client)
 
         raise RuntimeError("Failed to create database: Unexpected error during retry loop")
 
@@ -113,6 +95,13 @@ class Database:
             content = dockerfile.read().strip()
             return content.split(':')[-1]
 
-    async def stop(self):
-        await self.with_authorization.stop()
-        await self.with_invalid_url.stop()
+    def get_client(self, client_type: str = "with_authorization") -> Client:
+        if client_type == "with_authorization":
+            return self.__with_authorization_client
+        elif client_type == "with_invalid_url":
+            return self.__with_invalid_url_client
+        else:
+            raise ValueError(f"Unknown client type: {client_type}")
+
+    async def stop(self) -> None:
+        self.__class__.__container.stop()

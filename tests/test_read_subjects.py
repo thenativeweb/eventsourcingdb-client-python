@@ -1,6 +1,7 @@
 from collections.abc import Callable, Awaitable
 from http import HTTPStatus
 
+from aiohttp import ClientConnectorDNSError
 import pytest
 
 from eventsourcingdb.client import Client
@@ -22,9 +23,9 @@ class TestReadSubjects:
     async def test_throws_error_if_server_is_not_reachable(
         database: Database
     ):
-        client = database.with_invalid_url.client
+        client = database.get_client("with_invalid_url")
 
-        with pytest.raises(ServerError):
+        with pytest.raises(ClientConnectorDNSError):
             async for _ in client.read_subjects('/'):
                 pass
 
@@ -33,7 +34,7 @@ class TestReadSubjects:
     async def test_supports_authorization(
         database: Database
     ):
-        client = database.with_authorization.client
+        client = database.get_client()
 
         async for _ in client.read_subjects('/'):
             pass
@@ -44,7 +45,7 @@ class TestReadSubjects:
         database: Database,
         test_data: TestData,
     ):
-        client = database.with_authorization.client
+        client = database.get_client()
 
         await client.write_events([
             EventCandidate(
@@ -67,7 +68,7 @@ class TestReadSubjects:
         database: Database,
         test_data: TestData,
     ):
-        client = database.with_authorization.client
+        client = database.get_client()
 
         await client.write_events([
             EventCandidate(
@@ -90,7 +91,7 @@ class TestReadSubjects:
         database: Database,
         test_data: TestData,
     ):
-        client = database.with_authorization.client
+        client = database.get_client()
 
         await client.write_events([
             EventCandidate(

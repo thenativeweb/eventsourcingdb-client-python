@@ -6,7 +6,6 @@ from aiohttp import ClientSession
 from ..errors.custom_error import CustomError
 from ..util import url
 
-from .execute_request import execute_request
 from .get_get_headers import get_get_headers
 from .get_post_headers import get_post_headers
 from .response import Response
@@ -47,7 +46,7 @@ class HttpClient:
         if self.__session is None:
             raise CustomError()
 
-        async def request_executor() -> Response:
+        async def __request_executor() -> Response:
             url_path = url.join_segments(self.__base_url, path)
             headers = get_post_headers(self.__api_token)
 
@@ -68,7 +67,7 @@ class HttpClient:
 
             return validated_response
 
-        return await execute_request(request_executor)
+        return await __request_executor()
 
     async def get(
         self,
@@ -78,7 +77,7 @@ class HttpClient:
         if self.__session is None:
             raise CustomError()
 
-        async def request_executor() -> Response:
+        async def __request_executor() -> Response:
             url_path = url.join_segments(self.__base_url, path)
             headers = get_get_headers(self.__api_token, with_authorization)
 
@@ -98,4 +97,4 @@ class HttpClient:
 
             return validated_response
 
-        return await execute_request(request_executor)
+        return await __request_executor()

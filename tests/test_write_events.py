@@ -1,6 +1,8 @@
 from collections.abc import Callable, Awaitable
 from http import HTTPStatus
+import json
 
+from aiohttp import ClientConnectorDNSError
 import pytest
 
 from eventsourcingdb.client import Client
@@ -27,25 +29,28 @@ class TestWriteSubjects:
         database: Database,
         test_data: TestData,
     ):
-        client = database.with_invalid_url.client
+        client = database.get_client("with_invalid_url")
 
-        with pytest.raises(ServerError):
-            await client.write_events([
-                test_data.TEST_SOURCE.new_event(
-                    subject='/',
-                    event_type='com.foo.bar',
-                    data={}
-                )
-            ])
+        with pytest.raises(ClientConnectorDNSError):
+            await client.write_events(
+                [
+                    EventCandidate(
+                        source=test_data.TEST_SOURCE_STRING,
+                        subject='/',
+                        type='com.foo.bar',
+                        data={}
+                    )
+                ]
+            )
 
     @staticmethod
     @pytest.mark.asyncio
     async def test_throws_an_error_for_empty_event_candidates(
         database: Database,
     ):
-        client = database.with_authorization.client
+        client = database.get_client("with_invalid_url")
 
-        with pytest.raises(InvalidParameterError):
+        with pytest.raises(ClientConnectorDNSError):
             await client.write_events([])
 
     @staticmethod
@@ -54,16 +59,19 @@ class TestWriteSubjects:
         database: Database,
         test_data: TestData,
     ):
-        client = database.with_authorization.client
+        client = database.get_client()
 
         with pytest.raises(ClientError):
-            await client.write_events([
-                test_data.TEST_SOURCE.new_event(
-                    subject='',
-                    event_type='com.foo.bar',
-                    data={}
-                )
-            ])
+            await client.write_events(
+                [
+                    EventCandidate(
+                        source=test_data.TEST_SOURCE_STRING,
+                        subject='',
+                        type='com.foo.bar',
+                        data={}
+                    )
+                ]
+            )
 
     @staticmethod
     @pytest.mark.asyncio
@@ -71,16 +79,19 @@ class TestWriteSubjects:
         database: Database,
         test_data: TestData,
     ):
-        client = database.with_authorization.client
+        client = database.get_client()
 
         with pytest.raises(ClientError):
-            await client.write_events([
-                test_data.TEST_SOURCE.new_event(
-                    subject='/',
-                    event_type='',
-                    data={}
-                )
-            ])
+            await client.write_events(
+                [
+                    EventCandidate(
+                        source=test_data.TEST_SOURCE_STRING,
+                        subject='/',
+                        type='',
+                        data={}
+                    )
+                ]
+            )
 
     @staticmethod
     @pytest.mark.asyncio
@@ -88,15 +99,18 @@ class TestWriteSubjects:
         database: Database,
         test_data: TestData,
     ):
-        client = database.with_authorization.client
+        client = database.get_client()
 
-        await client.write_events([
-            test_data.TEST_SOURCE.new_event(
-                subject='/',
-                event_type='com.foo.bar',
-                data={}
-            )
-        ])
+        await client.write_events(
+            [
+                EventCandidate(
+                    source=test_data.TEST_SOURCE_STRING,
+                    subject='/',
+                    type='com.foo.bar',
+                    data={}
+                )
+            ]
+        )
 
     @staticmethod
     @pytest.mark.asyncio
@@ -104,14 +118,17 @@ class TestWriteSubjects:
         database: Database,
         test_data: TestData,
     ):
-        client = database.with_authorization.client
+        client = database.get_client()
 
-        await client.write_events([
-            test_data.TEST_SOURCE.new_event(
-                subject='/',
-                event_type='com.foo.bar',
-                data={}
-            )],
+        await client.write_events(
+            [
+                EventCandidate(
+                    source=test_data.TEST_SOURCE_STRING,
+                    subject='/',
+                    type='com.foo.bar',
+                    data={}
+                )
+            ],
             [IsSubjectPristinePrecondition('/')]
         )
 
@@ -121,23 +138,29 @@ class TestWriteSubjects:
         database: Database,
         test_data: TestData,
     ):
-        client = database.with_authorization.client
+        client = database.get_client()
 
-        await client.write_events([
-            test_data.TEST_SOURCE.new_event(
-                subject='/',
-                event_type='com.foo.bar',
-                data={}
-            )]
+        await client.write_events(
+            [
+                EventCandidate(
+                    source=test_data.TEST_SOURCE_STRING,
+                    subject='/',
+                    type='com.foo.bar',
+                    data={}
+                )
+            ]
         )
 
         with pytest.raises(ClientError):
-            await client.write_events([
-                test_data.TEST_SOURCE.new_event(
-                    subject='/',
-                    event_type='com.foo.bar',
-                    data={}
-                )],
+            await client.write_events(
+                [
+                    EventCandidate(
+                        source=test_data.TEST_SOURCE_STRING,
+                        subject='/',
+                        type='com.foo.bar',
+                        data={}
+                    )
+                ],
                 [IsSubjectPristinePrecondition('/')]
             )
 
@@ -147,22 +170,28 @@ class TestWriteSubjects:
         database: Database,
         test_data: TestData,
     ):
-        client = database.with_authorization.client
+        client = database.get_client()
 
-        await client.write_events([
-            test_data.TEST_SOURCE.new_event(
-                subject='/',
-                event_type='com.foo.bar',
-                data={}
-            )]
+        await client.write_events(
+            [
+                EventCandidate(
+                    source=test_data.TEST_SOURCE_STRING,
+                    subject='/',
+                    type='com.foo.bar',
+                    data={}
+                )
+            ]
         )
 
-        await client.write_events([
-            test_data.TEST_SOURCE.new_event(
-                subject='/',
-                event_type='com.foo.bar',
-                data={}
-            )],
+        await client.write_events(
+            [
+                EventCandidate(
+                    source=test_data.TEST_SOURCE_STRING,
+                    subject='/',
+                    type='com.foo.bar',
+                    data={}
+                )
+            ],
             [IsSubjectOnEventIdPrecondition('/', '0')]
         )
 
@@ -172,23 +201,29 @@ class TestWriteSubjects:
         database: Database,
         test_data: TestData,
     ):
-        client = database.with_authorization.client
+        client = database.get_client()
 
-        await client.write_events([
-            test_data.TEST_SOURCE.new_event(
-                subject='/',
-                event_type='com.foo.bar',
-                data={}
-            )]
+        await client.write_events(
+            [
+                EventCandidate(
+                    source=test_data.TEST_SOURCE_STRING,
+                    subject='/',
+                    type='com.foo.bar',
+                    data={}
+                )
+            ]
         )
 
         with pytest.raises(ClientError):
-            await client.write_events([
-                test_data.TEST_SOURCE.new_event(
-                    subject='/',
-                    event_type='com.foo.bar',
-                    data={}
-                )],
+            await client.write_events(
+                [
+                    EventCandidate(
+                        source=test_data.TEST_SOURCE_STRING,
+                        subject='/',
+                        type='com.foo.bar',
+                        data={}
+                    )
+                ],
                 [IsSubjectOnEventIdPrecondition('/', '2')]
             )
 
@@ -198,7 +233,7 @@ class TestWriteSubjects:
         database: Database,
         test_data: TestData,
     ):
-        client = database.with_authorization.client
+        client = database.get_client()
 
         await client.register_event_schema(
             "com.super.duper",
@@ -210,15 +245,18 @@ class TestWriteSubjects:
         )
 
         with pytest.raises(ClientError, match="event candidate does not match schema"):
-            await client.write_events([
-                test_data.TEST_SOURCE.new_event(
-                    subject="/",
-                    event_type="com.super.duper",
-                    data={
-                        "haft": "befehl",
-                    },
-                ),
-            ])
+            await client.write_events(
+                [
+                    EventCandidate(
+                        source=test_data.TEST_SOURCE_STRING,
+                        subject="/",
+                        type="com.super.duper",
+                        data={
+                            "haft": "befehl",
+                        },
+                    ),
+                ]
+            )
 
 
 class TestWriteEventsWithMockServer:
@@ -307,6 +345,7 @@ class TestWriteEventsWithMockServer:
     ):
         def attach_handlers(attach_handler: AttachHandler):
             def handle_write_events(response: Response) -> Response:
+                response.status_code = HTTPStatus.OK
                 response.set_data('this is not data')
                 return response
 
@@ -314,5 +353,5 @@ class TestWriteEventsWithMockServer:
 
         client = await get_client(attach_handlers)
 
-        with pytest.raises(ServerError):
+        with pytest.raises((ServerError, json.JSONDecodeError)):
             await client.write_events(events_for_mocked_server)

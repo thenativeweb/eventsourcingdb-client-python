@@ -7,6 +7,7 @@ from flask import Response
 from eventsourcingdb.client import Client
 from eventsourcingdb.errors.client_error import ClientError
 from eventsourcingdb.errors.server_error import ServerError
+from eventsourcingdb.event.event_candidate import EventCandidate
 from .conftest import TestData
 from .shared.database import Database
 from .shared.start_local_http_server import AttachHandlers, AttachHandler
@@ -18,7 +19,7 @@ class TestRegisterEventSchema:
     async def test_registers_new_schema_if_it_doesnt_conflict_with_existing_events(
         database: Database,
     ):
-        client = database.with_authorization.client
+        client = database.get_client()
 
         await client.register_event_schema(
             "com.bar.baz",
@@ -34,17 +35,20 @@ class TestRegisterEventSchema:
         database: Database,
         test_data: TestData,
     ):
-        client = database.with_authorization.client
+        client = database.get_client()
 
-        await client.write_events([
-            test_data.TEST_SOURCE.new_event(
-                subject="/",
-                event_type="com.gornisht.ekht",
-                data={
-                    "oy": "gevalt",
-                },
-            )
-        ])
+        await client.write_events(
+            [
+                EventCandidate(
+                    source=test_data.TEST_SOURCE_STRING,
+                    subject="/",
+                    type="com.gornisht.ekht",
+                    data={
+                        "oy": "gevalt",
+                    },
+                )
+            ]
+        )
 
         with pytest.raises(ClientError, match="missing properties: 'properties'"):
             await client.register_event_schema(
@@ -60,7 +64,7 @@ class TestRegisterEventSchema:
     async def test_throws_error_if_schema_already_exists(
         database: Database,
     ):
-        client = database.with_authorization.client
+        client = database.get_client()
 
         await client.register_event_schema(
             "com.gornisht.ekht",
@@ -86,7 +90,7 @@ class TestRegisterEventSchema:
     async def test_throws_error_if_schema_is_invalid(
         database: Database,
     ):
-        client = database.with_authorization.client
+        client = database.get_client()
 
         with pytest.raises(ClientError, match="value must be \"object\""):
             await client.register_event_schema(
