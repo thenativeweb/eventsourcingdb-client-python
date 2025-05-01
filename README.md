@@ -220,25 +220,24 @@ async for event in client.read_events(
 
 If you need to abort reading use `break` or `return` within the `async for` loop. However, this only works if there is currently an iteration going on.
 
-To abort reading independently of that, hand over an abort signal as third argument when calling `read_events`, and abort the appropriate `AbortController`:
+To abort reading independently of that, store the generator in a variable, and close it explicitly:
 
 ```python
 from eventsourcingdb import ReadEventsOptions
 
-async with client.read_events(
+events = client.read_events(
   subject = '/books/42',
   options = ReadEventsOptions(
     recursive = False,
   ),
-) as events:
-  async for event in events:
-    pass
+)
 
-# Somewhere else, abort the controller, which will cause
+async for event in events:
+  pass
+
+# Somewhere else, abort the generator, which will cause
 # reading to end.
-abort()
-
-# TODO: Fix this section, also the text above.
+await events.aclose()
 ```
 
 ### Running EventQL Queries
@@ -261,23 +260,22 @@ async for row in client.run_eventql_query(
 
 If you need to abort a query use `break` or `return` within the `async for` loop. However, this only works if there is currently an iteration going on.
 
-To abort the query independently of that, hand over an abort signal as second argument when calling `run_eventql_query`, and abort the appropriate AbortController:
+To abort the query independently of that, store the generator in a variable, and close it explicitly:
 
 ```python
-# const controller = new AbortController();
+rows = client.run_eventql_query(
+  query = '''
+    FROM e IN events
+    PROJECT INTO e
+  ''',
+)
 
-# for await (const row of client.runEventQlQuery(`
-#   FROM e IN events
-#   PROJECT INTO e
-# `, controller.signal)) {
-#   // ...
-# }
+async for row in rows:
+  pass
 
-# // Somewhere else, abort the controller, which will cause
-# // the query to end.
-# controller.abort();
-
-# TODO: Fix this section, also the text above.
+# Somewhere else, abort the generator, which will cause
+# the query to end.
+await rows.aclose()
 ```
 
 ### Observing Events
@@ -372,22 +370,24 @@ async for event in client.observe_events(
 
 If you need to abort observing use `break` or `return` within the `async for` loop. However, this only works if there is currently an iteration going on.
 
-To abort observing independently of that, hand over an abort signal as third argument when calling `observeEvents`, and abort the appropriate `AbortController`:
+To abort observing independently of that, store the generator in a variable, and close it explicitly:
 
 ```python
-# const controller = new AbortController();
+from eventsourcingdb import ObserveEventsOptions
 
-# for await (const event of client.observeEvents('/books/42', {
-#   recursive: false
-# }, controller.signal)) {
-#   // ...
-# }
+events = client.observe_events(
+  subject = '/books/42',
+  options = ObserveEventsOptions(
+    recursive = False
+  ),
+)
 
-# // Somewhere else, abort the controller, which will cause
-# // observing to end.
-# controller.abort();
+async for event in events:
+  pass
 
-# TODO: Fix example above.
+# Somewhere else, abort the generator, which will cause
+# observing to end.
+await events.aclose()
 ```
 
 ### Registering an Event Schema
@@ -438,22 +438,19 @@ async for subject in client.read_subjects(
 
 If you need to abort listing use `break` or `return` within the `async for` loop. However, this only works if there is currently an iteration going on.
 
-To abort listing independently of that, hand over an abort signal as second argument when calling `readSubjects`, and abort the appropriate `AbortController`:
+To abort listing independently of that, store the generator in a variable, and close it explicitly:
 
 ```python
-# const controller = new AbortController();
+subjects = client.read_subjects(
+  base_subject = '/books'
+)
 
-# for await (const subject of client.readSubjects(
-#   '/', controller.signal)
-# ) {
-#   // ...
-# }
+async for subject in subjects:
+  pass
 
-# // Somewhere else, abort the controller, which will cause
-# // reading to end.
-# controller.abort();
-
-# TODO: Fix the above section.
+# Somewhere else, abort the generator, which will cause
+# reading to end.
+await subjects.aclose()
 ```
 
 ### Listing Event Types
@@ -469,20 +466,17 @@ async for event_type in client.read_event_types():
 
 If you need to abort listing use `break` or `return` within the `async for` loop. However, this only works if there is currently an iteration going on.
 
-To abort listing independently of that, hand over an abort signal as argument when calling `readEventTypes`, and abort the appropriate `AbortController`:
+To abort listing independently of that, store the generator in a variable, and close it explicitly:
 
 ```python
-# const controller = new AbortController();
+event_types = client.read_event_types()
 
-# for await (const eventType of client.readEventTypes()) {
-#   // ...
-# }
+async for event_type in event_types:
+  pass
 
-# // Somewhere else, abort the controller, which will cause
-# // reading to end.
-# controller.abort();
-
-# TODO: Fix the section above.
+# Somewhere else, abort the generator, which will cause
+# reading to end.
+await event_types.aclose()
 ```
 
 ### Using Testcontainers
