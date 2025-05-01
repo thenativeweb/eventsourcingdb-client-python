@@ -45,21 +45,19 @@ class HttpClient:
         if self.__session is None:
             raise CustomError()
 
-        async def __request_executor() -> Response:
-            url_path = url.join_segments(self.__base_url, path)
-            headers = get_post_headers(self.__api_token)
+        url_path = url.join_segments(self.__base_url, path)
+        headers = get_post_headers(self.__api_token)
 
-            async_response = await self.__session.post(  # type: ignore
-                url_path,
-                data=request_body,
-                headers=headers,
-            )
+        async_response = await self.__session.post(  # type: ignore
+            url_path,
+            data=request_body,
+            headers=headers,
+        )
 
-            response = Response(async_response)
+        response = Response(async_response)
 
-            return response
+        return response
 
-        return await __request_executor()
 
     async def get(
         self,

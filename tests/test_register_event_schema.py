@@ -44,7 +44,7 @@ class TestRegisterEventSchema:
             ]
         )
 
-        with pytest.raises(ServerError, match="Bad Request"):
+        with pytest.raises(ServerError, match='missing properties'):
             await client.register_event_schema(
                 "com.gornisht.ekht",
                 {
@@ -69,7 +69,7 @@ class TestRegisterEventSchema:
             }
         )
 
-        with pytest.raises(ServerError):
+        with pytest.raises(ServerError, match='schema already exists'):
             await client.register_event_schema(
                 "com.gornisht.ekht",
                 {
@@ -86,7 +86,7 @@ class TestRegisterEventSchema:
     ):
         client = database.get_client()
 
-        with pytest.raises(ServerError):
+        with pytest.raises(ServerError,  match='value must be "object"'):
             await client.register_event_schema(
                 "com.gornisht.ekht",
                 {

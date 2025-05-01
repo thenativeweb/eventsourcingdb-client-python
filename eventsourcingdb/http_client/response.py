@@ -39,4 +39,8 @@ class Response:
         return self.__response.content
 
     def __str__(self) -> str:
-        return f'Response(status_code={self.status_code}, headers={dict(self.headers)})'
+        status_code_text = f'{self.status_code} {HTTPStatus(self.status_code).phrase}'
+        header_text = dict(self.headers)
+        body_text = self.body.read_nowait().decode("utf-8")
+        status_code_text = f'{self.status_code} {HTTPStatus(self.status_code).phrase}'
+        return f'status_code={status_code_text}, headers={header_text}, body={body_text}'

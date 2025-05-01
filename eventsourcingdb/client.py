@@ -1,7 +1,7 @@
 from collections.abc import AsyncGenerator
 import contextlib
 from types import TracebackType
-from typing import TypeVar
+from typing import Any, TypeVar
 
 from http import HTTPStatus
 import json
@@ -110,9 +110,8 @@ class Client():
 
         if response.status_code != HTTPStatus.OK:
             raise ServerError(
-                f'Unexpected response status: '
-                f'{response.status_code} {HTTPStatus(response.status_code).phrase}.'
-            )
+                f'Unexpected response status:  '
+        )
 
         response_data = await response.body.read()
         response_data = bytes.decode(response_data, encoding='utf-8')
@@ -144,9 +143,8 @@ class Client():
         async with response:
             if response.status_code != HTTPStatus.OK:
                 raise ServerError(
-                    f'Unexpected response status: '
-                    f'{response.status_code} {HTTPStatus(response.status_code).phrase}'
-                )
+                    f'Unexpected response status: {response}'
+            )
             async for raw_message in response.body:
                 message = parse_raw_message(raw_message)
 
@@ -189,11 +187,36 @@ class Client():
                     f'{message}.'
                 )
 
-    async def run_eventql_query(self, query: str) -> AsyncGenerator[Event]:
-        # TODO: read events nehmen. Das Responsehandling ist gleich wie
-        # read_events. ein object was eine query property hat, Return ist ein any.
-        # da kann alles mögliche sein.
-        raise NotImplementedError("run_eventql_query is not implemented yet.")
+    async def run_eventql_query(self, query: str) -> AsyncGenerator[Any, None]:
+        request_body = json.dumps({
+            'query': query,
+        })
+        response: Response = await self.__http_client.post(
+            path='/api/v1/run-eventql-query',
+            request_body=request_body,
+        )
+
+        async with response:
+            if response.status_code != HTTPStatus.OK:
+                raise ServerError(
+                    f'Unexpected response status: {response}'
+                )
+            async for raw_message in response.body:
+                message = parse_raw_message(raw_message)
+
+                if is_stream_error(message):
+                    raise ServerError(f'{message["payload"]["error"]}.')
+
+                if message.get('type') == 'row':
+                    payload = message['payload']
+                
+                    yield payload
+                    continue
+
+                raise ServerError(
+                    f'Failed to execute EventQL query, an unexpected stream item was received: '
+                    f'{message}.'
+                )
 
     async def observe_events(
         self,
@@ -205,17 +228,15 @@ class Client():
             'options': options.to_json()
         })
 
-        response: Response
-        response = await self.http_client.post(
+        response : Response = await self.http_client.post(
             path='/api/v1/observe-events',
             request_body=request_body,
         )
 
-        with response:
+        async with response:
             if response.status_code != HTTPStatus.OK:
                 raise ServerError(
-                    f'Unexpected response status: '
-                    f'{response.status_code} {HTTPStatus(response.status_code).phrase}'
+                    f'Unexpected response status: {response}'
                 )
             async for raw_message in response.body:
                 message = parse_raw_message(raw_message)
@@ -256,22 +277,16 @@ class Client():
             'schema': json_schema,
         })
 
-        response: Response
-        response = await self.http_client.post(
+        response: Response = await self.http_client.post(
             path='/api/v1/register-event-schema',
             request_body=request_body,
         )
 
-        with response:
+        async with response:
             if response.status_code != HTTPStatus.OK:
                 raise ServerError(
-                    'Unexpected response status: '
-                    f'{response.status_code} '
-                    f'{HTTPStatus(response.status_code).phrase} '
-                    f'{str(response)} '
+                    f'Unexpected response status: {response} '
                 )
-
-        return
 
     async def read_subjects(
         self,
@@ -281,19 +296,15 @@ class Client():
             'baseSubject': base_subject
         })
 
-        response: Response
-        response = await self.http_client.post(
+        response : Response = await self.http_client.post(
             path='/api/v1/read-subjects',
             request_body=request_body,
         )
 
-        with response:
+        async with response:
             if response.status_code != HTTPStatus.OK:
                 raise ServerError(
-                    'Unexpected response status: '
-                    f'{response.status_code} '
-                    f'{HTTPStatus(response.status_code).phrase} '
-                    f'{str(response)} '
+                    f'Unexpected response status: {response}'
                 )
             async for raw_message in response.body:
                 message = parse_raw_message(raw_message)
@@ -322,11 +333,10 @@ class Client():
         except Exception as other_error:
             raise InternalError(str(other_error)) from other_error
 
-        with response:
+        async with response:
             if response.status_code != HTTPStatus.OK:
                 raise ServerError(
-                    'Unexpected response status: '
-                    f'{response.status_code} {HTTPStatus(response.status_code).phrase}'
+                    f'Unexpected response status: {response}'
                 )
             async for raw_message in response.body:
                 message = parse_raw_message(raw_message)
