@@ -86,7 +86,7 @@ class TestRegisterEventSchema:
     ):
         client = database.get_client()
 
-        with pytest.raises(ServerError,  match='value must be "object"'):
+        with pytest.raises(ServerError, match='value must be "object"'):
             await client.register_event_schema(
                 "com.gornisht.ekht",
                 {

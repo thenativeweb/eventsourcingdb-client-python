@@ -29,11 +29,11 @@ class TestRunEventQLQuery:
         database: Database
     ):
         client = database.get_client()
-        
+
         did_read_rows = False
         async for _ in client.run_eventql_query('FROM e IN events PROJECT INTO e'):
             did_read_rows = True
-        
+
         assert did_read_rows is False
 
     @staticmethod
@@ -42,7 +42,7 @@ class TestRunEventQLQuery:
         database: Database
     ):
         client = database.get_client()
-        
+
         first_event = EventCandidate(
             source='https://www.eventsourcingdb.io',
             subject='/test',
@@ -51,7 +51,7 @@ class TestRunEventQLQuery:
                 'value': 23,
             },
         )
-        
+
         second_event = EventCandidate(
             source='https://www.eventsourcingdb.io',
             subject='/test',
@@ -60,21 +60,20 @@ class TestRunEventQLQuery:
                 'value': 42,
             },
         )
-        
+
         await client.write_events([first_event, second_event])
-        
+
         rows_read = []
         async for row in client.run_eventql_query('FROM e IN events PROJECT INTO e'):
             rows_read.append(row)
-        
+
         assert len(rows_read) == 2
-        
+
         first_row = rows_read[0]
         # Use dictionary access instead of attribute access
         assert first_row['id'] == '0'
         assert first_row['data']['value'] == 23
-        
+
         second_row = rows_read[1]
         assert second_row['id'] == '1'
         assert second_row['data']['value'] == 42
-

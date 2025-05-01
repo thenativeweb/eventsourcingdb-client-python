@@ -18,7 +18,7 @@ class Database:
         self,
         create_key,
         with_authorization_client: Client,
-        with_invalid_url_client: Client ,
+        with_invalid_url_client: Client,
     ):
         assert create_key == Database.__create_key, \
             'Database objects must be created using Database.create.'
@@ -113,6 +113,14 @@ class Database:
             return self.__with_invalid_url_client
 
         raise ValueError(f"Unknown client type: {client_type}")
+
+    def get_base_url(self) -> str:
+        """Get the base URL of the EventSourceDB container."""
+        return self.__container.get_base_url()
+
+    def get_api_token(self) -> str:
+        """Get the API token for the EventSourceDB container."""
+        return self.__container.get_api_token()
 
     async def stop(self) -> None:
         # Use walrus operator for concise access and check

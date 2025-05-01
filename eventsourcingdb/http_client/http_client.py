@@ -43,7 +43,7 @@ class HttpClient:
 
     async def post(self, path: str, request_body: str) -> Response:
         if self.__session is None:
-            raise CustomError()
+            await self.initialize()
 
         url_path = url.join_segments(self.__base_url, path)
         headers = get_post_headers(self.__api_token)
@@ -58,14 +58,13 @@ class HttpClient:
 
         return response
 
-
     async def get(
         self,
         path: str,
         with_authorization: bool = True,
     ) -> Response:
         if self.__session is None:
-            raise CustomError()
+            raise CustomError("HTTP client session not initialized. Call initialize() before making requests.")
 
         async def __request_executor() -> Response:
             url_path = url.join_segments(self.__base_url, path)

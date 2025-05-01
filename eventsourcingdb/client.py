@@ -83,9 +83,28 @@ class Client():
         raise ServerError(f"Received unexpected response: {response_body}")
 
     async def verify_api_token(self) -> None:
-        # POST Request. Ist wie ping, aber mit POST. Authorization header token
-        # mitschicken. Token gültig dann event, Token ungültig 401
-        raise NotImplementedError("verify_api_token is not implemented yet.")
+        request_body = json.dumps({})
+        
+        response: Response = await self.http_client.post(
+            path='/api/v1/verify-api-token',
+            request_body=request_body,
+        )
+        async with response:
+            if response.status_code != HTTPStatus.OK:
+                raise ServerError(
+                    f'Failed to verify API token: {response}'
+                )
+
+            response_data = await response.body.read()
+            response_data = bytes.decode(response_data, encoding='utf-8')
+            response_json = json.loads(response_data)
+
+            if not isinstance(response_json, dict) or 'type' not in response_json:
+                raise ServerError('Failed to parse response: {response}')
+
+            expected_event_type = 'io.eventsourcingdb.api.api-token-verified'
+            if response_json.get('type') != expected_event_type:
+                raise ServerError(f'Failed to verify API token: {response}')
 
     async def write_events(
         self,
@@ -111,7 +130,7 @@ class Client():
         if response.status_code != HTTPStatus.OK:
             raise ServerError(
                 f'Unexpected response status:  '
-        )
+            )
 
         response_data = await response.body.read()
         response_data = bytes.decode(response_data, encoding='utf-8')
@@ -144,7 +163,7 @@ class Client():
             if response.status_code != HTTPStatus.OK:
                 raise ServerError(
                     f'Unexpected response status: {response}'
-            )
+                )
             async for raw_message in response.body:
                 message = parse_raw_message(raw_message)
 
@@ -209,7 +228,7 @@ class Client():
 
                 if message.get('type') == 'row':
                     payload = message['payload']
-                
+
                     yield payload
                     continue
 
@@ -228,7 +247,7 @@ class Client():
             'options': options.to_json()
         })
 
-        response : Response = await self.http_client.post(
+        response: Response = await self.http_client.post(
             path='/api/v1/observe-events',
             request_body=request_body,
         )
@@ -296,7 +315,7 @@ class Client():
             'baseSubject': base_subject
         })
 
-        response : Response = await self.http_client.post(
+        response: Response = await self.http_client.post(
             path='/api/v1/read-subjects',
             request_body=request_body,
         )

@@ -406,12 +406,12 @@ class TestObserveEvents:
         async def process_events():
             nonlocal events_processed
             async for _ in client.observe_events(
-                    '/',
-                    ObserveEventsOptions(
-                        recursive=True,
-                        from_latest_event=None
-                    )
-                ):
+                '/',
+                ObserveEventsOptions(
+                    recursive=True,
+                    from_latest_event=None
+                )
+            ):
                 events_processed += 1
                 await asyncio.sleep(0.25)
 
