@@ -168,32 +168,6 @@ class Client():
 
                 if is_event(message):
                     event = Event.parse(message['payload'])
-                    event_id = int(message['payload']['id'])
-
-                    if options.lower_bound is not None:
-                        if (
-                            options.lower_bound.type == 'inclusive' and  # pylint: disable=R2004
-                            int(event_id) < int(options.lower_bound.id)
-                        ):
-                            continue
-                        if (
-                            options.lower_bound.type == 'exclusive' and  # pylint: disable=R2004
-                            int(event_id) <= int(options.lower_bound.id)
-                        ):
-                            continue
-
-                    if options.upper_bound is not None:
-                        if (
-                            options.upper_bound.type == 'inclusive' and  # pylint: disable=R2004
-                            int(event_id) > int(options.upper_bound.id)
-                        ):
-                            continue
-                        if (
-                            options.upper_bound.type == 'exclusive' and  # pylint: disable=R2004
-                            int(event_id) >= int(options.upper_bound.id)
-                        ):
-                            continue
-
                     yield event
                     continue
 
@@ -264,20 +238,6 @@ class Client():
 
                 if is_event(message):
                     event = Event.parse(message['payload'])
-                    event_id = int(message['payload']['id'])
-
-                    if options.lower_bound is not None:
-                        if (
-                            options.lower_bound.type == 'inclusive' and  # pylint: disable=R2004
-                            int(event_id) < int(options.lower_bound.id)
-                        ):
-                            continue
-                        if (
-                            options.lower_bound.type == 'exclusive' and  # pylint: disable=R2004
-                            int(event_id) <= int(options.lower_bound.id)
-                        ):
-                            continue
-
                     yield event
                     continue
 
