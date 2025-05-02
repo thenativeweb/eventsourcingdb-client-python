@@ -9,30 +9,18 @@ from .observe_events import (
     IfEventIsMissingDuringObserve
 )
 from .read_events import ReadEventsOptions, ReadFromLatestEvent, IfEventIsMissingDuringRead, Order
-from .read_event_types import EventType, is_event_type
-from .read_subjects import is_subject
+from .read_event_types import EventType
 from .write_events import Precondition, IsSubjectOnEventId, IsSubjectPristine
 
 
 __all__ = [
     'Bound', 'BoundType',
-
     'Client',
-
     'Container',
-
     'Event', 'EventCandidate',
-
-    'EventType', 'is_event_type',
-
-    'is_subject',
-
+    'EventType',
     'ObserveEventsOptions', 'ObserveFromLatestEvent', 'IfEventIsMissingDuringObserve',
-
     'Precondition', 'IsSubjectOnEventId', 'IsSubjectPristine',
-
     'ReadEventsOptions', 'ReadFromLatestEvent', 'IfEventIsMissingDuringRead', 'Order',
-
     'ClientError', 'CustomError', 'InternalError', 'ServerError', 'ValidationError',
-
 ]
