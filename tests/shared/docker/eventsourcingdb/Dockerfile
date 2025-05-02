@@ -1,1 +1,1 @@
-FROM thenativeweb/eventsourcingdb:0.120.4
+FROM thenativeweb/eventsourcingdb:0.120.7
