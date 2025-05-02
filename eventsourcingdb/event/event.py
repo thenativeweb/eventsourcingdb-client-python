@@ -65,7 +65,8 @@ class Event():
         if not isinstance(predecessor_hash, str):
             raise ValidationError(
                 f'Failed to parse predecessor_hash \'{predecessor_hash}\' to string.')
-        
+
+        # pylint: disable=W0622
         hash = unknown_object.get('hash')
         if not isinstance(hash, str):
             raise ValidationError(
