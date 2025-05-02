@@ -1,6 +1,6 @@
 import pytest
-from eventsourcingdb.errors.server_error import ServerError
-from eventsourcingdb.event.event_candidate import EventCandidate
+from eventsourcingdb import ServerError
+from eventsourcingdb import EventCandidate
 
 from .conftest import TestData
 

@@ -4,12 +4,9 @@ from aiohttp import ClientConnectorDNSError
 import pytest
 
 from eventsourcingdb.errors.server_error import ServerError
-from eventsourcingdb.handlers.bound import Bound, BoundType
-from eventsourcingdb.handlers.read_events import \
-    ReadEventsOptions, \
-    ReadFromLatestEvent, \
-    IfEventIsMissingDuringRead
-from eventsourcingdb.handlers.read_events.order import Order
+from eventsourcingdb import Bound, BoundType
+from eventsourcingdb import ReadEventsOptions, ReadFromLatestEvent, IfEventIsMissingDuringRead
+from eventsourcingdb import Order
 
 from .conftest import TestData
 

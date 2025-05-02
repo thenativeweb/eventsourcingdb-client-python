@@ -1,7 +1,7 @@
 import pytest
 
-from eventsourcingdb.event.event_candidate import EventCandidate
-from eventsourcingdb.handlers.read_event_types.event_type import EventType
+from eventsourcingdb import EventCandidate
+from eventsourcingdb import EventType
 
 from .conftest import TestData
 
@@ -81,12 +81,12 @@ class TestReadEventTypes:
             EventType(
                 event_type="org.ban.ban",
                 is_phantom=True,
-                schema={"type": "object", "properties": {}},  # Updated expected schema
+                schema={"type": "object", "properties": {}},
             ),
             EventType(
                 event_type="org.bing.chilling",
                 is_phantom=True,
-                schema={"type": "object", "properties": {}},  # Updated expected schema
+                schema={"type": "object", "properties": {}},
             ),
         }
 

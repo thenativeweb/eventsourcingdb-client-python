@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from ..bound import Bound
-from ...errors.validation_error import ValidationError
+from ..errors import ValidationError
 from .observe_from_latest_event import ObserveFromLatestEvent
 
 

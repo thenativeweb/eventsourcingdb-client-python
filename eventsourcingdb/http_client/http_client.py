@@ -4,7 +4,6 @@ import aiohttp
 from aiohttp import ClientSession
 
 from ..errors.custom_error import CustomError
-from ..util import url
 
 from .get_get_headers import get_get_headers
 from .get_post_headers import get_post_headers
@@ -41,11 +40,18 @@ class HttpClient:
             await self.__session.close()
             self.__session = None
 
+    @staticmethod
+    def join_segments(first: str, *rest: str) -> str:
+        first_without_trailing_slash = first.rstrip('/')
+        rest_joined = '/'.join([segment.strip('/') for segment in rest])
+
+        return f'{first_without_trailing_slash}/{rest_joined}'
+
     async def post(self, path: str, request_body: str) -> Response:
         if self.__session is None:
             await self.initialize()
 
-        url_path = url.join_segments(self.__base_url, path)
+        url_path = HttpClient.join_segments(self.__base_url, path)
         headers = get_post_headers(self.__api_token)
 
         async_response = await self.__session.post(  # type: ignore
@@ -68,7 +74,7 @@ class HttpClient:
                 "HTTP client session not initialized. Call initialize() before making requests.")
 
         async def __request_executor() -> Response:
-            url_path = url.join_segments(self.__base_url, path)
+            url_path = HttpClient.join_segments(self.__base_url, path)
             headers = get_get_headers(self.__api_token, with_authorization)
 
             async_response = await self.__session.get(  # type: ignore

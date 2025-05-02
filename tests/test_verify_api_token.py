@@ -1,7 +1,7 @@
 import pytest
 
-from eventsourcingdb.client import Client
-from eventsourcingdb.errors.server_error import ServerError
+from eventsourcingdb import Client
+from eventsourcingdb import ServerError
 
 from .shared.database import Database
 

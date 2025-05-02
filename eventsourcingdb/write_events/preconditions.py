@@ -9,7 +9,7 @@ class Precondition(ABC):
 
 
 @dataclass
-class IsSubjectPristinePrecondition(Precondition):
+class IsSubjectPristine(Precondition):
     subject: str
 
     def to_json(self):
@@ -22,7 +22,7 @@ class IsSubjectPristinePrecondition(Precondition):
 
 
 @dataclass
-class IsSubjectOnEventIdPrecondition(Precondition):
+class IsSubjectOnEventId(Precondition):
     subject: str
     event_id: str
 

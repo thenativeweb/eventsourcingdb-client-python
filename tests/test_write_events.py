@@ -1,11 +1,9 @@
 from aiohttp import ClientConnectorDNSError
 import pytest
 
-from eventsourcingdb.errors.server_error import ServerError
-from eventsourcingdb.event.event_candidate import EventCandidate
-from eventsourcingdb.handlers.write_events import \
-    IsSubjectPristinePrecondition, \
-    IsSubjectOnEventIdPrecondition
+from eventsourcingdb import ServerError
+from eventsourcingdb import EventCandidate
+from eventsourcingdb import IsSubjectPristine, IsSubjectOnEventId
 
 from .conftest import TestData
 
@@ -119,7 +117,7 @@ class TestWriteSubjects:
                     data={}
                 )
             ],
-            [IsSubjectPristinePrecondition('/')]
+            [IsSubjectPristine('/')]
         )
 
     @staticmethod
@@ -151,7 +149,7 @@ class TestWriteSubjects:
                         data={}
                     )
                 ],
-                [IsSubjectPristinePrecondition('/')]
+                [IsSubjectPristine('/')]
             )
 
     @staticmethod
@@ -182,7 +180,7 @@ class TestWriteSubjects:
                     data={}
                 )
             ],
-            [IsSubjectOnEventIdPrecondition('/', '0')]
+            [IsSubjectOnEventId('/', '0')]
         )
 
     @staticmethod
@@ -214,7 +212,7 @@ class TestWriteSubjects:
                         data={}
                     )
                 ],
-                [IsSubjectOnEventIdPrecondition('/', '2')]
+                [IsSubjectOnEventId('/', '2')]
             )
 
     @staticmethod

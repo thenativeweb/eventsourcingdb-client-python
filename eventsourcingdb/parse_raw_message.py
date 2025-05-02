@@ -1,7 +1,7 @@
 import json
 from typing import Any
 
-from ..errors.server_error import ServerError
+from .errors.server_error import ServerError
 
 
 def parse_raw_message(raw_message: bytes) -> Any:

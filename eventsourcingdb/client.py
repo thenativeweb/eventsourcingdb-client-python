@@ -6,25 +6,20 @@ from typing import Any, TypeVar
 from http import HTTPStatus
 import json
 
-from .handlers.is_heartbeat import is_heartbeat
-from .handlers.is_stream_error import is_stream_error
-from .handlers.parse_raw_message import parse_raw_message
-from .handlers.is_event import is_event
+from .is_heartbeat import is_heartbeat
+from .is_stream_error import is_stream_error
+from .is_event import is_event
+from .parse_raw_message import parse_raw_message
+from .read_events import ReadEventsOptions
 
-from .errors.custom_error import CustomError
-from .errors.internal_error import InternalError
-from .errors.server_error import ServerError
-from .errors.validation_error import ValidationError
-from .event.event import Event
-from .event.event_candidate import EventCandidate
-from .handlers.observe_events.observe_events_options import ObserveEventsOptions
-from .handlers.read_event_types.event_type import EventType
-from .handlers.read_event_types.is_event_type import is_event_type
-from .handlers.read_subjects.is_subject import is_subject
-from .handlers.read_events import ReadEventsOptions
-from .handlers.write_events import Precondition
-from .http_client.http_client import HttpClient
-from .http_client.response import Response
+from .errors import CustomError, InternalError, ServerError, ValidationError
+from .event import Event, EventCandidate
+from .observe_events import ObserveEventsOptions
+from .read_event_types import EventType, is_event_type
+from .read_subjects import is_subject
+
+from .write_events import Precondition
+from .http_client import HttpClient, Response
 
 
 T = TypeVar('T')
@@ -226,7 +221,7 @@ class Client():
 
                 if is_stream_error(message):
                     raise ServerError(f'{message['payload']['error']}.')
-                #pylint: disable=R2004
+                # pylint: disable=R2004
                 if message.get('type') == 'row':
                     payload = message['payload']
 

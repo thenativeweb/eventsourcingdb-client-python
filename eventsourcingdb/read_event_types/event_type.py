@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import TypeVar, Any
 
-from ...errors.validation_error import ValidationError
+from ..errors import ValidationError
 
 Self = TypeVar("Self", bound="EventType")
 

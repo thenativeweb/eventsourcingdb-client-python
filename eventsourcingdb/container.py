@@ -128,7 +128,6 @@ class Container:
         if self._container is not None:
             return self
 
-        # Fix too-many-try-statements by breaking into separate methods
         self._pull_or_get_image()
         self._cleanup_existing_containers()
         self._create_container()
@@ -138,25 +137,19 @@ class Container:
         return self
 
     def _pull_or_get_image(self) -> None:
-        """Pull the image or use local image if available."""
         try:
-            # Try to pull the latest image
             self._docker_client.images.pull(self._image_name, self._image_tag)
         except errors.APIError as e:
-            # Handle the API error
             self._handle_image_pull_error(e)
 
     def _handle_image_pull_error(self, error):
-        """Handle error when pulling image fails by checking for local version."""
-        # Check if we already have the image locally
         image_name = f"{self._image_name}:{self._image_tag}"
         try:
             self._docker_client.images.get(image_name)
         except errors.ImageNotFound:
-            # If the image isn't available locally either, we can't continue
             raise RuntimeError(
                 f'Could not pull image and no local image available: {error}') from error
-        # If we get here, the image exists locally, so we can continue
+
         logging.warning("Warning: Could not pull image: %s. Using locally cached image.", error)
 
     def stop(self) -> None:
@@ -202,7 +195,6 @@ class Container:
             if time.time() - start_time >= timeout:
                 break
 
-            # Extract request into a helper method to reduce try statements
             if self._check_endpoint_available(url):
                 return
 

@@ -2,7 +2,7 @@ import json
 from enum import Enum
 from typing import Any
 
-from eventsourcingdb.handlers.bound import Bound
+from .bound import Bound
 
 
 class EventSourcingDBJSONEncoder(json.JSONEncoder):

@@ -1,7 +1,7 @@
 from aiohttp import ClientConnectorDNSError
 import pytest
 
-from eventsourcingdb.event.event_candidate import EventCandidate
+from eventsourcingdb import EventCandidate
 
 from .shared.database import Database
 
