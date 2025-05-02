@@ -442,7 +442,7 @@ To abort listing independently of that, store the generator in a variable, and c
 
 ```python
 subjects = client.read_subjects(
-  base_subject = '/books'
+  base_subject = '/'
 )
 
 async for subject in subjects:
