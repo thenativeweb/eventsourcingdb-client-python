@@ -24,9 +24,6 @@ class Database:
             'Database objects must be created using Database.create.'
         self.__with_authorization_client: Client = with_authorization_client
         self.__with_invalid_url_client: Client = with_invalid_url_client
-        """self.clients["with_authorization"] = clients
-        self.with_authorization: TestingDatabase = with_authorization
-        self.with_invalid_url: TestingDatabase = with_invalid_url"""
 
     @classmethod
     def _create_container(cls, api_token, image_tag):
