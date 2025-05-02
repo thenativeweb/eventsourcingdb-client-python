@@ -204,7 +204,6 @@ class Container:
         raise TimeoutError(f'Service failed to become ready within {timeout} seconds')
 
     def _check_endpoint_available(self, url: str) -> bool:
-        """Check if an HTTP endpoint is available."""
         try:
             response = requests.get(url, timeout=2)
         except requests.RequestException:
@@ -213,7 +212,6 @@ class Container:
 
     # pylint: disable=R6301
     def _check_response_ok(self, response) -> bool:
-        """Check if the HTTP response indicates success."""
         return response is not None and response.status_code == HTTPStatus.OK
 
     def with_api_token(self, token: str) -> 'Container':
