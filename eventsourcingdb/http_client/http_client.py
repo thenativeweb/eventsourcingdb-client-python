@@ -64,7 +64,8 @@ class HttpClient:
         with_authorization: bool = True,
     ) -> Response:
         if self.__session is None:
-            raise CustomError("HTTP client session not initialized. Call initialize() before making requests.")
+            raise CustomError(
+                "HTTP client session not initialized. Call initialize() before making requests.")
 
         async def __request_executor() -> Response:
             url_path = url.join_segments(self.__base_url, path)

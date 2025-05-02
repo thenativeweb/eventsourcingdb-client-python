@@ -1,5 +1,5 @@
 from collections.abc import AsyncGenerator
-import contextlib
+
 from types import TracebackType
 from typing import Any, TypeVar
 
@@ -84,7 +84,7 @@ class Client():
 
     async def verify_api_token(self) -> None:
         request_body = json.dumps({})
-        
+
         response: Response = await self.http_client.post(
             path='/api/v1/verify-api-token',
             request_body=request_body,
@@ -99,6 +99,7 @@ class Client():
             response_data = bytes.decode(response_data, encoding='utf-8')
             response_json = json.loads(response_data)
 
+            # pylint: disable=R2004
             if not isinstance(response_json, dict) or 'type' not in response_json:
                 raise ServerError('Failed to parse response: {response}')
 
@@ -129,7 +130,7 @@ class Client():
 
         if response.status_code != HTTPStatus.OK:
             raise ServerError(
-                f'Unexpected response status:  '
+                f'Unexpected response status: {response}'
             )
 
         response_data = await response.body.read()
@@ -206,7 +207,7 @@ class Client():
                     f'{message}.'
                 )
 
-    async def run_eventql_query(self, query: str) -> AsyncGenerator[Any, None]:
+    async def run_eventql_query(self, query: str) -> AsyncGenerator[Any]:
         request_body = json.dumps({
             'query': query,
         })
@@ -224,8 +225,8 @@ class Client():
                 message = parse_raw_message(raw_message)
 
                 if is_stream_error(message):
-                    raise ServerError(f'{message["payload"]["error"]}.')
-
+                    raise ServerError(f'{message['payload']['error']}.')
+                #pylint: disable=R2004
                 if message.get('type') == 'row':
                     payload = message['payload']
 

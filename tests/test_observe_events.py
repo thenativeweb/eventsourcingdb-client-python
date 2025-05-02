@@ -5,6 +5,7 @@ import pytest
 from eventsourcingdb.errors.server_error import ServerError
 from eventsourcingdb.event.event_candidate import EventCandidate
 from eventsourcingdb.handlers.bound import Bound, BoundType
+# pylint: disable=C0301
 from eventsourcingdb.handlers.observe_events.if_event_is_missing_during_observe import IfEventIsMissingDuringObserve
 from eventsourcingdb.handlers.observe_events.observe_events_options import ObserveEventsOptions
 from eventsourcingdb.handlers.observe_events.observe_from_latest_event import ObserveFromLatestEvent

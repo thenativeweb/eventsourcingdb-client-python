@@ -1,17 +1,19 @@
-import asyncio
-
 from aiohttp import ClientConnectorDNSError
 import pytest
 
-from eventsourcingdb.errors.server_error import ServerError
 from eventsourcingdb.event.event_candidate import EventCandidate
 
-from .conftest import TestData
 from .shared.database import Database
-from .shared.event.assert_event import assert_event_equals
 
 
 class TestRunEventQLQuery:
+    # Define constants to avoid magic value comparisons
+    EXPECTED_ROW_COUNT = 2
+    FIRST_EVENT_ID = '0'
+    FIRST_EVENT_VALUE = 23
+    SECOND_EVENT_ID = '1'
+    SECOND_EVENT_VALUE = 42
+
     @staticmethod
     @pytest.mark.asyncio
     async def test_throws_error_if_server_is_not_reachable(
@@ -48,7 +50,7 @@ class TestRunEventQLQuery:
             subject='/test',
             type='io.eventsourcingdb.test',
             data={
-                'value': 23,
+                'value': TestRunEventQLQuery.FIRST_EVENT_VALUE,
             },
         )
 
@@ -57,7 +59,7 @@ class TestRunEventQLQuery:
             subject='/test',
             type='io.eventsourcingdb.test',
             data={
-                'value': 42,
+                'value': TestRunEventQLQuery.SECOND_EVENT_VALUE,
             },
         )
 
@@ -67,13 +69,12 @@ class TestRunEventQLQuery:
         async for row in client.run_eventql_query('FROM e IN events PROJECT INTO e'):
             rows_read.append(row)
 
-        assert len(rows_read) == 2
+        assert len(rows_read) == TestRunEventQLQuery.EXPECTED_ROW_COUNT
 
         first_row = rows_read[0]
-        # Use dictionary access instead of attribute access
-        assert first_row['id'] == '0'
-        assert first_row['data']['value'] == 23
+        assert first_row['id'] == TestRunEventQLQuery.FIRST_EVENT_ID
+        assert first_row['data']['value'] == TestRunEventQLQuery.FIRST_EVENT_VALUE
 
         second_row = rows_read[1]
-        assert second_row['id'] == '1'
-        assert second_row['data']['value'] == 42
+        assert second_row['id'] == TestRunEventQLQuery.SECOND_EVENT_ID
+        assert second_row['data']['value'] == TestRunEventQLQuery.SECOND_EVENT_VALUE

@@ -1,7 +1,6 @@
 import pytest
 
 from eventsourcingdb.client import Client
-from eventsourcingdb.errors.custom_error import CustomError
 from eventsourcingdb.errors.server_error import ServerError
 
 from .shared.database import Database
@@ -15,7 +14,6 @@ class TestVerifyApiToken:
     ):
         client = database.get_client()
         await client.verify_api_token()
-
 
     @staticmethod
     @pytest.mark.asyncio

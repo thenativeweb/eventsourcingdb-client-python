@@ -128,26 +128,36 @@ class Container:
         if self._container is not None:
             return self
 
-        try:
-            # Try to pull the latest image
-            self._docker_client.images.pull(self._image_name, self._image_tag)
-        except errors.APIError as e:
-            # Check if we already have the image locally
-            try:
-                image_name = f"{self._image_name}:{self._image_tag}"
-                self._docker_client.images.get(image_name)
-                # If we get here, the image exists locally, so we can continue
-                logging.warning(f"Warning: Could not pull image: {e}. Using locally cached image.")
-            except errors.ImageNotFound:
-                # If the image isn't available locally either, we can't continue
-                raise RuntimeError(f'Could not pull image and no local image available: {e}') from e
-
+        # Fix too-many-try-statements by breaking into separate methods
+        self._pull_or_get_image()
         self._cleanup_existing_containers()
         self._create_container()
         self._fetch_mapped_port()
         self._wait_for_http('/api/v1/ping', timeout=20)
 
         return self
+
+    def _pull_or_get_image(self) -> None:
+        """Pull the image or use local image if available."""
+        try:
+            # Try to pull the latest image
+            self._docker_client.images.pull(self._image_name, self._image_tag)
+        except errors.APIError as e:
+            # Handle the API error
+            self._handle_image_pull_error(e)
+
+    def _handle_image_pull_error(self, error):
+        """Handle error when pulling image fails by checking for local version."""
+        # Check if we already have the image locally
+        image_name = f"{self._image_name}:{self._image_tag}"
+        try:
+            self._docker_client.images.get(image_name)
+        except errors.ImageNotFound:
+            # If the image isn't available locally either, we can't continue
+            raise RuntimeError(
+                f'Could not pull image and no local image available: {error}') from error
+        # If we get here, the image exists locally, so we can continue
+        logging.warning("Warning: Could not pull image: %s. Using locally cached image.", error)
 
     def stop(self) -> None:
         self._stop_and_remove_container()
@@ -159,16 +169,16 @@ class Container:
         try:
             self._container.stop()
         except errors.NotFound as e:
-            logging.warning(f'Warning: Container not found while stopping: {e}')
+            logging.warning("Warning: Container not found while stopping: %s", e)
         except errors.APIError as e:
-            logging.warning(f'Warning: API error while stopping container: {e}')
+            logging.warning("Warning: API error while stopping container: %s", e)
 
         try:
             self._container.remove()
         except errors.NotFound as e:
-            logging.warning(f'Warning: Container not found while removing: {e}')
+            logging.warning("Warning: Container not found while removing: %s", e)
         except errors.APIError as e:
-            logging.warning(f'Warning: API error while removing container: {e}')
+            logging.warning("Warning: API error while removing container: %s", e)
 
         self._container = None
         self._mapped_port = None
@@ -192,23 +202,27 @@ class Container:
             if time.time() - start_time >= timeout:
                 break
 
-            response = None
-            status_code = None
-            try:
-                response = requests.get(url, timeout=2)
-            except requests.RequestException:
-                pass
-
-            if response is not None:
-                status_code = response.status_code
-
-            if response is not None and status_code == HTTPStatus.OK:
+            # Extract request into a helper method to reduce try statements
+            if self._check_endpoint_available(url):
                 return
 
             time.sleep(0.5)
 
         self._stop_and_remove_container()
         raise TimeoutError(f'Service failed to become ready within {timeout} seconds')
+
+    def _check_endpoint_available(self, url: str) -> bool:
+        """Check if an HTTP endpoint is available."""
+        try:
+            response = requests.get(url, timeout=2)
+        except requests.RequestException:
+            return False
+        return self._check_response_ok(response)
+
+    # pylint: disable=R6301
+    def _check_response_ok(self, response) -> bool:
+        """Check if the HTTP response indicates success."""
+        return response is not None and response.status_code == HTTPStatus.OK
 
     def with_api_token(self, token: str) -> 'Container':
         self._api_token = token
