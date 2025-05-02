@@ -2,7 +2,7 @@
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
-[project]
+[project] 
 name = "eventsourcingdb"
 version = "0.12.1"
 description = "The official Python client SDK for EventSourcingDB."
@@ -16,6 +16,7 @@ packages = [{include = "eventsourcingdb"}]
 [tool.poetry.dependencies]
 python = "^3.13"
 aiohttp = "3.11.16"
+testcontainers = "4.10.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "8.3.5"

@@ -1,25 +1,18 @@
-from collections.abc import Awaitable, Callable
-from http import HTTPStatus
-
+import asyncio
+from aiohttp import ClientConnectorDNSError
 import pytest
 
-from eventsourcingdb.client import Client
-from eventsourcingdb.errors.client_error import ClientError
-from eventsourcingdb.errors.invalid_parameter_error import InvalidParameterError
-from eventsourcingdb.errors.server_error import ServerError
-from eventsourcingdb.handlers.lower_bound import LowerBound
-from eventsourcingdb.handlers.observe_events import \
-    ObserveEventsOptions, \
-    ObserveFromLatestEvent, \
-    IfEventIsMissingDuringObserve
+from eventsourcingdb import ServerError
+from eventsourcingdb import EventCandidate
+from eventsourcingdb import Bound, BoundType
+from eventsourcingdb import IfEventIsMissingDuringObserve
+from eventsourcingdb import ObserveEventsOptions
+from eventsourcingdb import ObserveFromLatestEvent
+
 from .conftest import TestData
 
 from .shared.database import Database
 from .shared.event.assert_event import assert_event_equals
-from .shared.start_local_http_server import \
-    AttachHandler, \
-    Response, \
-    AttachHandlers
 
 
 class TestObserveEvents:
@@ -28,9 +21,9 @@ class TestObserveEvents:
     async def test_throws_error_if_server_is_not_reachable(
         database: Database
     ):
-        client = database.with_invalid_url.client
+        client = database.get_client("with_invalid_url")
 
-        with pytest.raises(ServerError):
+        with pytest.raises(ClientConnectorDNSError):
             async for _ in client.observe_events('/', ObserveEventsOptions(recursive=False)):
                 pass
 
@@ -39,9 +32,9 @@ class TestObserveEvents:
     async def test_throws_error_if_subject_is_invalid(
         database: Database
     ):
-        client = database.with_authorization.client
+        client = database.get_client()
 
-        with pytest.raises(InvalidParameterError):
+        with pytest.raises(ServerError):
             async for _ in client.observe_events('', ObserveEventsOptions(recursive=False)):
                 pass
 
@@ -50,7 +43,7 @@ class TestObserveEvents:
     async def test_supports_authorization(
         prepared_database: Database
     ):
-        client = prepared_database.with_authorization.client
+        client = prepared_database.get_client()
 
         observed_items_count = 0
         events = client.observe_events('/', ObserveEventsOptions(recursive=True))
@@ -67,7 +60,7 @@ class TestObserveEvents:
         prepared_database: Database,
         test_data: TestData
     ):
-        client = prepared_database.with_authorization.client
+        client = prepared_database.get_client()
         registered_events_count = 3
 
         observed_items = []
@@ -77,12 +70,17 @@ class TestObserveEvents:
             ObserveEventsOptions(recursive=False)
         )
 
-        await client.write_events([test_data.TEST_SOURCE.new_event(
-            subject=test_data.REGISTERED_SUBJECT,
-            event_type=test_data.REGISTERED_TYPE,
-            data=test_data.APFEL_FRED_DATA,
-            trace_parent=test_data.TRACE_PARENT_5,
-        )])
+        await client.write_events(
+            [
+                EventCandidate(
+                    source=test_data.TEST_SOURCE_STRING,
+                    subject=test_data.REGISTERED_SUBJECT,
+                    type=test_data.REGISTERED_TYPE,
+                    data=test_data.APFEL_FRED_DATA,
+                    trace_parent=test_data.TRACE_PARENT_5,
+                )
+            ]
+        )
 
         async for event in events:
             observed_items.append(event)
@@ -91,7 +89,7 @@ class TestObserveEvents:
                 break
 
         assert_event_equals(
-            observed_items[0].event,
+            observed_items[0],
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
@@ -100,7 +98,7 @@ class TestObserveEvents:
             None
         )
         assert_event_equals(
-            observed_items[1].event,
+            observed_items[1],
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
@@ -109,7 +107,7 @@ class TestObserveEvents:
             None
         )
         assert_event_equals(
-            observed_items[2].event,
+            observed_items[2],
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
@@ -124,7 +122,7 @@ class TestObserveEvents:
         prepared_database: Database,
         test_data: TestData
     ):
-        client = prepared_database.with_authorization.client
+        client = prepared_database.get_client()
         observed_items = []
         did_push_intermediate_event = False
 
@@ -135,12 +133,17 @@ class TestObserveEvents:
             observed_items.append(event)
 
             if not did_push_intermediate_event:
-                await client.write_events([test_data.TEST_SOURCE.new_event(
-                    subject=test_data.REGISTERED_SUBJECT,
-                    event_type=test_data.REGISTERED_TYPE,
-                    data=test_data.APFEL_FRED_DATA,
-                    trace_parent=test_data.TRACE_PARENT_5,
-                )])
+                await client.write_events(
+                    [
+                        EventCandidate(
+                            source=test_data.TEST_SOURCE_STRING,
+                            subject=test_data.REGISTERED_SUBJECT,
+                            type=test_data.REGISTERED_TYPE,
+                            data=test_data.APFEL_FRED_DATA,
+                            trace_parent=test_data.TRACE_PARENT_5,
+                        )
+                    ]
+                )
 
                 did_push_intermediate_event = True
 
@@ -149,7 +152,7 @@ class TestObserveEvents:
                 break
 
         assert_event_equals(
-            observed_items[0].event,
+            observed_items[0],
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
@@ -158,7 +161,7 @@ class TestObserveEvents:
             None
         )
         assert_event_equals(
-            observed_items[1].event,
+            observed_items[1],
             test_data.TEST_SOURCE_STRING,
             test_data.LOGGED_IN_SUBJECT,
             test_data.LOGGED_IN_TYPE,
@@ -167,7 +170,7 @@ class TestObserveEvents:
             None
         )
         assert_event_equals(
-            observed_items[2].event,
+            observed_items[2],
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
@@ -176,7 +179,7 @@ class TestObserveEvents:
             None
         )
         assert_event_equals(
-            observed_items[3].event,
+            observed_items[3],
             test_data.TEST_SOURCE_STRING,
             test_data.LOGGED_IN_SUBJECT,
             test_data.LOGGED_IN_TYPE,
@@ -185,7 +188,7 @@ class TestObserveEvents:
             None
         )
         assert_event_equals(
-            observed_items[4].event,
+            observed_items[4],
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
@@ -200,7 +203,7 @@ class TestObserveEvents:
         prepared_database: Database,
         test_data: TestData
     ):
-        client = prepared_database.with_authorization.client
+        client = prepared_database.get_client()
         observed_items = []
         did_push_intermediate_event = False
 
@@ -218,12 +221,17 @@ class TestObserveEvents:
             observed_items.append(event)
 
             if not did_push_intermediate_event:
-                await client.write_events([test_data.TEST_SOURCE.new_event(
-                    subject=test_data.REGISTERED_SUBJECT,
-                    event_type=test_data.REGISTERED_TYPE,
-                    data=test_data.APFEL_FRED_DATA,
-                    trace_parent=test_data.TRACE_PARENT_5,
-                )])
+                await client.write_events(
+                    [
+                        EventCandidate(
+                            source=test_data.TEST_SOURCE_STRING,
+                            subject=test_data.REGISTERED_SUBJECT,
+                            type=test_data.REGISTERED_TYPE,
+                            data=test_data.APFEL_FRED_DATA,
+                            trace_parent=test_data.TRACE_PARENT_5,
+                        )
+                    ]
+                )
 
                 did_push_intermediate_event = True
 
@@ -232,7 +240,7 @@ class TestObserveEvents:
                 break
 
         assert_event_equals(
-            observed_items[0].event,
+            observed_items[0],
             test_data.TEST_SOURCE_STRING,
             test_data.LOGGED_IN_SUBJECT,
             test_data.LOGGED_IN_TYPE,
@@ -241,7 +249,7 @@ class TestObserveEvents:
             None
         )
         assert_event_equals(
-            observed_items[1].event,
+            observed_items[1],
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
@@ -256,7 +264,7 @@ class TestObserveEvents:
         prepared_database: Database,
         test_data: TestData
     ):
-        client = prepared_database.with_authorization.client
+        client = prepared_database.get_client()
         observed_items = []
         did_push_intermediate_event = False
 
@@ -264,21 +272,26 @@ class TestObserveEvents:
             '/users',
             ObserveEventsOptions(
                 recursive=True,
-                lower_bound=LowerBound(
+                lower_bound=Bound(
                     id='2',
-                    type='inclusive'
+                    type=BoundType.INCLUSIVE
                 )
             )
         ):
             observed_items.append(event)
 
             if not did_push_intermediate_event:
-                await client.write_events([test_data.TEST_SOURCE.new_event(
-                    subject=test_data.REGISTERED_SUBJECT,
-                    event_type=test_data.REGISTERED_TYPE,
-                    data=test_data.APFEL_FRED_DATA,
-                    trace_parent=test_data.TRACE_PARENT_5,
-                )])
+                await client.write_events(
+                    [
+                        EventCandidate(
+                            source=test_data.TEST_SOURCE_STRING,
+                            subject=test_data.REGISTERED_SUBJECT,
+                            type=test_data.REGISTERED_TYPE,
+                            data=test_data.APFEL_FRED_DATA,
+                            trace_parent=test_data.TRACE_PARENT_5,
+                        )
+                    ]
+                )
 
                 did_push_intermediate_event = True
 
@@ -287,7 +300,7 @@ class TestObserveEvents:
                 break
 
         assert_event_equals(
-            observed_items[0].event,
+            observed_items[0],
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
@@ -296,7 +309,7 @@ class TestObserveEvents:
             None
         )
         assert_event_equals(
-            observed_items[1].event,
+            observed_items[1],
             test_data.TEST_SOURCE_STRING,
             test_data.LOGGED_IN_SUBJECT,
             test_data.LOGGED_IN_TYPE,
@@ -305,7 +318,7 @@ class TestObserveEvents:
             None
         )
         assert_event_equals(
-            observed_items[2].event,
+            observed_items[2],
             test_data.TEST_SOURCE_STRING,
             test_data.REGISTERED_SUBJECT,
             test_data.REGISTERED_TYPE,
@@ -319,16 +332,16 @@ class TestObserveEvents:
     async def test_throws_error_for_mutually_exclusive_options(
         prepared_database: Database
     ):
-        client = prepared_database.with_authorization.client
+        client = prepared_database.get_client()
 
-        with pytest.raises(InvalidParameterError):
+        with pytest.raises(ServerError):
             async for _ in client.observe_events(
                 '/users',
                 ObserveEventsOptions(
                     recursive=True,
-                    lower_bound=LowerBound(
+                    lower_bound=Bound(
                         id='3',
-                        type='excl'
+                        type=BoundType.EXCLUSIVE
                     ),
                     from_latest_event=ObserveFromLatestEvent(
                         subject='/',
@@ -344,9 +357,9 @@ class TestObserveEvents:
     async def test_throws_error_for_invalid_subject_in_from_latest_event(
         prepared_database: Database
     ):
-        client = prepared_database.with_authorization.client
+        client = prepared_database.get_client()
 
-        with pytest.raises(InvalidParameterError):
+        with pytest.raises(ServerError):
             async for _ in client.observe_events(
                 '/users',
                 ObserveEventsOptions(
@@ -365,9 +378,9 @@ class TestObserveEvents:
     async def test_throws_error_for_invalid_type_in_from_latest_event(
         prepared_database: Database
     ):
-        client = prepared_database.with_authorization.client
+        client = prepared_database.get_client()
 
-        with pytest.raises(InvalidParameterError):
+        with pytest.raises(ServerError):
             async for _ in client.observe_events(
                 '/users',
                 ObserveEventsOptions(
@@ -381,198 +394,44 @@ class TestObserveEvents:
             ):
                 pass
 
-
-class TestObserveEventsWithMockServer:
-
     @staticmethod
     @pytest.mark.asyncio
-    async def test_throws_error_if_server_responds_with_5xx_status_code(
-        get_client: Callable[[AttachHandlers], Awaitable[Client]]
+    async def test_cancelling_observe_events_async(
+        prepared_database: Database,
     ):
-        def attach_handlers(attach_handler: AttachHandler):
-            def handle_observe_events(response: Response) -> Response:
-                response.status_code = HTTPStatus.BAD_GATEWAY
-                response.set_data(HTTPStatus.BAD_GATEWAY.phrase)
-                return response
+        client = prepared_database.get_client()
+        events_processed = 0
+        events_to_process = 2
 
-            attach_handler('/api/v1/observe-events', 'POST', handle_observe_events)
-
-        client = await get_client(attach_handlers)
-
-        with pytest.raises(ServerError):
-            async for _ in client.observe_events(
-                subject='/',
-                options=ObserveEventsOptions(
-                    recursive=True
-                )
-            ):
-                pass
-
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_throws_error_if_protocol_version_does_not_match(
-        get_client: Callable[[AttachHandlers], Awaitable[Client]]
-    ):
-        def attach_handlers(attach_handler: AttachHandler):
-            def handle_observe_events(response: Response) -> Response:
-                response.headers['X-EventSourcingDB-Protocol-Version'] = '0.0.0'
-                response.status_code = HTTPStatus.UNPROCESSABLE_ENTITY
-                response.set_data(HTTPStatus.UNPROCESSABLE_ENTITY.phrase)
-                return response
-
-            attach_handler('/api/v1/observe-events', 'POST', handle_observe_events)
-
-        client = await get_client(attach_handlers)
-
-        with pytest.raises(ClientError):
+        async def process_events():
+            nonlocal events_processed
             async for _ in client.observe_events(
                 '/',
                 ObserveEventsOptions(
-                    recursive=True
+                    recursive=True,
+                    from_latest_event=None
                 )
             ):
-                pass
+                events_processed += 1
+                await asyncio.sleep(0.25)
 
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_throws_error_if_server_responds_with_4xx_status_code(
-        get_client: Callable[[AttachHandlers], Awaitable[Client]]
-    ):
-        def attach_handlers(attach_handler: AttachHandler):
-            def handle_observe_events(response: Response) -> Response:
-                response.status_code = HTTPStatus.NOT_FOUND
-                response.set_data(HTTPStatus.NOT_FOUND.phrase)
-                return response
+        task = asyncio.create_task(process_events())
+        await asyncio.sleep(0.7)
+        task.cancel()
 
-            attach_handler('/api/v1/observe-events', 'POST', handle_observe_events)
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
 
-        client = await get_client(attach_handlers)
+        assert task.done(), 'Task should be completed after cancellation'
+        assert task.cancelled(), 'Task should be marked as cancelled'
 
-        with pytest.raises(ClientError):
-            async for _ in client.observe_events(
-                '/',
-                ObserveEventsOptions(
-                    recursive=True
-                )
-            ):
-                pass
+        try:
+            task.exception()
+        except asyncio.CancelledError:
+            pass
 
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_throws_error_if_server_responds_with_unexpected_status_code(
-        get_client: Callable[[AttachHandlers], Awaitable[Client]]
-    ):
-        def attach_handlers(attach_handler: AttachHandler):
-            def handle_observe_events(response: Response) -> Response:
-                response.status_code = HTTPStatus.ACCEPTED
-                response.set_data(HTTPStatus.ACCEPTED.phrase)
-                return response
-
-            attach_handler('/api/v1/observe-events', 'POST', handle_observe_events)
-
-        client = await get_client(attach_handlers)
-
-        with pytest.raises(ServerError):
-            async for _ in client.observe_events(
-                '/',
-                ObserveEventsOptions(
-                    recursive=True
-                )
-            ):
-                pass
-
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_throws_error_if_server_responds_with_an_item_that_cannot_be_parsed(
-        get_client: Callable[[AttachHandlers], Awaitable[Client]]
-    ):
-        def attach_handlers(attach_handler: AttachHandler):
-            def handle_observe_events(response: Response) -> Response:
-                response.status_code = HTTPStatus.OK
-                response.set_data('cannot be parsed')
-                return response
-
-            attach_handler('/api/v1/observe-events', 'POST', handle_observe_events)
-
-        client = await get_client(attach_handlers)
-
-        with pytest.raises(ServerError):
-            async for _ in client.observe_events(
-                '/',
-                ObserveEventsOptions(
-                    recursive=True
-                )
-            ):
-                pass
-
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_throws_error_if_server_responds_with_an_item_that_has_an_unexpected_type(
-        get_client: Callable[[AttachHandlers], Awaitable[Client]]
-    ):
-        def attach_handlers(attach_handler: AttachHandler):
-            def handle_observe_events(response: Response) -> Response:
-                response.status_code = HTTPStatus.OK
-                response.set_data('{"type": "clown", "payload": {"foo": "bar"}}')
-                return response
-
-            attach_handler('/api/v1/observe-events', 'POST', handle_observe_events)
-
-        client = await get_client(attach_handlers)
-
-        with pytest.raises(ServerError):
-            async for _ in client.observe_events(
-                '/',
-                ObserveEventsOptions(
-                    recursive=True
-                )
-            ):
-                pass
-
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_throws_error_if_server_responds_with_an_error_item(
-        get_client: Callable[[AttachHandlers], Awaitable[Client]]
-    ):
-        def attach_handlers(attach_handler: AttachHandler):
-            def handle_observe_events(response: Response) -> Response:
-                response.status_code = HTTPStatus.OK
-                response.set_data('{"type": "error", "payload": {"error": "it is just broken"}}')
-                return response
-
-            attach_handler('/api/v1/observe-events', 'POST', handle_observe_events)
-
-        client = await get_client(attach_handlers)
-
-        with pytest.raises(ServerError):
-            async for _ in client.observe_events(
-                '/',
-                ObserveEventsOptions(
-                    recursive=True
-                )
-            ):
-                pass
-
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_throws_error_if_server_responds_with_an_error_item_with_unexpected_payload(
-        get_client: Callable[[AttachHandlers], Awaitable[Client]]
-    ):
-        def attach_handlers(attach_handler: AttachHandler):
-            def handle_observe_events(response: Response) -> Response:
-                response.status_code = HTTPStatus.OK
-                response.set_data('{"type": "error", "payload": {"not very correct": "indeed"}}')
-                return response
-
-            attach_handler('/api/v1/observe-events', 'POST', handle_observe_events)
-
-        client = await get_client(attach_handlers)
-
-        with pytest.raises(ServerError):
-            async for _ in client.observe_events(
-                '/',
-                ObserveEventsOptions(
-                    recursive=True
-                )
-            ):
-                pass
+        assert events_processed > events_to_process, (
+            'Expected to process some events before cancellation'
+        )

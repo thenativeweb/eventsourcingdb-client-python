@@ -1,163 +1,68 @@
-from collections import namedtuple
-from collections.abc import Callable, Coroutine
-from http import HTTPStatus
+from types import TracebackType
 
 import aiohttp
 from aiohttp import ClientSession
 
-from .response import Response, Headers
-from ..client_configuration import ClientConfiguration
-from ..errors.client_error import ClientError
 from ..errors.custom_error import CustomError
-from ..errors.internal_error import InternalError
-from ..errors.server_error import ServerError
-from ..util import url
-from ..util.retry.retry_result import Retry, Return, RetryResult
-from ..util.retry.retry_with_backoff import retry_with_backoff
-from ..util.retry.retry_error import RetryError
 
-Range = namedtuple('Range', 'lower, upper')
-
-
-class UninitializedError(CustomError):
-    pass
+from .get_get_headers import get_get_headers
+from .get_post_headers import get_post_headers
+from .response import Response
 
 
 class HttpClient:
     def __init__(
         self,
-        client_configuration: ClientConfiguration
+        base_url: str,
+        api_token: str,
     ):
-        self.__client_configuration: ClientConfiguration = client_configuration
+        self.__base_url = base_url
+        self.__api_token = api_token
         self.__session: ClientSession | None = None
 
+    async def __aenter__(self):
+        await self.initialize()
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: BaseException | None = None,
+        exc_val: BaseException | None = None,
+        exc_tb: TracebackType | None = None,
+    ) -> None:
+        await self.close()
+
     async def initialize(self) -> None:
-        self.__session = aiohttp.ClientSession(
-            timeout=aiohttp.ClientTimeout(
-                connect=self.__client_configuration.timeout_seconds,
-                sock_read=self.__client_configuration.timeout_seconds
-            )
-        )
+        self.__session = aiohttp.ClientSession()
 
     async def close(self):
         if self.__session is not None:
             await self.__session.close()
-
-    async def __execute_request(
-        self,
-        execute_request: Callable[[], Coroutine[None, None, RetryResult[Response]]]
-    ) -> Response:
-        try:
-            return await retry_with_backoff(
-                self.__client_configuration.max_tries,
-                execute_request
-            )
-        except RetryError as retry_error:
-            raise ServerError(str(retry_error)) from retry_error
-        except CustomError as custom_error:
-            raise custom_error
-        except aiohttp.ClientError as request_error:
-            raise ServerError(str(request_error)) from request_error
-        except Exception as other_error:
-            raise InternalError(str(other_error)) from other_error
-
-    def __validate_protocol_version(self, http_status_code: int, headers: Headers) -> None:
-        if http_status_code != HTTPStatus.UNPROCESSABLE_ENTITY:
-            return
-
-        server_protocol_version = headers.get(
-            'x-eventsourcingdb-protocol-version'
-        )
-
-        if server_protocol_version is None:
-            server_protocol_version = 'unknown version'
-
-        raise ClientError(
-            f'Protocol version mismatch, server \'{server_protocol_version}\','
-            f' client \'{self.__client_configuration.protocol_version}\'.'
-        )
+            self.__session = None
 
     @staticmethod
-    async def __get_error_message(response: Response):
-        error_message = f'Request failed with status code \'{response.status_code}\''
+    def join_segments(first: str, *rest: str) -> str:
+        first_without_trailing_slash = first.rstrip('/')
+        rest_joined = '/'.join([segment.strip('/') for segment in rest])
 
-        # We want to purposefully ignore all errors here, as we're already error handling,
-        # and this function just tries to get more information on a best-effort basis.
-        # pylint: disable=too-many-try-statements
-        try:
-            encoded_error_reason = await response.body.read()
-            error_reason = encoded_error_reason.decode('utf-8')
-            error_message += f" {error_reason}"
-        finally:
-            pass
-        # pylint: enable=too-many-try-statements
-
-        error_message += '.'
-
-        return error_message
-
-    async def __validate_response(
-        self,
-        response: Response
-    ) -> RetryResult[Response]:
-        server_failure_range = Range(500, 600)
-        if server_failure_range.lower <= response.status_code < server_failure_range.upper:
-            return Retry(ServerError(await self.__get_error_message(response)))
-
-        client_failure_range = Range(400, 500)
-        if client_failure_range.lower <= response.status_code < client_failure_range.upper:
-            raise ClientError(await self.__get_error_message(response))
-
-        self.__validate_protocol_version(response.status_code, response.headers)
-
-        return Return(response)
-
-    def __get_post_request_headers(self) -> dict[str, str]:
-        headers = {
-            'X-EventSourcingDB-Protocol-Version': self.__client_configuration.protocol_version,
-            'Authorization': f'Bearer {self.__client_configuration.api_token}',
-            'Content-Type': 'application/json'
-        }
-
-        return headers
+        return f'{first_without_trailing_slash}/{rest_joined}'
 
     async def post(self, path: str, request_body: str) -> Response:
         if self.__session is None:
-            raise UninitializedError()
+            await self.initialize()
 
-        async def execute_request() -> RetryResult[Response]:
-            response = await self.__session.post(
-                url.join_segments(
-                    self.__client_configuration.base_url,
-                    path
-                ),
-                data=request_body,
-                headers=self.__get_post_request_headers(),
-            )
+        url_path = HttpClient.join_segments(self.__base_url, path)
+        headers = get_post_headers(self.__api_token)
 
-            response = Response(response)
-            try:
-                result = await self.__validate_response(response)
-            except Exception as error:
-                response.close()
-                raise error
+        async_response = await self.__session.post(  # type: ignore
+            url_path,
+            data=request_body,
+            headers=headers,
+        )
 
-            if isinstance(result, Retry):
-                response.close()
+        response = Response(async_response)
 
-            return result
-
-        return await self.__execute_request(execute_request)
-
-    def __get_get_request_headers(self, with_authorization: bool) -> dict[str, str]:
-        headers = {
-            'X-EventSourcingDB-Protocol-Version': self.__client_configuration.protocol_version,
-        }
-
-        if with_authorization:
-            headers['Authorization'] = f'Bearer {self.__client_configuration.api_token}'
-
-        return headers
+        return response
 
     async def get(
         self,
@@ -165,25 +70,20 @@ class HttpClient:
         with_authorization: bool = True,
     ) -> Response:
         if self.__session is None:
-            raise UninitializedError()
+            raise CustomError(
+                "HTTP client session not initialized. Call initialize() before making requests.")
 
-        async def execute_request() -> RetryResult[Response]:
-            response = await self.__session.get(
-                url.join_segments(
-                    self.__client_configuration.base_url, path),
-                headers=self.__get_get_request_headers(with_authorization),
+        async def __request_executor() -> Response:
+            url_path = HttpClient.join_segments(self.__base_url, path)
+            headers = get_get_headers(self.__api_token, with_authorization)
+
+            async_response = await self.__session.get(  # type: ignore
+                url_path,
+                headers=headers,
             )
 
-            response = Response(response)
-            try:
-                result = await self.__validate_response(response)
-            except Exception as error:
-                response.close()
-                raise error
+            response = Response(async_response)
 
-            if isinstance(result, Retry):
-                response.close()
+            return response
 
-            return result
-
-        return await self.__execute_request(execute_request)
+        return await __request_executor()
