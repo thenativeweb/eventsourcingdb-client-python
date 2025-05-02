@@ -19,6 +19,7 @@ class Event():
     time: datetime
     data_content_type: str
     predecessor_hash: str
+    hash: str
     trace_parent: str | None = None
     trace_state: str | None = None
 
@@ -64,6 +65,11 @@ class Event():
         if not isinstance(predecessor_hash, str):
             raise ValidationError(
                 f'Failed to parse predecessor_hash \'{predecessor_hash}\' to string.')
+        
+        hash = unknown_object.get('hash')
+        if not isinstance(hash, str):
+            raise ValidationError(
+                f'Failed to parse hash \'{hash}\' to string.')
 
         trace_parent = unknown_object.get('traceparent')
         if trace_parent is not None and not isinstance(trace_parent, str):
@@ -91,6 +97,7 @@ class Event():
             time=time,
             data_content_type=data_content_type,
             predecessor_hash=predecessor_hash,
+            hash=hash,
             trace_parent=trace_parent,
             trace_state=trace_state
         )
@@ -105,6 +112,7 @@ class Event():
             'type': self.type,
             'datacontenttype': self.data_content_type,
             'predecessorhash': self.predecessor_hash,
+            'hash': self.hash,
             'data': self.data
         }
 

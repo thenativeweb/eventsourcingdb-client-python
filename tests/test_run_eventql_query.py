@@ -7,7 +7,6 @@ from .shared.database import Database
 
 
 class TestRunEventQLQuery:
-    # Define constants to avoid magic value comparisons
     EXPECTED_ROW_COUNT = 2
     FIRST_EVENT_ID = '0'
     FIRST_EVENT_VALUE = 23
