@@ -67,10 +67,10 @@ class Database:
             if retry:
                 if attempt == max_retries - 1:
                     container.stop()
-                    msg = f"Failed to initialize database container after {max_retries} attempts"
-                    raise RuntimeError(f"{msg}: {error}") from error
+                    msg = f'Failed to initialize database container after {max_retries} attempts'
+                    raise RuntimeError(f'{msg}: {error}') from error
                 logging.warning(
-                    "Container startup attempt %d failed: %s. Retrying in %s seconds...",
+                    'Container startup attempt %d failed: %s. Retrying in %s seconds...',
                     attempt + 1, error, retry_delay
                 )
                 time.sleep(retry_delay)
@@ -92,7 +92,7 @@ class Database:
 
             return cls(Database.__create_key, with_authorization_client, with_invalid_url_client)
 
-        raise RuntimeError("Failed to create database: Unexpected error during retry loop")
+        raise RuntimeError('Failed to create database: Unexpected error during retry loop')
 
     @staticmethod
     def _get_image_tag_from_dockerfile():
@@ -109,17 +109,14 @@ class Database:
         if client_type == self.CLIENT_TYPE_INVALID_URL:
             return self.__with_invalid_url_client
 
-        raise ValueError(f"Unknown client type: {client_type}")
+        raise ValueError(f'Unknown client type: {client_type}')
 
     def get_base_url(self) -> str:
-        """Get the base URL of the EventSourceDB container."""
         return self.__container.get_base_url()
 
     def get_api_token(self) -> str:
-        """Get the API token for the EventSourceDB container."""
         return self.__container.get_api_token()
 
     async def stop(self) -> None:
-        # Use walrus operator for concise access and check
         if (container := getattr(self.__class__, '_Database__container', None)):
             container.stop()
