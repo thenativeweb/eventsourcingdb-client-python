@@ -1,8 +1,5 @@
 from dataclasses import dataclass
 
-from .validate_subject import validate_subject
-from .validate_type import validate_type
-
 
 @dataclass
 class EventCandidate:
@@ -10,12 +7,8 @@ class EventCandidate:
     subject: str
     type: str
     data: dict
-    trace_parent: str = None
-    trace_state: str = None
-
-    def validate(self) -> None:
-        validate_subject(self.subject)
-        validate_type(self.type)
+    trace_parent: str | None = None
+    trace_state: str | None = None
 
     def to_json(self):
         json = {
