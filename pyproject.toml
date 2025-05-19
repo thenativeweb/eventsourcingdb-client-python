@@ -20,7 +20,7 @@ testcontainers = "4.10.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "8.3.5"
-flask = "3.1.0"
+flask = "3.1.1"
 pylint = "3.3.5"
 autopep8 = "2.3.2"
 pytest-timeout = "2.3.1"
