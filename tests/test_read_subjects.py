@@ -14,7 +14,7 @@ class TestReadSubjects:
     @pytest.mark.asyncio
     async def test_throws_error_if_server_is_not_reachable(
         database: Database
-    ):
+    ) -> None:
         client = database.get_client("with_invalid_url")
 
         with pytest.raises(ClientConnectorDNSError):
@@ -25,7 +25,7 @@ class TestReadSubjects:
     @pytest.mark.asyncio
     async def test_supports_authorization(
         database: Database
-    ):
+    ) -> None:
         client = database.get_client()
 
         async for _ in client.read_subjects('/'):
@@ -36,7 +36,7 @@ class TestReadSubjects:
     async def test_reads_all_subjects_starting_from_root(
         database: Database,
         test_data: TestData,
-    ):
+    ) -> None:
         client = database.get_client()
 
         await client.write_events([
@@ -59,7 +59,7 @@ class TestReadSubjects:
     async def test_reads_all_subjects_starting_from_given_base_subject(
         database: Database,
         test_data: TestData,
-    ):
+    ) -> None:
         client = database.get_client()
 
         await client.write_events([
@@ -82,7 +82,7 @@ class TestReadSubjects:
     async def test_throws_an_error_if_base_subject_malformed(
         database: Database,
         test_data: TestData,
-    ):
+    ) -> None:
         client = database.get_client()
 
         await client.write_events([

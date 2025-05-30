@@ -1,6 +1,6 @@
 from datetime import datetime
 from dataclasses import dataclass
-from typing import TypeVar
+from typing import TypeVar, Any
 
 from ..errors.internal_error import InternalError
 from ..errors.validation_error import ValidationError
@@ -24,7 +24,7 @@ class Event():
     trace_state: str | None = None
 
     @staticmethod
-    def parse(unknown_object: dict) -> "Event":
+    def parse(unknown_object: dict) -> 'Event':
         source = unknown_object.get('source')
         if not isinstance(source, str):
             raise ValidationError(
@@ -103,7 +103,7 @@ class Event():
             trace_state=trace_state
         )
 
-    def to_json(self):
+    def to_json(self) -> dict[str, Any]:
         json = {
             'specversion': self.spec_version,
             'id': self.event_id,

@@ -11,7 +11,7 @@ class TestVerifyApiToken:
     @pytest.mark.asyncio
     async def test_does_not_throw_if_token_is_valid(
         database: Database
-    ):
+    ) -> None:
         client = database.get_client()
         await client.verify_api_token()
 
@@ -19,7 +19,7 @@ class TestVerifyApiToken:
     @pytest.mark.asyncio
     async def test_throws_error_if_token_is_invalid(
         database: Database
-    ):
+    ) -> None:
         base_url = database.get_base_url()
 
         valid_token = database.get_api_token()

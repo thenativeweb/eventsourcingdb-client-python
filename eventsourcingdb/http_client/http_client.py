@@ -15,12 +15,12 @@ class HttpClient:
         self,
         base_url: str,
         api_token: str,
-    ):
+    ) -> None:
         self.__base_url = base_url
         self.__api_token = api_token
         self.__session: ClientSession | None = None
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> 'HttpClient':
         await self.initialize()
         return self
 
@@ -35,7 +35,7 @@ class HttpClient:
     async def initialize(self) -> None:
         self.__session = aiohttp.ClientSession()
 
-    async def close(self):
+    async def close(self) -> None:
         if self.__session is not None:
             await self.__session.close()
             self.__session = None

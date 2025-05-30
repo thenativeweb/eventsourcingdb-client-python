@@ -14,7 +14,7 @@ class TestReadEventTypes:
     async def test_reads_all_types_of_existing_events_and_registered_schemas(
         database: Database,
         test_data: TestData,
-    ):
+    ) -> None:
         client = database.get_client("with_authorization")
 
         await client.write_events([

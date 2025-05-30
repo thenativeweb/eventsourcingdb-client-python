@@ -17,7 +17,7 @@ class TestRunEventQLQuery:
     @pytest.mark.asyncio
     async def test_throws_error_if_server_is_not_reachable(
         database: Database
-    ):
+    ) -> None:
         client = database.get_client("with_invalid_url")
 
         with pytest.raises(ClientConnectorDNSError):
@@ -28,7 +28,7 @@ class TestRunEventQLQuery:
     @pytest.mark.asyncio
     async def test_reads_no_rows_if_query_does_not_return_any_rows(
         database: Database
-    ):
+    ) -> None:
         client = database.get_client()
 
         did_read_rows = False
@@ -41,7 +41,7 @@ class TestRunEventQLQuery:
     @pytest.mark.asyncio
     async def test_reads_all_rows_the_query_returns(
         database: Database
-    ):
+    ) -> None:
         client = database.get_client()
 
         first_event = EventCandidate(
