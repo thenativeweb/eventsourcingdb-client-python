@@ -15,11 +15,11 @@ StopServer = Callable[[], None]
 
 
 class LocalHttpServer():
-    def __init__(self, attach_handlers: AttachHandlers):
+    def __init__(self, attach_handlers: AttachHandlers) -> None:
         self.port = get_random_available_port()
         self.app = Flask('local')
 
-        def attach_handler(route: str, method: str, handler: Handler):
+        def attach_handler(route: str, method: str, handler: Handler) -> None:
             @self.app.route(route, methods=[method])
             def attached_handler():
                 response = make_response()
@@ -32,7 +32,7 @@ class LocalHttpServer():
             return "OK"
 
     @staticmethod
-    def start(this: 'LocalHttpServer'):
+    def start(this: 'LocalHttpServer') -> None:
         this.app.run(host='localhost', port=this.port)
 
 
@@ -43,7 +43,7 @@ async def start_local_http_server(attach_handlers: AttachHandlers) -> tuple[Clie
     server = multiprocessing.Process(target=LocalHttpServer.start, args=(local_http_server, ))
     server.start()
 
-    async def ping_app():
+    async def ping_app() -> bool:
         max_retries = 5
         retry_delay = 0.5
 
@@ -65,7 +65,7 @@ async def start_local_http_server(attach_handlers: AttachHandlers) -> tuple[Clie
         server.join()
         raise RuntimeError(f"Failed to start HTTP server on port {local_http_server.port}")
 
-    def stop_server():
+    def stop_server() -> None:
         server.terminate()
         server.join()
 

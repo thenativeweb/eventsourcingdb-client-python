@@ -4,7 +4,7 @@ from .shared.database import Database
 
 
 @pytest_asyncio.fixture
-async def database():
+async def database() -> Database:
     testing_db = await Database.create()
     yield testing_db
 

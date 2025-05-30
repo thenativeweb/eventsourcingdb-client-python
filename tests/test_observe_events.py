@@ -20,7 +20,7 @@ class TestObserveEvents:
     @pytest.mark.asyncio
     async def test_throws_error_if_server_is_not_reachable(
         database: Database
-    ):
+    ) -> None:
         client = database.get_client("with_invalid_url")
 
         with pytest.raises(ClientConnectorDNSError):
@@ -31,7 +31,7 @@ class TestObserveEvents:
     @pytest.mark.asyncio
     async def test_throws_error_if_subject_is_invalid(
         database: Database
-    ):
+    ) -> None:
         client = database.get_client()
 
         with pytest.raises(ServerError):
@@ -42,7 +42,7 @@ class TestObserveEvents:
     @pytest.mark.asyncio
     async def test_supports_authorization(
         prepared_database: Database
-    ):
+    ) -> None:
         client = prepared_database.get_client()
 
         observed_items_count = 0
@@ -59,7 +59,7 @@ class TestObserveEvents:
     async def test_observes_event_from_a_single_subject(
         prepared_database: Database,
         test_data: TestData
-    ):
+    ) -> None:
         client = prepared_database.get_client()
         registered_events_count = 3
 
@@ -121,7 +121,7 @@ class TestObserveEvents:
     async def test_observes_event_from_a_subject_including_child_subjects(
         prepared_database: Database,
         test_data: TestData
-    ):
+    ) -> None:
         client = prepared_database.get_client()
         observed_items = []
         did_push_intermediate_event = False
@@ -202,7 +202,7 @@ class TestObserveEvents:
     async def test_observes_event_starting_from_given_event_name(
         prepared_database: Database,
         test_data: TestData
-    ):
+    ) -> None:
         client = prepared_database.get_client()
         observed_items = []
         did_push_intermediate_event = False
@@ -263,7 +263,7 @@ class TestObserveEvents:
     async def test_observes_event_starting_from_given_lower_bound(
         prepared_database: Database,
         test_data: TestData
-    ):
+    ) -> None:
         client = prepared_database.get_client()
         observed_items = []
         did_push_intermediate_event = False
@@ -331,7 +331,7 @@ class TestObserveEvents:
     @pytest.mark.asyncio
     async def test_throws_error_for_mutually_exclusive_options(
         prepared_database: Database
-    ):
+    ) -> None:
         client = prepared_database.get_client()
 
         with pytest.raises(ServerError):
@@ -356,7 +356,7 @@ class TestObserveEvents:
     @pytest.mark.asyncio
     async def test_throws_error_for_invalid_subject_in_from_latest_event(
         prepared_database: Database
-    ):
+    ) -> None:
         client = prepared_database.get_client()
 
         with pytest.raises(ServerError):
@@ -377,7 +377,7 @@ class TestObserveEvents:
     @pytest.mark.asyncio
     async def test_throws_error_for_invalid_type_in_from_latest_event(
         prepared_database: Database
-    ):
+    ) -> None:
         client = prepared_database.get_client()
 
         with pytest.raises(ServerError):
@@ -398,7 +398,7 @@ class TestObserveEvents:
     @pytest.mark.asyncio
     async def test_cancelling_observe_events_async(
         prepared_database: Database,
-    ):
+    ) -> None:
         client = prepared_database.get_client()
         events_processed = 0
         events_to_process = 2

@@ -15,7 +15,7 @@ def assert_event_equals(
         data: dict,
         trace_parent: str | None,
         trace_state: str | None
-):
+) -> None:
     assert event.source == source
     assert event.subject == subject
     assert event.type == type_

@@ -8,21 +8,20 @@ Headers = Mapping[str, str]
 
 
 class Response:
-    def __init__(self, response: aiohttp.ClientResponse):
+    def __init__(self, response: aiohttp.ClientResponse) -> None:
         self.__response: aiohttp.ClientResponse = response
 
-    async def __aenter__(self):
-        # Properly await any async initialization if needed
+    async def __aenter__(self) -> 'Response':
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
         if not self.__response.closed:
             self.__response.close()
 
-    def __enter__(self):
+    def __enter__(self) -> 'Response':
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         if not self.__response.closed:
             self.__response.close()
 

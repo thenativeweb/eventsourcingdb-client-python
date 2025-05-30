@@ -19,21 +19,21 @@ class Database:
         create_key,
         with_authorization_client: Client,
         with_invalid_url_client: Client,
-    ):
+    ) -> None:
         assert create_key == Database.__create_key, \
             'Database objects must be created using Database.create.'
         self.__with_authorization_client: Client = with_authorization_client
         self.__with_invalid_url_client: Client = with_invalid_url_client
 
     @classmethod
-    def _create_container(cls, api_token, image_tag):
+    def _create_container(cls, api_token, image_tag) -> Container:
         cls.__container = Container()
         cls.__container.with_image_tag(image_tag)
         cls.__container.with_api_token(api_token)
         return cls.__container
 
     @staticmethod
-    async def _initialize_clients(container, api_token):
+    async def _initialize_clients(container, api_token) -> tuple[Client, Client]:
         with_authorization_client = container.get_client()
         await with_authorization_client.initialize()
 
@@ -95,7 +95,7 @@ class Database:
         raise RuntimeError('Failed to create database: Unexpected error during retry loop')
 
     @staticmethod
-    def _get_image_tag_from_dockerfile():
+    def _get_image_tag_from_dockerfile() -> str:
         dockerfile_path = os.path.join(
             os.path.dirname(__file__),
             'docker/eventsourcingdb/Dockerfile')

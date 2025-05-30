@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-
+from typing import Any
 
 @dataclass
 class EventCandidate:
@@ -10,7 +10,7 @@ class EventCandidate:
     trace_parent: str | None = None
     trace_state: str | None = None
 
-    def to_json(self):
+    def to_json(self) -> dict[str, Any]:
         json = {
             'data': self.data,
             'source': self.source,

@@ -16,7 +16,7 @@ class TestWriteSubjects:
     async def test_throws_an_error_if_server_is_not_reachable(
         database: Database,
         test_data: TestData,
-    ):
+    ) -> None:
         client = database.get_client("with_invalid_url")
 
         with pytest.raises(ClientConnectorDNSError):
@@ -35,7 +35,7 @@ class TestWriteSubjects:
     @pytest.mark.asyncio
     async def test_throws_an_error_for_empty_event_candidates(
         database: Database,
-    ):
+    ) -> None:
         client = database.get_client("with_invalid_url")
 
         with pytest.raises(ClientConnectorDNSError):
@@ -46,7 +46,7 @@ class TestWriteSubjects:
     async def test_throws_an_error_for_malformed_subject(
         database: Database,
         test_data: TestData,
-    ):
+    ) -> None:
         client = database.get_client()
 
         with pytest.raises(ServerError):
@@ -66,7 +66,7 @@ class TestWriteSubjects:
     async def test_throws_an_error_for_malformed_type(
         database: Database,
         test_data: TestData,
-    ):
+    ) -> None:
         client = database.get_client()
 
         with pytest.raises(ServerError):
@@ -86,7 +86,7 @@ class TestWriteSubjects:
     async def test_supports_authorization(
         database: Database,
         test_data: TestData,
-    ):
+    ) -> None:
         client = database.get_client()
 
         await client.write_events(
@@ -105,7 +105,7 @@ class TestWriteSubjects:
     async def test_is_pristine_precondition_works_for_new_subject(
         database: Database,
         test_data: TestData,
-    ):
+    ) -> None:
         client = database.get_client()
 
         await client.write_events(
@@ -125,7 +125,7 @@ class TestWriteSubjects:
     async def test_is_pristine_precondition_fails_for_existing_subject(
         database: Database,
         test_data: TestData,
-    ):
+    ) -> None:
         client = database.get_client()
 
         await client.write_events(
@@ -157,7 +157,7 @@ class TestWriteSubjects:
     async def test_is_on_event_id_precondition_works_for_correct_id(
         database: Database,
         test_data: TestData,
-    ):
+    ) -> None:
         client = database.get_client()
 
         await client.write_events(
@@ -188,7 +188,7 @@ class TestWriteSubjects:
     async def test_is_subject_on_event_id_fails_for_wrong_id(
         database: Database,
         test_data: TestData,
-    ):
+    ) -> None:
         client = database.get_client()
 
         await client.write_events(
@@ -220,7 +220,7 @@ class TestWriteSubjects:
     async def test_throws_error_if_event_does_not_match_schema(
         database: Database,
         test_data: TestData,
-    ):
+    ) -> None:
         client = database.get_client()
 
         await client.register_event_schema(
