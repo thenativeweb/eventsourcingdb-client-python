@@ -6,10 +6,11 @@ from .shared.database import Database
 @pytest_asyncio.fixture
 async def database():
     testing_db = await Database.create()
-    yield testing_db
-
-    if testing_db is not None:
-        await testing_db.stop()
+    try:
+        yield testing_db
+    finally:
+        if testing_db is not None:
+            await testing_db.stop()
 
 
 class TestData:

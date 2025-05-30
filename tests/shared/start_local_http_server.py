@@ -73,6 +73,6 @@ async def start_local_http_server(attach_handlers: AttachHandlers) -> tuple[Clie
         f'http://localhost:{local_http_server.port}',
         'access-token',
     )
-    await client.initialize()
+    # await client.initialize()
 
     return client, stop_server

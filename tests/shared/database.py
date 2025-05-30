@@ -35,13 +35,13 @@ class Database:
     @staticmethod
     async def _initialize_clients(container, api_token):
         with_authorization_client = container.get_client()
-        await with_authorization_client.initialize()
+        #await with_authorization_client.initialize()
 
         with_invalid_url_client = Client(
             base_url='http://localhost.invalid',
             api_token=api_token
         )
-        await with_invalid_url_client.initialize()
+        #await with_invalid_url_client.initialize()
 
         return with_authorization_client, with_invalid_url_client
 

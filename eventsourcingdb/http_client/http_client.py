@@ -3,8 +3,6 @@ from types import TracebackType
 import aiohttp
 from aiohttp import ClientSession
 
-from ..errors.custom_error import CustomError
-
 from .get_get_headers import get_get_headers
 from .get_post_headers import get_post_headers
 from .response import Response
@@ -21,7 +19,7 @@ class HttpClient:
         self.__session: ClientSession | None = None
 
     async def __aenter__(self):
-        await self.initialize()
+        await self.__initialize()
         return self
 
     async def __aexit__(
@@ -30,12 +28,12 @@ class HttpClient:
         exc_val: BaseException | None = None,
         exc_tb: TracebackType | None = None,
     ) -> None:
-        await self.close()
+        await self.__close()
 
-    async def initialize(self) -> None:
+    async def __initialize(self) -> None:
         self.__session = aiohttp.ClientSession()
 
-    async def close(self):
+    async def __close(self):
         if self.__session is not None:
             await self.__session.close()
             self.__session = None
@@ -49,7 +47,7 @@ class HttpClient:
 
     async def post(self, path: str, request_body: str) -> Response:
         if self.__session is None:
-            await self.initialize()
+            await self.__initialize()
 
         url_path = HttpClient.join_segments(self.__base_url, path)
         headers = get_post_headers(self.__api_token)
@@ -70,8 +68,7 @@ class HttpClient:
         with_authorization: bool = True,
     ) -> Response:
         if self.__session is None:
-            raise CustomError(
-                "HTTP client session not initialized. Call initialize() before making requests.")
+            await self.__initialize()
 
         async def __request_executor() -> Response:
             url_path = HttpClient.join_segments(self.__base_url, path)
