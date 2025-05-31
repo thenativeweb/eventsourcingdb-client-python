@@ -10,7 +10,7 @@ jobs:
 
     strategy:
       matrix:
-        version: [ '3.11', '3.12', '3.13', 'latest' ]
+        version: [ '3.11', '3.12', '3.13' ]
 
     steps:
     - name: Clone repository
