@@ -31,7 +31,11 @@ class HttpClient:
         await self.__close()
 
     async def __initialize(self) -> None:
-        self.__session = aiohttp.ClientSession()
+        # If a session already exists, close it first to prevent leaks
+        if self.__session is not None:
+            await self.__session.close()
+
+        self.__session = aiohttp.ClientSession(connector_owner=True)
 
     async def __close(self):
         if self.__session is not None:

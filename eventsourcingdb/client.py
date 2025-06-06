@@ -33,7 +33,7 @@ class Client():
     ):
         self.__http_client = HttpClient(base_url=base_url, api_token=api_token)
 
-    async def __aenter__(self) -> "Client":
+    async def __aenter__(self) -> 'Client':
         await self.__http_client.__aenter__()
         return self
 
