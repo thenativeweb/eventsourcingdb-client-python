@@ -139,42 +139,18 @@ class Container:
     def _pull_or_get_image(self) -> None:
         try:
             self._docker_client.images.pull(self._image_name, self._image_tag)
-        except errors.APIError:
-            self._handle_image_pull_error()
+        except errors.APIError as e:
+            self._handle_image_pull_error(e)
 
-    def _handle_image_pull_error(self) -> None:
+    def _handle_image_pull_error(self, error) -> None:
         image_name = f"{self._image_name}:{self._image_tag}"
-
-        # First check if the image is already available locally
         try:
             self._docker_client.images.get(image_name)
         except errors.ImageNotFound:
-            logging.info("Image not found locally, attempting to pull: %s", image_name)
-        else:
-            logging.info("Using locally available image: %s", image_name)
-            return
+            raise RuntimeError(
+                f'Could not pull image and no local image available: {error}') from error
 
-        # Try to pull the image
-        try:
-            # Pull image with default timeout settings
-            self._docker_client.api.pull(
-                self._image_name,
-                tag=self._image_tag)
-        except (
-                errors.APIError,
-                requests.exceptions.Timeout,
-                requests.exceptions.ConnectionError
-        ) as e:
-            # pylint: disable=W0717
-            try:
-                self._docker_client.images.get(image_name)
-                logging.warning(
-                    "Warning: Failed to pull image: %s. Using locally cached image.", e
-                )
-            except errors.ImageNotFound:
-                raise RuntimeError(
-                    f'Could not pull image {image_name} and no local image available: {e}'
-                ) from e
+        logging.warning("Warning: Could not pull image: %s. Using locally cached image.", error)
 
     def stop(self) -> None:
         self._stop_and_remove_container()
