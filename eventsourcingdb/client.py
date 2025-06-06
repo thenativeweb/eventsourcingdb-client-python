@@ -194,7 +194,8 @@ class Client():
                 message = parse_raw_message(raw_message)
 
                 if is_stream_error(message):
-                    raise ServerError(f'{message['payload']['error']}.')
+                    error_message = message.get('payload', {}).get('error', 'Unknown error')
+                    raise ServerError(f"{error_message}.")
                 # pylint: disable=R2004
                 if message.get('type') == 'row':
                     payload = message['payload']
@@ -203,7 +204,7 @@ class Client():
                     continue
 
                 raise ServerError(
-                    f'Failed to execute EventQL query, an unexpected stream item was received: '
+                    'Failed to execute EventQL query, an unexpected stream item was received: '
                     f'{message}.'
                 )
 
