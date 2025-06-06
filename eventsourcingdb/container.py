@@ -139,10 +139,10 @@ class Container:
     def _pull_or_get_image(self) -> None:
         try:
             self._docker_client.images.pull(self._image_name, self._image_tag)
-        except errors.APIError as e:
-            self._handle_image_pull_error(e)
+        except errors.APIError:
+            self._handle_image_pull_error()
 
-    def _handle_image_pull_error(self, error) -> None:
+    def _handle_image_pull_error(self) -> None:
         image_name = f"{self._image_name}:{self._image_tag}"
 
         # First check if the image is already available locally

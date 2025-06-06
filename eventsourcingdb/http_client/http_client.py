@@ -19,7 +19,7 @@ class HttpClient:
         self.__session: ClientSession | None = None
 
     async def __aenter__(self) -> 'HttpClient':
-        await self.initialize()
+        await self.__initialize()
         return self
 
     async def __aexit__(
@@ -37,7 +37,7 @@ class HttpClient:
 
         self.__session = aiohttp.ClientSession(connector_owner=True)
 
-    async def close(self) -> None:
+    async def __close(self) -> None:
         if self.__session is not None:
             await self.__session.close()
             self.__session = None
