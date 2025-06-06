@@ -45,12 +45,6 @@ class Client():
     ) -> None:
         await self.__http_client.__aexit__(exc_type, exc_val, exc_tb)
 
-    async def initialize(self) -> None:
-        await self.__http_client.initialize()
-
-    async def close(self) -> None:
-        await self.__http_client.close()
-
     @property
     def http_client(self) -> HttpClient:
         return self.__http_client
