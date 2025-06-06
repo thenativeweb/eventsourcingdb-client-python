@@ -139,28 +139,28 @@ class Container:
     def _pull_or_get_image(self) -> None:
         """Pull Docker image or use local image if pulling fails."""
         image_name = f"{self._image_name}:{self._image_tag}"
-        
+
         # First check if the image is already available locally
         try:
             self._docker_client.images.get(image_name)
-            logging.info("Using locally available image: %s", image_name)
-            return
         except errors.ImageNotFound:
             logging.info("Image not found locally, attempting to pull: %s", image_name)
-        
+        else:
+            logging.info("Using locally available image: %s", image_name)
+            return
+
         # Try to pull the image
         try:
             # Pull image with default timeout settings
             self._docker_client.api.pull(
                 self._image_name,
-                tag=self._image_tag
-            )
+                tag=self._image_tag)
         except (
-                errors.APIError, 
+                errors.APIError,
                 requests.exceptions.Timeout,
                 requests.exceptions.ConnectionError
         ) as e:
-            # Try to use locally cached image as fallback
+            # pylint: disable=W0717
             try:
                 self._docker_client.images.get(image_name)
                 logging.warning(

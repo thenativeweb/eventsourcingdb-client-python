@@ -1,8 +1,8 @@
+import logging
 import pytest
 import pytest_asyncio
 from eventsourcingdb import EventCandidate
 from .shared.database import Database
-import logging
 
 
 @pytest_asyncio.fixture
@@ -16,7 +16,7 @@ async def database():
         logging.error("Failed to create database container: %s", e)
         pytest.skip(f"Skipping test due to database container initialization failure: {e}")
     finally:
-        if 'testing_db' in locals() and testing_db is not None:
+        if testing_db in locals() and testing_db is not None:
             await testing_db.stop()
 
 
