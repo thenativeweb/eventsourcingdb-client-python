@@ -12,7 +12,7 @@ from .client import Client
 class Container:
     def __init__(
         self,
-    ):
+    ) -> None:
         self._image_name: str = 'thenativeweb/eventsourcingdb'
         self._image_tag: str = 'latest'
         self._api_token: str = 'secret'
@@ -57,7 +57,7 @@ class Container:
             detach=True,
         )  # type: ignore
 
-    def _extract_port_from_container_info(self, container_info):
+    def _extract_port_from_container_info(self, container_info) -> int | None:
         port = None
         valid_mapping = True
         port_mappings = None
@@ -95,7 +95,7 @@ class Container:
         self._stop_and_remove_container()
         raise RuntimeError('Failed to determine mapped port')
 
-    def _get_container_info(self):
+    def _get_container_info(self) -> dict | None:
         if self._container is None:
             return None
         return self._docker_client.api.inspect_container(self._container.id)
@@ -137,7 +137,12 @@ class Container:
         return self
 
     def _pull_or_get_image(self) -> None:
-        """Pull Docker image or use local image if pulling fails."""
+        try:
+            self._docker_client.images.pull(self._image_name, self._image_tag)
+        except errors.APIError as e:
+            self._handle_image_pull_error(e)
+
+    def _handle_image_pull_error(self, error) -> None:
         image_name = f"{self._image_name}:{self._image_tag}"
 
         # First check if the image is already available locally
@@ -230,7 +235,7 @@ class Container:
         return self._check_response_ok(response)
 
     # pylint: disable=R6301
-    def _check_response_ok(self, response) -> bool:
+    def _check_response_ok(self, response: requests.Response) -> bool:
         return response is not None and response.status_code == HTTPStatus.OK
 
     def with_api_token(self, token: str) -> 'Container':

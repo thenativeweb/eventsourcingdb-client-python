@@ -6,18 +6,12 @@ from .shared.database import Database
 
 
 @pytest_asyncio.fixture
-async def database():
-    # pylint: disable=W0717
-    try:
-        testing_db = await Database.create()
-        yield testing_db
-    # pylint: disable=broad-except
-    except Exception as e:
-        logging.error("Failed to create database container: %s", e)
-        pytest.skip(f"Skipping test due to database container initialization failure: {e}")
-    finally:
-        if testing_db in locals() and testing_db is not None:
-            await testing_db.stop()
+async def database() -> Database:
+    testing_db = await Database.create()
+    yield testing_db
+
+    if testing_db is not None:
+        await testing_db.stop()
 
 
 class TestData:

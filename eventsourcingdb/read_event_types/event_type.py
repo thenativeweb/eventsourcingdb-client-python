@@ -13,7 +13,7 @@ class EventType:
     schema: dict[str, Any] | None = None
 
     @staticmethod
-    def parse(unknown_object: dict) -> "EventType":
+    def parse(unknown_object: dict) -> 'EventType':
         event_type = unknown_object.get('eventType')
         if not isinstance(event_type, str):
             raise ValidationError(
@@ -38,7 +38,7 @@ class EventType:
             schema=schema,
         )
 
-    def __hash__(self):
+    def __hash__(self) -> str:
         # Convert dictionary schema to a hashable form (tuple of items)
         if isinstance(self.schema, dict):
             # Sort items to ensure consistent hashing

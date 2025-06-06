@@ -30,7 +30,7 @@ class TestReadEvents:
     @pytest.mark.asyncio
     async def test_supports_authorization(
         database: Database
-    ):
+    ) -> None:
         client = database.get_client()
 
         async for _ in client.read_events('/', ReadEventsOptions(recursive=False)):
@@ -41,7 +41,7 @@ class TestReadEvents:
     async def test_read_events_from_a_single_subject(
         prepared_database: Database,
         test_data: TestData
-    ):
+    ) -> None:
         client = prepared_database.get_client()
 
         result = []
@@ -77,7 +77,7 @@ class TestReadEvents:
     async def test_read_events_from_a_subject_including_children(
         prepared_database: Database,
         test_data: TestData
-    ):
+    ) -> None:
         client = prepared_database.get_client()
 
         result = []
@@ -131,7 +131,7 @@ class TestReadEvents:
     async def test_read_events_in_antichronological_order(
         prepared_database: Database,
         test_data: TestData
-    ):
+    ) -> None:
         client = prepared_database.get_client()
 
         result = []
@@ -167,7 +167,7 @@ class TestReadEvents:
     async def test_read_events_recursive_from_latest_event_in_child_subject(
         prepared_database: Database,
         test_data: TestData
-    ):
+    ) -> None:
         client = prepared_database.get_client()
 
         result = []
@@ -210,7 +210,7 @@ class TestReadEvents:
     async def test_read_events_starting_from_lower_bound(
         prepared_database: Database,
         test_data: TestData
-    ):
+    ) -> None:
         client = prepared_database.get_client()
 
         result = []
@@ -249,7 +249,7 @@ class TestReadEvents:
     async def test_read_events_up_to_the_upper_bound(
         prepared_database: Database,
         test_data: TestData
-    ):
+    ) -> None:
         client = prepared_database.get_client()
 
         result = []
@@ -287,7 +287,7 @@ class TestReadEvents:
     @pytest.mark.asyncio
     async def test_throws_error_for_exclusive_options(
         prepared_database: Database
-    ):
+    ) -> None:
         client = prepared_database.get_client()
 
         with pytest.raises(ServerError):
@@ -309,7 +309,7 @@ class TestReadEvents:
     @pytest.mark.asyncio
     async def test_throws_error_for_invalid_subject(
         prepared_database: Database
-    ):
+    ) -> None:
         client = prepared_database.get_client()
 
         with pytest.raises(ServerError):
@@ -325,7 +325,7 @@ class TestReadEvents:
     @pytest.mark.asyncio
     async def test_throws_error_for_invalid_lower_bound(
         prepared_database: Database
-    ):
+    ) -> None:
         client = prepared_database.get_client()
 
         with pytest.raises(ServerError):
@@ -342,7 +342,7 @@ class TestReadEvents:
     @pytest.mark.asyncio
     async def test_throws_error_for_negative_lower_bound(
         prepared_database: Database
-    ):
+    ) -> None:
         client = prepared_database.get_client()
 
         with pytest.raises(ServerError):
@@ -359,7 +359,7 @@ class TestReadEvents:
     @pytest.mark.asyncio
     async def test_throws_error_for_invalid_upper_bound(
         prepared_database: Database
-    ):
+    ) -> None:
         client = prepared_database.get_client()
 
         with pytest.raises(ServerError):
@@ -376,7 +376,7 @@ class TestReadEvents:
     @pytest.mark.asyncio
     async def test_throws_error_for_negative_upper_bound(
         prepared_database: Database
-    ):
+    ) -> None:
         client = prepared_database.get_client()
 
         with pytest.raises(ServerError):
@@ -393,7 +393,7 @@ class TestReadEvents:
     @pytest.mark.asyncio
     async def test_throws_error_for_invalid_subject_in_from_latest_event(
         prepared_database: Database
-    ):
+    ) -> None:
         client = prepared_database.get_client()
 
         with pytest.raises(ServerError):
@@ -414,7 +414,7 @@ class TestReadEvents:
     @pytest.mark.asyncio
     async def test_throws_error_for_invalid_type_in_from_latest_event(
         prepared_database: Database
-    ):
+    ) -> None:
         client = prepared_database.get_client()
 
         with pytest.raises(ServerError):
@@ -435,7 +435,7 @@ class TestReadEvents:
     @pytest.mark.asyncio
     async def test_cancelling_read_events_async(
         prepared_database: Database,
-    ):
+    ) -> None:
         client = prepared_database.get_client()
         events_processed = 0
         events_to_process = 2

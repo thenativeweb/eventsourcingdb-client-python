@@ -12,7 +12,7 @@ class TestRegisterEventSchema:
     @pytest.mark.asyncio
     async def test_registers_new_schema_if_it_doesnt_conflict_with_existing_events(
         database: Database,
-    ):
+    ) -> None:
         client = database.get_client()
 
         await client.register_event_schema(
@@ -28,7 +28,7 @@ class TestRegisterEventSchema:
     async def test_throws_error_if_schema_conflicts_with_existing_events(
         database: Database,
         test_data: TestData,
-    ):
+    ) -> None:
         client = database.get_client()
 
         await client.write_events(
@@ -57,7 +57,7 @@ class TestRegisterEventSchema:
     @pytest.mark.asyncio
     async def test_throws_error_if_schema_already_exists(
         database: Database,
-    ):
+    ) -> None:
         client = database.get_client()
 
         await client.register_event_schema(
@@ -83,7 +83,7 @@ class TestRegisterEventSchema:
     @pytest.mark.asyncio
     async def test_throws_error_if_schema_is_invalid(
         database: Database,
-    ):
+    ) -> None:
         client = database.get_client()
 
         with pytest.raises(ServerError, match='value must be "object"'):
