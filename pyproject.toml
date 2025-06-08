@@ -31,8 +31,8 @@ asyncio_default_fixture_loop_scope = "function"
 # Remove the Pylint configuration and replace with Ruff configuration
 [tool.ruff]
 # Enable Pylint (`PL`) and many other linters
-select = ["E", "F", "B", "I", "N", "UP", "PL", "PT", "C4", "DTZ", "T10", "EM", "EXE", "ISC", "ICN", "INP", "PIE", "T20", "PYI", "RSE", "SLF", "SIM", "INT", "ARG", "PTH", "PD", "PGH", "RUF"]
-ignore = [
+lint.select = ["E", "F", "B", "I", "N", "UP", "PL", "PT", "C4", "DTZ", "T10", "EM", "EXE", "ISC", "ICN", "INP", "PIE", "T20", "PYI", "RSE", "SLF", "SIM", "INT", "ARG", "PTH", "PD", "PGH", "RUF"]
+lint.ignore = [
     # Equivalent to Pylint's missing-module-docstring
     "D100",
     # Equivalent to missing-class-docstring
