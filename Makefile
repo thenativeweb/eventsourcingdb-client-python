@@ -19,10 +19,12 @@ help:
 qa: analyze test
 
 analyze:
+	@uv add ruff --dev
 	@echo "Running code analysis..."
 	@uv run ruff check $(PYTHON_DIRS)
 
 format:
+	@uv add ruff --dev
 	@echo "Formatting code..."
 	@uv run ruff format $(PYTHON_DIRS)
 
@@ -31,10 +33,13 @@ lock:
 	@uv run uv lock 
 
 test:
+	@uv add pytest --dev
 	@echo "Running tests..."
 	@uv run pytest --maxfail=1
 
 coverage:
+	@uv add pytest --dev
+	@uv add pytest-cov --dev
 	@echo "Checking test coverage..."
 	@uv run pytest --cov=$(PACKAGE) --cov-report=term-missing $(TEST_DIR)
 
