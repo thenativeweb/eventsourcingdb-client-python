@@ -2,5 +2,5 @@ from enum import Enum
 
 
 class Order(Enum):
-    ANTICHRONOLOGICAL = 'antichronological'
-    CHRONOLOGICAL = 'chronological'
+    ANTICHRONOLOGICAL = "antichronological"
+    CHRONOLOGICAL = "chronological"

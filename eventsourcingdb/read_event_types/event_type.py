@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import TypeVar, Any
+from typing import Any, TypeVar
 
 from ..errors import ValidationError
 
@@ -13,24 +13,18 @@ class EventType:
     schema: dict[str, Any] | None = None
 
     @staticmethod
-    def parse(unknown_object: dict) -> 'EventType':
-        event_type = unknown_object.get('eventType')
+    def parse(unknown_object: dict) -> "EventType":
+        event_type = unknown_object.get("eventType")
         if not isinstance(event_type, str):
-            raise ValidationError(
-                f"Failed to parse eventType '{event_type}' to str."
-            )
+            raise ValidationError(f"Failed to parse eventType '{event_type}' to str.")
 
-        is_phantom = unknown_object.get('isPhantom')
+        is_phantom = unknown_object.get("isPhantom")
         if not isinstance(is_phantom, bool):
-            raise ValidationError(
-                f"Failed to parse isPhantom '{is_phantom}' to bool."
-            )
+            raise ValidationError(f"Failed to parse isPhantom '{is_phantom}' to bool.")
 
-        schema = unknown_object.get('schema')
+        schema = unknown_object.get("schema")
         if schema is not None and not isinstance(schema, (dict)):
-            raise ValidationError(
-                f"Failed to parse schema '{schema}'. Schema must be dict."
-            )
+            raise ValidationError(f"Failed to parse schema '{schema}'. Schema must be dict.")
 
         return EventType(
             event_type=event_type,

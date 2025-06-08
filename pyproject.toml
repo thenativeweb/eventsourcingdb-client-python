@@ -31,12 +31,7 @@ asyncio_default_fixture_loop_scope = "function"
 # Remove the Pylint configuration and replace with Ruff configuration
 [tool.ruff]
 # Enable Pylint (`PL`) and many other linters
-select = ["E", "F", "B", "I", "N", "UP", "PL", "PT", "C4", "DTZ", "T10", "EM", "EXE", "ISC", "ICN", "INP", "PIE", "T20", "PYI", "RSE", "SLF", "SIM", "TCH", "INT", "ARG", "PTH", "PD", "PGH", "RUF"]
-ignore = []
-line-length = 100
-
-# Like Pylint's disable
-[tool.ruff.lint]
+select = ["E", "F", "B", "I", "N", "UP", "PL", "PT", "C4", "DTZ", "T10", "EM", "EXE", "ISC", "ICN", "INP", "PIE", "T20", "PYI", "RSE", "SLF", "SIM", "INT", "ARG", "PTH", "PD", "PGH", "RUF"]
 ignore = [
     # Equivalent to Pylint's missing-module-docstring
     "D100",
@@ -45,33 +40,13 @@ ignore = [
     # Equivalent to missing-function-docstring
     "D102",
     # Equivalent to too-few-public-methods
-    "PLR0903",
-    # Equivalent to too-many-instance-attributes
     "PLR0913",
     # Equivalent to too-many-arguments
     "PLR0917",
     # Equivalent to duplicate-code
-    "PLR0801",
-    # Equivalent to too-many-branches
     "PLR0912"
 ]
-
-# Equivalent to include-naming-hint
-[tool.ruff.lint.pep8-naming]
-ignore-names = []
-
-# Maintain existing format settings
-[tool.ruff.format]
-indent-style = "space"
-indent-size = 4
-line-ending = "lf"
-quote-style = "double"
-
-# For Markdown files
-[[tool.ruff.format.file-pattern]]
-pattern = "*.md"
-indent-style = "space"
-indent-size = 2
+line-length = 100
 
 # Additional check to generate an .editorconfig file based on pyproject.toml settings
 [tool.editorconfig]

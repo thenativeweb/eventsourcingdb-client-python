@@ -4,7 +4,7 @@ TEST_DIR := tests
 PYTHON_DIRS := $(PACKAGE) $(TEST_DIR)
 
 # Default target and help
-.DEFAULT_GOAL := help
+.DEFAULT_GOAL := .PHONY
 help:
 	@echo "Available commands:"
 	@echo "  qa       : Run analysis and tests"
@@ -20,11 +20,11 @@ qa: analyze test
 
 analyze:
 	@echo "Running code analysis..."
-	@uv run ruff $(PYTHON_DIRS)
+	@uv run ruff check $(PYTHON_DIRS)
 
 format:
 	@echo "Formatting code..."
-	@uv run ruff format --in-place --aggressive --max-line-length=100 --recursive $(PYTHON_DIRS)
+	@uv run ruff format $(PYTHON_DIRS)
 
 lock:
 	@echo "Updating dependency lock..."
