@@ -3,7 +3,7 @@ name = "eventsourcingdb"
 version = "1.1.0"
 description = "The official Python client SDK for EventSourcingDB."
 authors = [{ name = "the native web GmbH", email = "hello@thenativeweb.io" }]
-requires-python = "~=3.11"
+requires-python = ">=3.11, <=3.13"
 readme = "README.md"
 license = "MIT"
 dependencies = [
@@ -17,37 +17,89 @@ dev = [
     "pytest-timeout==2.4.0",
     "pytest-asyncio==0.26.0",
     "ruff==0.11.13",
+    "pytest-cov>=6.1.1",
 ]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-# Former pytest.ini
 [tool.pytest.ini_options]
 timeout = 30
 asyncio_default_fixture_loop_scope = "function"
 
-# Remove the Pylint configuration and replace with Ruff configuration
 [tool.ruff]
-# Enable Pylint (`PL`) and many other linters
-lint.select = ["E", "F", "B", "I", "N", "UP", "PL", "PT", "C4", "DTZ", "T10", "EM", "EXE", "ISC", "ICN", "INP", "PIE", "T20", "PYI", "RSE", "SLF", "SIM", "INT", "ARG", "PTH", "PD", "PGH", "RUF"]
+# Die lint.select-Option bestimmt, welche Linting-Regeln aktiviert werden
+lint.select = ["ALL"]  # Alle Regeln aktivieren
+
+# Regeln ausschließen, die für das Projekt nicht relevant sind
 lint.ignore = [
-    # Equivalent to Pylint's missing-module-docstring
-    "D100",
-    # Equivalent to missing-class-docstring
-    "D101", 
-    # Equivalent to missing-function-docstring
-    "D102",
-    # Equivalent to too-few-public-methods
-    "PLR0913",
-    # Equivalent to too-many-arguments
-    "PLR0917",
-    # Equivalent to duplicate-code
-    "PLR0912"
+    # Documentation related
+    "D100",  # Missing docstring in public module/package
+    "D101",  # Missing docstring in public class 
+    "D102",  # Missing docstring in public method/function
+    "D103",  # Missing docstring in public function
+    "D104",  # Missing docstring in public package
+    "D105",  # Missing docstring in magic method
+    "D107",  # Missing docstring in __init__ method
+    "D203",  # incorrect-blank-line-before-class (incompatible with D211)
+    "D213",  # multi-line-summary-second-line (incompatible with D212)
+    
+    # Typing related
+    "PYI036",  # Incorrect __aexit__ annotation
+    "ANN001",  # Missing type annotation for function argument
+    "ANN202",  # Missing return type annotation for private function
+    "ANN205",  # Missing return type annotation for staticmethod
+    "ANN401",  # Dynamically typed expressions (typing.Any) are disallowed
+    
+    # Exception handling
+    "EM101",  # Exception must not use a string literal
+    "EM102",  # Exception must not use an f-string literal
+    "TRY003",  # Avoid specifying long messages outside exception class
+    "TRY201",  # Use raise without specifying exception name
+    
+    # Assertion in tests
+    "S101",  # Use of `assert` detected
+    "S105",  # Possible hardcoded password
+    
+    # Import related
+    "F401",  # Imported but unused
+    "TID252",  # Prefer absolute imports over relative imports from parent modules
+    
+    # Code structure
+    "PLR0904",  # Too few public methods
+    "PLR0912",  # Too many branches
+    "PLR0913",  # Too many instance attributes
+    "PLR0917",  # Too many arguments
+    "SIM102",  # Use a single if statement instead of nested if statements
+    "SIM105",  # Use contextlib.suppress instead of try-except-pass
+    "C901",    # Function is too complex
+    
+    # Performance
+    "PERF401",  # Use an async list comprehension to create a transformed list
+    
+    # Style
+    "COM812",   # Trailing comma missing
+    "A001",     # Variable is shadowing a Python builtin
+    "RET504",   # Unnecessary assignment before return statement
+    "FBT001",   # Boolean-typed positional argument in function definition
+    "FBT002",   # Boolean default positional argument in function definition
+    "PGH003",   # Use specific rule codes when ignoring type issues
+    "RUF012",   # Mutable class attributes should be annotated with typing.ClassVar
+    "RUF013",   # PEP 484 prohibits implicit Optional
+    
+    # Logging
+    "LOG015",   # Warning call on root logger
+    
+    # Path handling
+    "PTH118",   # os.path.join() should be replaced by Path with / operator
+    "PTH120",   # os.path.dirname() should be replaced by Path.parent
+    "PTH123",   # open() should be replaced by Path.open()
+    
+    # Async
+    "ASYNC251",  # Async functions should not call time.sleep
 ]
 line-length = 100
 
-# Additional check to generate an .editorconfig file based on pyproject.toml settings
 [tool.editorconfig]
 generate = true
