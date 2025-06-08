@@ -1,27 +1,78 @@
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
-
 [project]
 name = "eventsourcingdb"
 version = "1.1.0"
 description = "The official Python client SDK for EventSourcingDB."
-authors = [
-	{ name = "the native web GmbH", email = "hello@thenativeweb.io" }
-]
+authors = [{ name = "the native web GmbH", email = "hello@thenativeweb.io" }]
+requires-python = "~=3.11"
 readme = "README.md"
 license = "MIT"
-packages = [{include = "eventsourcingdb"}]
+dependencies = [
+    "aiohttp==3.12.9",
+    "testcontainers==4.10.0",
+]
 
-[tool.poetry.dependencies]
-python = "^3.11"
-aiohttp = "3.12.9"
-testcontainers = "4.10.0"
+[dependency-groups]
+dev = [
+    "pytest==8.3.5",
+    "pytest-timeout==2.4.0",
+    "pytest-asyncio==0.26.0",
+    "ruff==0.11.13",
+]
 
-[tool.poetry.group.dev.dependencies]
-pytest = "8.3.5"
-flask = "3.1.1"
-pylint = "3.3.7"
-autopep8 = "2.3.2"
-pytest-timeout = "2.4.0"
-pytest-asyncio = "0.26.0"
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# Former pytest.ini
+[tool.pytest.ini_options]
+timeout = 30
+asyncio_default_fixture_loop_scope = "function"
+
+# Remove the Pylint configuration and replace with Ruff configuration
+[tool.ruff]
+# Enable Pylint (`PL`) and many other linters
+select = ["E", "F", "B", "I", "N", "UP", "PL", "PT", "C4", "DTZ", "T10", "EM", "EXE", "ISC", "ICN", "INP", "PIE", "T20", "PYI", "RSE", "SLF", "SIM", "TCH", "INT", "ARG", "PTH", "PD", "PGH", "RUF"]
+ignore = []
+line-length = 100
+
+# Like Pylint's disable
+[tool.ruff.lint]
+ignore = [
+    # Equivalent to Pylint's missing-module-docstring
+    "D100",
+    # Equivalent to missing-class-docstring
+    "D101", 
+    # Equivalent to missing-function-docstring
+    "D102",
+    # Equivalent to too-few-public-methods
+    "PLR0903",
+    # Equivalent to too-many-instance-attributes
+    "PLR0913",
+    # Equivalent to too-many-arguments
+    "PLR0917",
+    # Equivalent to duplicate-code
+    "PLR0801",
+    # Equivalent to too-many-branches
+    "PLR0912"
+]
+
+# Equivalent to include-naming-hint
+[tool.ruff.lint.pep8-naming]
+ignore-names = []
+
+# Maintain existing format settings
+[tool.ruff.format]
+indent-style = "space"
+indent-size = 4
+line-ending = "lf"
+quote-style = "double"
+
+# For Markdown files
+[[tool.ruff.format.file-pattern]]
+pattern = "*.md"
+indent-style = "space"
+indent-size = 2
+
+# Additional check to generate an .editorconfig file based on pyproject.toml settings
+[tool.editorconfig]
+generate = true
