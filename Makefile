@@ -7,41 +7,23 @@ PYTHON_DIRS := $(PACKAGE) $(TEST_DIR)
 .DEFAULT_GOAL := .PHONY
 help:
 	@echo "Available commands:"
-	@echo "  qa       : Run analysis and tests"
 	@echo "  analyze  : Run code analysis with ruff"
-	@echo "  format   : Format code"
-	@echo "  test     : Run tests"
-	@echo "  coverage : Check test coverage"
-	@echo "  lock     : Lock dependencies with uv"
-	@echo "  clean    : Remove temporary files"
 	@echo "  build    : Run QA and prepare build"
-
-qa: analyze test
+	@echo "  clean    : Remove temporary files"
+	@echo "  coverage : Check test coverage"
+	@echo "  format   : Format code"
+	@echo "  lock     : Lock dependencies with uv"
+	@echo "  qa       : Run all quality assurance checks (analysis, type checking, security, tests)"
+	@echo "  security : Run security checks with bandit"
+	@echo "  test     : Run tests"
+	@echo "  typecheck: Run mypy type checking"
 
 analyze:
-	@uv add ruff --dev
 	@echo "Running code analysis..."
 	@uv run ruff check $(PYTHON_DIRS)
 
-format:
-	@uv add ruff --dev
-	@echo "Formatting code..."
-	@uv run ruff format $(PYTHON_DIRS)
-
-lock:
-	@echo "Updating dependency lock..."
-	@uv run uv lock 
-
-test:
-	@uv add pytest --dev
-	@echo "Running tests..."
-	@uv run pytest --maxfail=1
-
-coverage:
-	@uv add pytest --dev
-	@uv add pytest-cov --dev
-	@echo "Checking test coverage..."
-	@uv run pytest --cov=$(PACKAGE) --cov-report=term-missing $(TEST_DIR)
+build: qa clean
+	@echo "Build prepared."
 
 clean:
 	@echo "Cleaning up..."
@@ -53,9 +35,34 @@ clean:
 	@find . -type d -name "*.egg-info" -exec rm -rf {} +
 	@find . -type d -name "*.egg" -exec rm -rf {} +
 	@find . -type d -name ".pytest_cache" -exec rm -rf {} +
+	@find . -type d -name ".mypy_cache" -exec rm -rf {} +
 	@rm -rf build/ dist/ .coverage htmlcov/
 
-build: qa clean
-	@echo "Build prepared."
+coverage:
+	@echo "Checking test coverage..."
+	@uv run pytest --cov=$(PACKAGE) --cov-report=term-missing $(TEST_DIR)
 
-.PHONY: analyze build clean format lock qa test coverage help
+format:
+	@echo "Formatting code..."
+	@uv run ruff format $(PYTHON_DIRS)
+
+lock:
+	@echo "Updating dependency lock..."
+	@uv run uv lock
+
+qa: analyze typecheck security test
+
+security:
+	@echo "Running security checks..."
+	@uv run bandit -r $(PACKAGE) -c pyproject.toml
+
+test:
+	@echo "Running tests..."
+	@uv run pytest --maxfail=1
+
+typecheck:
+	@uv add pyright --dev
+	@echo "Running type checking..."
+	@uv run pyright $(PACKAGE)
+
+.PHONY: analyze build clean coverage format help lock qa security test typecheck
