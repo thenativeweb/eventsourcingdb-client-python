@@ -27,12 +27,18 @@ jobs:
         python-version: '3.13'
     - name: Install dependencies
       run: |
-        # First install Poetry in latest version, then install
-        # build and twine in matching versions. The following
-        # commands should not be run in a single line.
-        pip install poetry
-        pip install build twine
-        poetry install
+        # Install uv using the official installation method
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        
+        # Add uv to PATH (use .local/bin where it's actually installed)
+        export PATH="$HOME/.local/bin:$PATH"
+        
+        # Create a virtual environment or use system flag
+        uv sync
+        
+        # Use uv to install dependencies
+        uv python add twine pytest-timeout pytest-asyncio pytest-cov ruff pyright bandit
+
     - name: Run QA
       run: make qa
     - name: Get next version

@@ -6,6 +6,7 @@ import aiohttp
 from flask import Flask, Response, make_response
 
 from eventsourcingdb.client import Client
+
 from .util.get_random_available_port import get_random_available_port
 
 Handler = Callable[[Response], Response]
@@ -14,10 +15,10 @@ AttachHandlers = Callable[[AttachHandler], None]
 StopServer = Callable[[], None]
 
 
-class LocalHttpServer():
+class LocalHttpServer:
     def __init__(self, attach_handlers: AttachHandlers) -> None:
         self.port = get_random_available_port()
-        self.app = Flask('local')
+        self.app = Flask("local")
 
         def attach_handler(route: str, method: str, handler: Handler) -> None:
             @self.app.route(route, methods=[method])
@@ -27,20 +28,20 @@ class LocalHttpServer():
 
         attach_handlers(attach_handler)
 
-        @self.app.get('/__python_test__/api/v1/ping')
+        @self.app.get("/__python_test__/api/v1/ping")
         def ping():
             return "OK"
 
     @staticmethod
-    def start(this: 'LocalHttpServer') -> None:
-        this.app.run(host='localhost', port=this.port)
+    def start(this: "LocalHttpServer") -> None:
+        this.app.run(host="localhost", port=this.port)
 
 
 async def start_local_http_server(attach_handlers: AttachHandlers) -> tuple[Client, StopServer]:
     local_http_server = LocalHttpServer(attach_handlers)
 
-    multiprocessing = get_context('fork')
-    server = multiprocessing.Process(target=LocalHttpServer.start, args=(local_http_server, ))
+    multiprocessing = get_context("fork")
+    server = multiprocessing.Process(target=LocalHttpServer.start, args=(local_http_server,))
     server.start()
 
     async def ping_app() -> bool:
@@ -53,7 +54,7 @@ async def start_local_http_server(attach_handlers: AttachHandlers) -> tuple[Clie
                 response = None
                 try:
                     response = await session.get(url)
-                except (aiohttp.ClientError, asyncio.TimeoutError):
+                except (TimeoutError, aiohttp.ClientError):
                     await asyncio.sleep(retry_delay)
                     continue
                 if response:
@@ -70,8 +71,8 @@ async def start_local_http_server(attach_handlers: AttachHandlers) -> tuple[Clie
         server.join()
 
     client = Client(
-        f'http://localhost:{local_http_server.port}',
-        'access-token',
+        f"http://localhost:{local_http_server.port}",
+        "access-token",
     )
     await client.initialize()
 

@@ -1,19 +1,68 @@
-qa: analyze test
+# Variables for reusable values
+PACKAGE := eventsourcingdb
+TEST_DIR := tests
+PYTHON_DIRS := $(PACKAGE) $(TEST_DIR)
+
+# Default target and help
+.DEFAULT_GOAL := .PHONY
+help:
+	@echo "Available commands:"
+	@echo "  analyze  : Run code analysis with ruff"
+	@echo "  build    : Run QA and prepare build"
+	@echo "  clean    : Remove temporary files"
+	@echo "  coverage : Check test coverage"
+	@echo "  format   : Format code"
+	@echo "  lock     : Lock dependencies with uv"
+	@echo "  qa       : Run all quality assurance checks (analysis, type checking, security, tests)"
+	@echo "  security : Run security checks with bandit"
+	@echo "  test     : Run tests"
+	@echo "  typecheck: Run mypy type checking"
 
 analyze:
-	@poetry run pylint eventsourcingdb tests
-
-format:
-	@poetry run autopep8 --in-place --aggressive --max-line-length=100 --recursive eventsourcingdb tests
-	
-lock:
-	@poetry lock 
-
-test:
-	@poetry run pytest --maxfail=1
-
-clean:
+	@echo "Running code analysis..."
+	@uv run ruff check $(PYTHON_DIRS)
 
 build: qa clean
+	@echo "Build prepared."
 
-.PHONY: analyze build clean format lock qa test
+clean:
+	@echo "Cleaning up..."
+	@find . -type d -name __pycache__ -exec rm -rf {} +
+	@find . -type f -name "*.pyc" -delete
+	@find . -type f -name "*.pyo" -delete
+	@find . -type f -name "*.pyd" -delete
+	@find . -type f -name ".coverage" -delete
+	@find . -type d -name "*.egg-info" -exec rm -rf {} +
+	@find . -type d -name "*.egg" -exec rm -rf {} +
+	@find . -type d -name ".pytest_cache" -exec rm -rf {} +
+	@find . -type d -name ".mypy_cache" -exec rm -rf {} +
+	@rm -rf build/ dist/ .coverage htmlcov/
+
+coverage:
+	@echo "Checking test coverage..."
+	@uv run pytest --cov=$(PACKAGE) --cov-report=term-missing $(TEST_DIR)
+
+format:
+	@echo "Formatting code..."
+	@uv run ruff format $(PYTHON_DIRS)
+
+lock:
+	@echo "Updating dependency lock..."
+	@uv run uv lock
+
+qa: analyze typecheck security test
+
+security:
+	@echo "Running security checks..."
+	@uv run bandit -r $(PACKAGE) -c pyproject.toml
+
+test:
+	@echo "Running tests..."
+	@uv run pytest --maxfail=1
+
+typecheck:
+	@uv add pyright --dev
+	@echo "Running type checking..."
+	@uv run pyright $(PACKAGE)
+
+.PHONY: analyze build clean coverage format help lock qa security test typecheck
