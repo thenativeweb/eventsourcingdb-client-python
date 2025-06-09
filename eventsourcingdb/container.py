@@ -100,7 +100,12 @@ class Container:
     def _get_container_info(self) -> dict | None:
         if self._container is None:
             return None
-        return self._docker_client.api.inspect_container(self._container.id)
+        try:
+            if self._container.id is None:
+                return None
+            return self._docker_client.api.inspect_container(self._container.id)
+        except (errors.NotFound, errors.APIError):
+            return None
 
     def get_api_token(self) -> str:
         return self._api_token

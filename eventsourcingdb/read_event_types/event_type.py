@@ -32,10 +32,10 @@ class EventType:
             schema=schema,
         )
 
-    def __hash__(self) -> str:
+    def __hash__(self) -> int:  # Changed from str to int
         # Convert dictionary schema to a hashable form (tuple of items)
         if isinstance(self.schema, dict):
             # Sort items to ensure consistent hashing
             schema_items = tuple(sorted((k, str(v)) for k, v in self.schema.items()))
-            return hash((self.event_type, self.is_phantom, schema_items))
-        return hash((self.event_type, self.is_phantom, self.schema))
+            return hash((self.event_type, self.is_phantom, schema_items))  # Remove str() conversion
+        return hash((self.event_type, self.is_phantom, self.schema))  # Remove str() conversion

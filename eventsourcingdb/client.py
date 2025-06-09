@@ -34,7 +34,7 @@ class Client:
 
     async def __aexit__(
         self,
-        exc_type: type[BaseException] | None = None,
+        exc_type: BaseException | None = None,
         exc_val: BaseException | None = None,
         exc_tb: TracebackType | None = None,
     ) -> None:
