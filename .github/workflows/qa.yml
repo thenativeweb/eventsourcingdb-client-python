@@ -31,7 +31,6 @@ jobs:
         uv sync
         
         # Use uv to install dependencies
-        uv python -m pip install -e .
-        uv python -m pip install pytest pytest-timeout pytest-asyncio pytest-cov ruff pyright bandit
+        uv add pytest pytest-timeout pytest-asyncio pytest-cov ruff pyright bandit
     - name: Run QA
       run: make qa
