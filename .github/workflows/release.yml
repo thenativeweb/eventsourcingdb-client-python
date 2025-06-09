@@ -30,12 +30,15 @@ jobs:
         # Install uv using the official installation method
         curl -LsSf https://astral.sh/uv/install.sh | sh
         
-        # Add uv to PATH
-        export PATH="$HOME/.cargo/bin:$PATH"
+        # Add uv to PATH (use .local/bin where it's actually installed)
+        export PATH="$HOME/.local/bin:$PATH"
+        
+        # Create a virtual environment or use system flag
+        uv sync
         
         # Use uv to install dependencies
-        uv pip install -e .
-        uv pip install build twine pyright bandit
+        uv python -m pip install -e .
+        uv python -m pip install build twine pyright bandit
     - name: Run QA
       run: make qa
     - name: Get next version
