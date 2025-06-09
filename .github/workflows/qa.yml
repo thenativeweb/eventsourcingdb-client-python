@@ -21,7 +21,14 @@ jobs:
         python-version: ${{ matrix.version }}
     - name: Install dependencies
       run: |
-        pip install poetry
-        poetry install
+        # Install uv using the official installation method
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        
+        # Add uv to PATH
+        export PATH="$HOME/.cargo/bin:$PATH"
+        
+        # Use uv to install dependencies
+        uv pip install -e .
+        uv pip install pytest pytest-timeout pytest-asyncio pytest-cov ruff pyright bandit
     - name: Run QA
       run: make qa
