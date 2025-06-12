@@ -29,8 +29,5 @@ jobs:
         
         # Create a virtual environment or use system flag
         uv sync
-        
-        # Use uv to install dependencies
-        uv add pytest pytest-timeout pytest-asyncio pytest-cov ruff pyright bandit
     - name: Run QA
       run: make qa
