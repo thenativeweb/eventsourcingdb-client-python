@@ -27,18 +27,9 @@ jobs:
         python-version: '3.13'
     - name: Install dependencies
       run: |
-        # Install uv using the official installation method
-        curl -LsSf https://astral.sh/uv/install.sh | sh
-        
-        # Add uv to PATH (use .local/bin where it's actually installed)
+        curl --location --silent --show-error --fail https://astral.sh/uv/install.sh | sh
         export PATH="$HOME/.local/bin:$PATH"
-        
-        # Create a virtual environment or use system flag
         uv sync
-        
-        # Use uv to install dependencies
-        uv python add twine pytest-timeout pytest-asyncio pytest-cov ruff pyright bandit
-
     - name: Run QA
       run: make qa
     - name: Get next version
