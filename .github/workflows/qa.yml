@@ -21,13 +21,10 @@ jobs:
         python-version: ${{ matrix.version }}
     - name: Install dependencies
       run: |
-        # Install uv using the official installation method
         curl -LsSf https://astral.sh/uv/install.sh | sh
         
-        # Add uv to PATH (use .local/bin where it's actually installed)
         export PATH="$HOME/.local/bin:$PATH"
         
-        # Create a virtual environment or use system flag
         uv sync
     - name: Run QA
       run: make qa
