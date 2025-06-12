@@ -22,7 +22,7 @@ class ObserveEventsOptions:
             if self.lower_bound is not None:
                 raise ValidationError(
                     "ReadEventsOptions are invalid: "
-                    "lowerBoundId are mutually exclusive"
+                    "lowerBound and fromLatestEvent are mutually exclusive"
                 )
 
     def to_json(self) -> dict[str, Any]:
