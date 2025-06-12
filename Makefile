@@ -1,22 +1,8 @@
-# Variables for reusable values
 PACKAGE := eventsourcingdb
 TEST_DIR := tests
 PYTHON_DIRS := $(PACKAGE) $(TEST_DIR)
 
-# Default target and help
-.DEFAULT_GOAL := .PHONY
-help:
-	@echo "Available commands:"
-	@echo "  analyze  : Run code analysis with ruff"
-	@echo "  build    : Run QA and prepare build"
-	@echo "  clean    : Remove temporary files"
-	@echo "  coverage : Check test coverage"
-	@echo "  format   : Format code"
-	@echo "  lock     : Lock dependencies with uv"
-	@echo "  qa       : Run all quality assurance checks (analysis, type checking, security, tests)"
-	@echo "  security : Run security checks with bandit"
-	@echo "  test     : Run tests"
-	@echo "  typecheck: Run mypy type checking"
+qa: analyze typecheck security test
 
 analyze:
 	@echo "Running code analysis..."
@@ -49,8 +35,6 @@ format:
 lock:
 	@echo "Updating dependency lock..."
 	@uv run uv lock
-
-qa: analyze typecheck security test
 
 security:
 	@echo "Running security checks..."
