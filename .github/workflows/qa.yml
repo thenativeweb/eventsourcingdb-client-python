@@ -21,7 +21,7 @@ jobs:
         python-version: ${{ matrix.version }}
     - name: Install dependencies
       run: |
-        curl -LsSf https://astral.sh/uv/install.sh | sh
+        curl --location --silent --show-error --fail https://astral.sh/uv/install.sh | sh
         export PATH="$HOME/.local/bin:$PATH"
         uv sync
     - name: Run QA
