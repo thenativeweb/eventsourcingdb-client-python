@@ -15,7 +15,7 @@ packages = [{include = "eventsourcingdb"}]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-aiohttp = "3.12.9"
+aiohttp = "3.12.13"
 testcontainers = "4.10.0"
 
 [tool.poetry.group.dev.dependencies]
