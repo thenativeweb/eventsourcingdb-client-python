@@ -1,10 +1,8 @@
 import pytest
 
-from eventsourcingdb import EventCandidate
-from eventsourcingdb import EventType
+from eventsourcingdb import EventCandidate, EventType
 
 from .conftest import TestData
-
 from .shared.database import Database
 
 
@@ -17,40 +15,38 @@ class TestReadEventTypes:
     ) -> None:
         client = database.get_client("with_authorization")
 
-        await client.write_events([
-            EventCandidate(
-                source=test_data.TEST_SOURCE_STRING,
-                subject="/account",
-                type="com.foo.bar",
-                data={},
-            ),
-            EventCandidate(
-                source=test_data.TEST_SOURCE_STRING,
-                subject="/account/user",
-                type="com.bar.baz",
-                data={},
-            ),
-            EventCandidate(
-                source=test_data.TEST_SOURCE_STRING,
-                subject="/account/user",
-                type="com.baz.leml",
-                data={},
-            ),
-            EventCandidate(
-                source=test_data.TEST_SOURCE_STRING,
-                subject="/",
-                type="com.quux.knax",
-                data={},
-            ),
-        ])
-
-        await client.register_event_schema(
-            "org.ban.ban",
-            {"type": "object", "properties": {}}
+        await client.write_events(
+            [
+                EventCandidate(
+                    source=test_data.TEST_SOURCE_STRING,
+                    subject="/account",
+                    type="com.foo.bar",
+                    data={},
+                ),
+                EventCandidate(
+                    source=test_data.TEST_SOURCE_STRING,
+                    subject="/account/user",
+                    type="com.bar.baz",
+                    data={},
+                ),
+                EventCandidate(
+                    source=test_data.TEST_SOURCE_STRING,
+                    subject="/account/user",
+                    type="com.baz.leml",
+                    data={},
+                ),
+                EventCandidate(
+                    source=test_data.TEST_SOURCE_STRING,
+                    subject="/",
+                    type="com.quux.knax",
+                    data={},
+                ),
+            ]
         )
+
+        await client.register_event_schema("org.ban.ban", {"type": "object", "properties": {}})
         await client.register_event_schema(
-            "org.bing.chilling",
-            {"type": "object", "properties": {}}
+            "org.bing.chilling", {"type": "object", "properties": {}}
         )
 
         actual_event_types: set[EventType] = set()

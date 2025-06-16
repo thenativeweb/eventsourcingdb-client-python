@@ -1,34 +1,28 @@
-from aiohttp import ClientConnectorDNSError
 import pytest
+from aiohttp import ClientConnectorDNSError
 
-from eventsourcingdb import ServerError
-from eventsourcingdb import EventCandidate
+from eventsourcingdb import EventCandidate, ServerError
 
 from .conftest import TestData
-
 from .shared.database import Database
 
 
 class TestReadSubjects:
     @staticmethod
     @pytest.mark.asyncio
-    async def test_throws_error_if_server_is_not_reachable(
-        database: Database
-    ) -> None:
+    async def test_throws_error_if_server_is_not_reachable(database: Database) -> None:
         client = database.get_client("with_invalid_url")
 
         with pytest.raises(ClientConnectorDNSError):
-            async for _ in client.read_subjects('/'):
+            async for _ in client.read_subjects("/"):
                 pass
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_supports_authorization(
-        database: Database
-    ) -> None:
+    async def test_supports_authorization(database: Database) -> None:
         client = database.get_client()
 
-        async for _ in client.read_subjects('/'):
+        async for _ in client.read_subjects("/"):
             pass
 
     @staticmethod
@@ -39,20 +33,22 @@ class TestReadSubjects:
     ) -> None:
         client = database.get_client()
 
-        await client.write_events([
-            EventCandidate(
-                test_data.TEST_SOURCE_STRING,
-                '/foo',
-                'io.thenativeweb.user.janeDoe.loggedIn',
-                {}
-            )
-        ])
+        await client.write_events(
+            [
+                EventCandidate(
+                    test_data.TEST_SOURCE_STRING,
+                    "/foo",
+                    "io.thenativeweb.user.janeDoe.loggedIn",
+                    {},
+                )
+            ]
+        )
 
         actual_subjects = []
-        async for subject in client.read_subjects('/'):
+        async for subject in client.read_subjects("/"):
             actual_subjects.append(subject)
 
-        assert actual_subjects == ['/', '/foo']
+        assert actual_subjects == ["/", "/foo"]
 
     @staticmethod
     @pytest.mark.asyncio
@@ -62,20 +58,22 @@ class TestReadSubjects:
     ) -> None:
         client = database.get_client()
 
-        await client.write_events([
-            EventCandidate(
-                test_data.TEST_SOURCE_STRING,
-                '/foo/bar',
-                'io.thenativeweb.user.janeDoe.loggedIn',
-                {}
-            )
-        ])
+        await client.write_events(
+            [
+                EventCandidate(
+                    test_data.TEST_SOURCE_STRING,
+                    "/foo/bar",
+                    "io.thenativeweb.user.janeDoe.loggedIn",
+                    {},
+                )
+            ]
+        )
 
         actual_subjects = []
-        async for subject in client.read_subjects('/foo'):
+        async for subject in client.read_subjects("/foo"):
             actual_subjects.append(subject)
 
-        assert actual_subjects == ['/foo', '/foo/bar']
+        assert actual_subjects == ["/foo", "/foo/bar"]
 
     @staticmethod
     @pytest.mark.asyncio
@@ -85,15 +83,17 @@ class TestReadSubjects:
     ) -> None:
         client = database.get_client()
 
-        await client.write_events([
-            EventCandidate(
-                test_data.TEST_SOURCE_STRING,
-                '/foo/bar',
-                'io.thenativeweb.user.janeDoe.loggedIn',
-                {}
-            )
-        ])
+        await client.write_events(
+            [
+                EventCandidate(
+                    test_data.TEST_SOURCE_STRING,
+                    "/foo/bar",
+                    "io.thenativeweb.user.janeDoe.loggedIn",
+                    {},
+                )
+            ]
+        )
 
         with pytest.raises(ServerError):
-            async for _ in client.read_subjects(''):
+            async for _ in client.read_subjects(""):
                 pass
