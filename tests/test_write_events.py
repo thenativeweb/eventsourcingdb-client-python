@@ -4,6 +4,7 @@ import pytest
 from eventsourcingdb import ServerError
 from eventsourcingdb import EventCandidate
 from eventsourcingdb import IsSubjectPristine, IsSubjectOnEventId
+from eventsourcingdb.write_events.preconditions import IsEventQLTrue
 
 from .conftest import TestData
 
@@ -213,6 +214,69 @@ class TestWriteSubjects:
                     )
                 ],
                 [IsSubjectOnEventId('/', '2')]
+            )
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_is_event_ql_true_precondition_works(
+        database: Database,
+        test_data: TestData,
+    ) -> None:
+        client = database.get_client()
+
+        await client.write_events(
+            [
+                EventCandidate(
+                    source=test_data.TEST_SOURCE_STRING,
+                    subject='/',
+                    type='com.foo.bar',
+                    data={}
+                )
+            ]
+        )
+
+        await client.write_events(
+            [
+                EventCandidate(
+                    source=test_data.TEST_SOURCE_STRING,
+                    subject='/',
+                    type='com.foo.bar',
+                    data={}
+                )
+            ],
+            [IsEventQLTrue('FROM e IN events PROJECT INTO COUNT() > 0')]
+        )
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_is_event_ql_true_precondition_fails(
+        database: Database,
+        test_data: TestData,
+    ) -> None:
+        client = database.get_client()
+
+        await client.write_events(
+            [
+                EventCandidate(
+                    source=test_data.TEST_SOURCE_STRING,
+                    subject='/',
+                    type='com.foo.bar',
+                    data={}
+                )
+            ]
+        )
+
+        with pytest.raises(ServerError):
+            await client.write_events(
+                [
+                    EventCandidate(
+                        source=test_data.TEST_SOURCE_STRING,
+                        subject='/',
+                        type='com.foo.bar',
+                        data={}
+                    )
+                ],
+                [IsEventQLTrue('FROM e IN events PROJECT INTO COUNT() == 0')]
             )
 
     @staticmethod

@@ -10,7 +10,7 @@ from .observe_events import (
 )
 from .read_events import ReadEventsOptions, ReadFromLatestEvent, IfEventIsMissingDuringRead, Order
 from .read_event_types import EventType
-from .write_events import Precondition, IsSubjectOnEventId, IsSubjectPristine
+from .write_events import Precondition, IsSubjectOnEventId, IsSubjectPristine, IsEventQLTrue
 
 
 __all__ = [
@@ -20,7 +20,7 @@ __all__ = [
     'Event', 'EventCandidate',
     'EventType',
     'ObserveEventsOptions', 'ObserveFromLatestEvent', 'IfEventIsMissingDuringObserve',
-    'Precondition', 'IsSubjectOnEventId', 'IsSubjectPristine',
+    'Precondition', 'IsSubjectOnEventId', 'IsSubjectPristine', 'IsEventQLTrue',
     'ReadEventsOptions', 'ReadFromLatestEvent', 'IfEventIsMissingDuringRead', 'Order',
     'ClientError', 'CustomError', 'InternalError', 'ServerError', 'ValidationError',
 ]
