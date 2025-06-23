@@ -19,7 +19,7 @@ aiohttp = "3.12.13"
 testcontainers = "4.10.0"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "8.3.5"
+pytest = "8.4.1"
 flask = "3.1.1"
 pylint = "3.3.7"
 autopep8 = "2.3.2"
