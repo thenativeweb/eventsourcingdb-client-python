@@ -1,5 +1,40 @@
 # Python folders
 __pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+*.egg/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pytype/
+
+# Package managers
+.uv/
+__pypackages__/
+pip-wheel-metadata/
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env/
+
+# Build and distribution
+build/
+dist/
+
+# Testing and coverage
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+
+# IDE
+.idea/
+.vscode/
+.ipynb_checkpoints/
 
 # OS generated files and folders
 .DS_Store

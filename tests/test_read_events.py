@@ -1,15 +1,19 @@
 import asyncio
 
-from aiohttp import ClientConnectorDNSError
 import pytest
+from aiohttp import ClientConnectorDNSError
 
+from eventsourcingdb import (
+    Bound,
+    BoundType,
+    IfEventIsMissingDuringRead,
+    Order,
+    ReadEventsOptions,
+    ReadFromLatestEvent,
+)
 from eventsourcingdb.errors.server_error import ServerError
-from eventsourcingdb import Bound, BoundType
-from eventsourcingdb import ReadEventsOptions, ReadFromLatestEvent, IfEventIsMissingDuringRead
-from eventsourcingdb import Order
 
 from .conftest import TestData
-
 from .shared.database import Database
 from .shared.event.assert_event import assert_event_equals
 
@@ -17,37 +21,31 @@ from .shared.event.assert_event import assert_event_equals
 class TestReadEvents:
     @staticmethod
     @pytest.mark.asyncio
-    async def test_throws_error_if_server_is_not_reachable(
-        database: Database
-    ):
+    async def test_throws_error_if_server_is_not_reachable(database: Database):
         client = database.get_client("with_invalid_url")
 
         with pytest.raises(ClientConnectorDNSError):
-            async for _ in client.read_events('/', ReadEventsOptions(recursive=False)):
+            async for _ in client.read_events("/", ReadEventsOptions(recursive=False)):
                 pass
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_supports_authorization(
-        database: Database
-    ) -> None:
+    async def test_supports_authorization(database: Database) -> None:
         client = database.get_client()
 
-        async for _ in client.read_events('/', ReadEventsOptions(recursive=False)):
+        async for _ in client.read_events("/", ReadEventsOptions(recursive=False)):
             pass
 
     @staticmethod
     @pytest.mark.asyncio
     async def test_read_events_from_a_single_subject(
-        prepared_database: Database,
-        test_data: TestData
+        prepared_database: Database, test_data: TestData
     ) -> None:
         client = prepared_database.get_client()
 
         result = []
         async for event in client.read_events(
-            test_data.REGISTERED_SUBJECT,
-            ReadEventsOptions(recursive=False)
+            test_data.REGISTERED_SUBJECT, ReadEventsOptions(recursive=False)
         ):
             result.append(event)
 
@@ -60,7 +58,7 @@ class TestReadEvents:
             test_data.REGISTERED_TYPE,
             test_data.JANE_DATA,
             test_data.TRACE_PARENT_1,
-            None
+            None,
         )
         assert_event_equals(
             result[1],
@@ -69,22 +67,18 @@ class TestReadEvents:
             test_data.REGISTERED_TYPE,
             test_data.JOHN_DATA,
             test_data.TRACE_PARENT_3,
-            None
+            None,
         )
 
     @staticmethod
     @pytest.mark.asyncio
     async def test_read_events_from_a_subject_including_children(
-        prepared_database: Database,
-        test_data: TestData
+        prepared_database: Database, test_data: TestData
     ) -> None:
         client = prepared_database.get_client()
 
         result = []
-        async for event in client.read_events(
-            '/users',
-            ReadEventsOptions(recursive=True)
-        ):
+        async for event in client.read_events("/users", ReadEventsOptions(recursive=True)):
             result.append(event)
 
         total_event_count = 4
@@ -96,7 +90,7 @@ class TestReadEvents:
             test_data.REGISTERED_TYPE,
             test_data.JANE_DATA,
             test_data.TRACE_PARENT_1,
-            None
+            None,
         )
         assert_event_equals(
             result[1],
@@ -105,7 +99,7 @@ class TestReadEvents:
             test_data.LOGGED_IN_TYPE,
             test_data.JANE_DATA,
             test_data.TRACE_PARENT_2,
-            None
+            None,
         )
         assert_event_equals(
             result[2],
@@ -114,7 +108,7 @@ class TestReadEvents:
             test_data.REGISTERED_TYPE,
             test_data.JOHN_DATA,
             test_data.TRACE_PARENT_3,
-            None
+            None,
         )
         assert_event_equals(
             result[3],
@@ -123,21 +117,20 @@ class TestReadEvents:
             test_data.LOGGED_IN_TYPE,
             test_data.JOHN_DATA,
             test_data.TRACE_PARENT_4,
-            None
+            None,
         )
 
     @staticmethod
     @pytest.mark.asyncio
     async def test_read_events_in_antichronological_order(
-        prepared_database: Database,
-        test_data: TestData
+        prepared_database: Database, test_data: TestData
     ) -> None:
         client = prepared_database.get_client()
 
         result = []
         async for event in client.read_events(
             test_data.REGISTERED_SUBJECT,
-            ReadEventsOptions(recursive=False, order=Order.ANTICHRONOLOGICAL)
+            ReadEventsOptions(recursive=False, order=Order.ANTICHRONOLOGICAL),
         ):
             result.append(event)
 
@@ -150,7 +143,7 @@ class TestReadEvents:
             test_data.REGISTERED_TYPE,
             test_data.JOHN_DATA,
             test_data.TRACE_PARENT_3,
-            None
+            None,
         )
         assert_event_equals(
             result[1],
@@ -159,28 +152,27 @@ class TestReadEvents:
             test_data.REGISTERED_TYPE,
             test_data.JANE_DATA,
             test_data.TRACE_PARENT_1,
-            None
+            None,
         )
 
     @staticmethod
     @pytest.mark.asyncio
     async def test_read_events_recursive_from_latest_event_in_child_subject(
-        prepared_database: Database,
-        test_data: TestData
+        prepared_database: Database, test_data: TestData
     ) -> None:
         client = prepared_database.get_client()
 
         result = []
         async for event in client.read_events(
-            '/users',
+            "/users",
             ReadEventsOptions(
                 recursive=True,
                 from_latest_event=ReadFromLatestEvent(
                     subject=test_data.REGISTERED_SUBJECT,
                     type=test_data.REGISTERED_TYPE,
-                    if_event_is_missing=IfEventIsMissingDuringRead.READ_EVERYTHING
-                )
-            )
+                    if_event_is_missing=IfEventIsMissingDuringRead.READ_EVERYTHING,
+                ),
+            ),
         ):
             result.append(event)
 
@@ -193,7 +185,7 @@ class TestReadEvents:
             test_data.REGISTERED_TYPE,
             test_data.JOHN_DATA,
             test_data.TRACE_PARENT_3,
-            None
+            None,
         )
         assert_event_equals(
             result[1],
@@ -202,24 +194,20 @@ class TestReadEvents:
             test_data.LOGGED_IN_TYPE,
             test_data.JOHN_DATA,
             test_data.TRACE_PARENT_4,
-            None
+            None,
         )
 
     @staticmethod
     @pytest.mark.asyncio
     async def test_read_events_starting_from_lower_bound(
-        prepared_database: Database,
-        test_data: TestData
+        prepared_database: Database, test_data: TestData
     ) -> None:
         client = prepared_database.get_client()
 
         result = []
         async for event in client.read_events(
-            '/users',
-            ReadEventsOptions(
-                recursive=True,
-                lower_bound=Bound(id='2', type=BoundType.INCLUSIVE)
-            )
+            "/users",
+            ReadEventsOptions(recursive=True, lower_bound=Bound(id="2", type=BoundType.INCLUSIVE)),
         ):
             result.append(event)
 
@@ -232,7 +220,7 @@ class TestReadEvents:
             test_data.REGISTERED_TYPE,
             test_data.JOHN_DATA,
             test_data.TRACE_PARENT_3,
-            None
+            None,
         )
         assert_event_equals(
             result[1],
@@ -241,24 +229,20 @@ class TestReadEvents:
             test_data.LOGGED_IN_TYPE,
             test_data.JOHN_DATA,
             test_data.TRACE_PARENT_4,
-            None
+            None,
         )
 
     @staticmethod
     @pytest.mark.asyncio
     async def test_read_events_up_to_the_upper_bound(
-        prepared_database: Database,
-        test_data: TestData
+        prepared_database: Database, test_data: TestData
     ) -> None:
         client = prepared_database.get_client()
 
         result = []
         async for event in client.read_events(
-            '/users',
-            ReadEventsOptions(
-                recursive=True,
-                upper_bound=Bound(id='2', type=BoundType.EXCLUSIVE)
-            )
+            "/users",
+            ReadEventsOptions(recursive=True, upper_bound=Bound(id="2", type=BoundType.EXCLUSIVE)),
         ):
             result.append(event)
 
@@ -271,7 +255,7 @@ class TestReadEvents:
             test_data.REGISTERED_TYPE,
             test_data.JANE_DATA,
             test_data.TRACE_PARENT_1,
-            None
+            None,
         )
         assert_event_equals(
             result[1],
@@ -280,154 +264,133 @@ class TestReadEvents:
             test_data.LOGGED_IN_TYPE,
             test_data.JANE_DATA,
             test_data.TRACE_PARENT_2,
-            None
+            None,
         )
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_throws_error_for_exclusive_options(
-        prepared_database: Database
-    ) -> None:
+    async def test_throws_error_for_exclusive_options(prepared_database: Database) -> None:
         client = prepared_database.get_client()
 
         with pytest.raises(ServerError):
             async for _ in client.read_events(
-                '/users',
+                "/users",
                 ReadEventsOptions(
                     recursive=True,
                     from_latest_event=ReadFromLatestEvent(
-                        subject='/',
-                        type='com.foo.bar',
-                        if_event_is_missing=IfEventIsMissingDuringRead.READ_EVERYTHING
+                        subject="/",
+                        type="com.foo.bar",
+                        if_event_is_missing=IfEventIsMissingDuringRead.READ_EVERYTHING,
                     ),
-                    lower_bound=Bound(id='0', type=BoundType.INCLUSIVE),
-                )
+                    lower_bound=Bound(id="0", type=BoundType.INCLUSIVE),
+                ),
             ):
                 pass
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_throws_error_for_invalid_subject(
-        prepared_database: Database
-    ) -> None:
+    async def test_throws_error_for_invalid_subject(prepared_database: Database) -> None:
+        client = prepared_database.get_client()
+
+        with pytest.raises(ServerError):
+            async for _ in client.read_events("", ReadEventsOptions(recursive=True)):
+                pass
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_throws_error_for_invalid_lower_bound(prepared_database: Database) -> None:
         client = prepared_database.get_client()
 
         with pytest.raises(ServerError):
             async for _ in client.read_events(
-                '',
+                "/",
                 ReadEventsOptions(
-                    recursive=True
-                )
+                    recursive=True, lower_bound=Bound(id="hello", type=BoundType.INCLUSIVE)
+                ),
             ):
                 pass
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_throws_error_for_invalid_lower_bound(
-        prepared_database: Database
-    ) -> None:
+    async def test_throws_error_for_negative_lower_bound(prepared_database: Database) -> None:
         client = prepared_database.get_client()
 
         with pytest.raises(ServerError):
             async for _ in client.read_events(
-                '/',
+                "/",
                 ReadEventsOptions(
-                    recursive=True,
-                    lower_bound=Bound(id='hello', type=BoundType.INCLUSIVE)
-                )
+                    recursive=True, lower_bound=Bound(id="-1", type=BoundType.INCLUSIVE)
+                ),
             ):
                 pass
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_throws_error_for_negative_lower_bound(
-        prepared_database: Database
-    ) -> None:
+    async def test_throws_error_for_invalid_upper_bound(prepared_database: Database) -> None:
         client = prepared_database.get_client()
 
         with pytest.raises(ServerError):
             async for _ in client.read_events(
-                '/',
+                "/",
                 ReadEventsOptions(
-                    recursive=True,
-                    lower_bound=Bound(id='-1', type=BoundType.INCLUSIVE)
-                )
+                    recursive=True, upper_bound=Bound(id="hello", type=BoundType.INCLUSIVE)
+                ),
             ):
                 pass
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_throws_error_for_invalid_upper_bound(
-        prepared_database: Database
-    ) -> None:
+    async def test_throws_error_for_negative_upper_bound(prepared_database: Database) -> None:
         client = prepared_database.get_client()
 
         with pytest.raises(ServerError):
             async for _ in client.read_events(
-                '/',
+                "/",
                 ReadEventsOptions(
-                    recursive=True,
-                    upper_bound=Bound(id='hello', type=BoundType.INCLUSIVE)
-                )
-            ):
-                pass
-
-    @staticmethod
-    @pytest.mark.asyncio
-    async def test_throws_error_for_negative_upper_bound(
-        prepared_database: Database
-    ) -> None:
-        client = prepared_database.get_client()
-
-        with pytest.raises(ServerError):
-            async for _ in client.read_events(
-                '/',
-                ReadEventsOptions(
-                    recursive=True,
-                    upper_bound=Bound(id='-1', type=BoundType.EXCLUSIVE)
-                )
+                    recursive=True, upper_bound=Bound(id="-1", type=BoundType.EXCLUSIVE)
+                ),
             ):
                 pass
 
     @staticmethod
     @pytest.mark.asyncio
     async def test_throws_error_for_invalid_subject_in_from_latest_event(
-        prepared_database: Database
+        prepared_database: Database,
     ) -> None:
         client = prepared_database.get_client()
 
         with pytest.raises(ServerError):
             async for _ in client.read_events(
-                '/',
+                "/",
                 ReadEventsOptions(
                     recursive=True,
                     from_latest_event=ReadFromLatestEvent(
-                        subject='',
-                        type='com.foo.bar',
-                        if_event_is_missing=IfEventIsMissingDuringRead.READ_EVERYTHING
-                    )
-                )
+                        subject="",
+                        type="com.foo.bar",
+                        if_event_is_missing=IfEventIsMissingDuringRead.READ_EVERYTHING,
+                    ),
+                ),
             ):
                 pass
 
     @staticmethod
     @pytest.mark.asyncio
     async def test_throws_error_for_invalid_type_in_from_latest_event(
-        prepared_database: Database
+        prepared_database: Database,
     ) -> None:
         client = prepared_database.get_client()
 
         with pytest.raises(ServerError):
             async for _ in client.read_events(
-                '/',
+                "/",
                 ReadEventsOptions(
                     recursive=True,
                     from_latest_event=ReadFromLatestEvent(
-                        subject='/',
-                        type='',
-                        if_event_is_missing=IfEventIsMissingDuringRead.READ_EVERYTHING
-                    )
-                )
+                        subject="/",
+                        type="",
+                        if_event_is_missing=IfEventIsMissingDuringRead.READ_EVERYTHING,
+                    ),
+                ),
             ):
                 pass
 
@@ -442,10 +405,7 @@ class TestReadEvents:
 
         async def process_events():
             nonlocal events_processed
-            async for _ in client.read_events(
-                '/',
-                ReadEventsOptions(recursive=True)
-            ):
+            async for _ in client.read_events("/", ReadEventsOptions(recursive=True)):
                 events_processed += 1
                 await asyncio.sleep(0.25)
 
@@ -458,8 +418,8 @@ class TestReadEvents:
         except asyncio.CancelledError:
             pass
 
-        assert task.done(), 'Task should be completed after cancellation'
-        assert task.cancelled(), 'Task should be marked as cancelled'
+        assert task.done(), "Task should be completed after cancellation"
+        assert task.cancelled(), "Task should be marked as cancelled"
 
         try:
             task.exception()
@@ -467,5 +427,5 @@ class TestReadEvents:
             pass
 
         assert events_processed > events_to_process, (
-            'Expected to process some events before cancellation'
+            "Expected to process some events before cancellation"
         )
