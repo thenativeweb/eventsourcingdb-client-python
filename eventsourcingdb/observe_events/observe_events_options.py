@@ -21,7 +21,7 @@ class ObserveEventsOptions:
         if self.from_latest_event is not None:
             if self.lower_bound is not None:
                 raise ValidationError(
-                    'ReadEventsOptions are invalid: '
+                    'ObserveEventsOptions are invalid: '
                     'lowerBoundId and fromLatestEvent are mutually exclusive'
                 )
 
