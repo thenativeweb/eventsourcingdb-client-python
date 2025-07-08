@@ -29,7 +29,6 @@ jobs:
       run: |
         curl --location --silent --show-error --fail https://astral.sh/uv/install.sh | sh
         export PATH="$HOME/.local/bin:$PATH"
-        uv sync
         uv sync --dev
     - name: Run QA
       run: make qa

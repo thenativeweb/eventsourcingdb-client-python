@@ -51,4 +51,14 @@ typecheck:
 	@echo "Running type checking..."
 	@uv run pyright $(PACKAGE)
 
-.PHONY: analyze build coverage format help lock qa security test typecheck clean
+.PHONY: analyze \
+		build \
+		coverage \
+		format \
+		help \
+		lock \
+		qa \
+		security \
+		test \
+		typecheck \
+		clean

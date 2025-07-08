@@ -30,12 +30,6 @@ build-backend = "hatchling.build"
 exclude_dirs = ["tests", ".venv"]
 skips = ["B101"]  
 
-[tool.editorconfig]
-general = { charset = "utf-8", end_of_line = "lf", insert_final_newline = true, trim_trailing_whitespace = true }
-defaults = { indent_style = "tab", indent_size = 2, tab_width = 2 }
-python = { indent_style = "space", indent_size = 4, file_pattern = "*.py" }
-markdown = { indent_style = "space", indent_size = 2, file_pattern = "*.md" }
-
 [tool.hatch.build.targets.wheel]
 packages = ["eventsourcingdb"]
 

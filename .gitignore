@@ -31,10 +31,5 @@ dist/
 htmlcov/
 .tox/
 
-# IDE
-.idea/
-.vscode/
-.ipynb_checkpoints/
-
 # OS generated files and folders
 .DS_Store
