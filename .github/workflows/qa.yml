@@ -21,7 +21,8 @@ jobs:
         python-version: ${{ matrix.version }}
     - name: Install dependencies
       run: |
-        pip install poetry
-        poetry install
+        curl --location --silent --show-error --fail https://astral.sh/uv/install.sh | sh
+        export PATH="$HOME/.local/bin:$PATH"
+        uv sync --dev
     - name: Run QA
       run: make qa

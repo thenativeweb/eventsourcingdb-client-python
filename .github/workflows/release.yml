@@ -27,12 +27,9 @@ jobs:
         python-version: '3.13'
     - name: Install dependencies
       run: |
-        # First install Poetry in latest version, then install
-        # build and twine in matching versions. The following
-        # commands should not be run in a single line.
-        pip install poetry
-        pip install build twine
-        poetry install
+        curl --location --silent --show-error --fail https://astral.sh/uv/install.sh | sh
+        export PATH="$HOME/.local/bin:$PATH"
+        uv sync --dev
     - name: Run QA
       run: make qa
     - name: Get next version

@@ -12,7 +12,7 @@ class ReadFromLatestEvent:
 
     def to_json(self) -> dict[str, Any]:
         return {
-            'subject': self.subject,
-            'type': self.type,
-            'ifEventIsMissing': self.if_event_is_missing
+            "subject": self.subject,
+            "type": self.type,
+            "ifEventIsMissing": self.if_event_is_missing,
         }
