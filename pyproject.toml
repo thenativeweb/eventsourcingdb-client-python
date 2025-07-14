@@ -19,7 +19,7 @@ dev = [
     "pytest-cov==5.0.0",
     "ruff==0.11.13",
     "bandit==1.7.7",
-    "pyright==1.1.402",
+    "pyright==1.1.403",
 ]
 
 [build-system]
@@ -39,76 +39,3 @@ include = ["eventsourcingdb/**/*.py", "eventsourcingdb/py.typed"]
 [tool.pytest.ini_options]
 timeout = 30
 asyncio_default_fixture_loop_scope = "function"
-
-[tool.ruff]
-# The lint.select option determines which linting rules are enabled
-lint.select = ["ALL"]  # Enable all rules
-
-# Rules to exclude that are not relevant for this project
-lint.ignore = [
-    # Documentation related
-    "D100",  # Missing docstring in public module/package
-    "D101",  # Missing docstring in public class 
-    "D102",  # Missing docstring in public method/function
-    "D103",  # Missing docstring in public function
-    "D104",  # Missing docstring in public package
-    "D105",  # Missing docstring in magic method
-    "D107",  # Missing docstring in __init__ method
-    "D203",  # incorrect-blank-line-before-class (incompatible with D211)
-    "D213",  # multi-line-summary-second-line (incompatible with D212)
-    
-    # Typing related
-    "PYI036",  # Incorrect __aexit__ annotation
-    "ANN001",  # Missing type annotation for function argument
-    "ANN202",  # Missing return type annotation for private function
-    "ANN205",  # Missing return type annotation for staticmethod
-    "ANN401",  # Dynamically typed expressions (typing.Any) are disallowed
-    
-    # Exception handling
-    "EM101",  # Exception must not use a string literal
-    "EM102",  # Exception must not use an f-string literal
-    "TRY003",  # Avoid specifying long messages outside exception class
-    "TRY201",  # Use raise without specifying exception name
-    
-    # Assertion in tests
-    "S101",  # Use of `assert` detected
-    "S105",  # Possible hardcoded password
-    
-    # Import related
-    "F401",  # Imported but unused
-    "TID252",  # Prefer absolute imports over relative imports from parent modules
-    
-    # Code structure
-    "PLR0904",  # Too few public methods
-    "PLR0912",  # Too many branches
-    "PLR0913",  # Too many instance attributes
-    "PLR0917",  # Too many arguments
-    "SIM102",  # Use a single if statement instead of nested if statements
-    "SIM105",  # Use contextlib.suppress instead of try-except-pass
-    "C901",    # Function is too complex
-    
-    # Performance
-    "PERF401",  # Use an async list comprehension to create a transformed list
-    
-    # Style
-    "COM812",   # Trailing comma missing
-    "A001",     # Variable is shadowing a Python builtin
-    "RET504",   # Unnecessary assignment before return statement
-    "FBT001",   # Boolean-typed positional argument in function definition
-    "FBT002",   # Boolean default positional argument in function definition
-    "PGH003",   # Use specific rule codes when ignoring type issues
-    "RUF012",   # Mutable class attributes should be annotated with typing.ClassVar
-    "RUF013",   # PEP 484 prohibits implicit Optional
-    
-    # Logging
-    "LOG015",   # Warning call on root logger
-    
-    # Path handling
-    "PTH118",   # os.path.join() should be replaced by Path with / operator
-    "PTH120",   # os.path.dirname() should be replaced by Path.parent
-    "PTH123",   # open() should be replaced by Path.open()
-    
-    # Async
-    "ASYNC251",  # Async functions should not call time.sleep
-]
-line-length = 100
