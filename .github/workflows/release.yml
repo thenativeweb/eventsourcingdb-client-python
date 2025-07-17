@@ -56,4 +56,4 @@ jobs:
         TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ secrets.TOKEN_GITHUB_TO_PYPI_RW }}
       run: |
-        twine upload dist/*
+        uv run twine upload dist/*
