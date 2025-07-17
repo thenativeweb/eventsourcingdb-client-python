@@ -13,7 +13,4 @@ class Bound:
     type: BoundType
 
     def to_json(self) -> dict[str, str]:
-        return {
-            'id': self.id,
-            'type': self.type.value
-        }
+        return {"id": self.id, "type": self.type.value}

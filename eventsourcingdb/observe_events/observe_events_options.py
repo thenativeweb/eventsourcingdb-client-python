@@ -15,25 +15,25 @@ class ObserveEventsOptions:
     def validate(self) -> None:
         if self.lower_bound is not None and not isinstance(self.lower_bound, Bound):
             raise ValidationError(
-                'ObserveEventsOptions are invalid: lower_bound must be a Bound object.'
+                "ObserveEventsOptions are invalid: lower_bound must be a Bound object."
             )
 
         if self.from_latest_event is not None:
             if self.lower_bound is not None:
                 raise ValidationError(
-                    'ObserveEventsOptions are invalid: '
-                    'lowerBoundId and fromLatestEvent are mutually exclusive'
+                    "ReadEventsOptions are invalid: "
+                    "lowerBound and fromLatestEvent are mutually exclusive"
                 )
 
     def to_json(self) -> dict[str, Any]:
         result: dict[str, Any] = {
-            'recursive': self.recursive,
+            "recursive": self.recursive,
         }
 
         if self.lower_bound is not None:
-            result['lowerBound'] = self.lower_bound.to_json()
+            result["lowerBound"] = self.lower_bound.to_json()
 
         if self.from_latest_event is not None:
-            result['fromLatestEvent'] = self.from_latest_event.to_json()
+            result["fromLatestEvent"] = self.from_latest_event.to_json()
 
         return result

@@ -1,9 +1,8 @@
 import pytest
-from eventsourcingdb import ServerError
-from eventsourcingdb import EventCandidate
+
+from eventsourcingdb import EventCandidate, ServerError
 
 from .conftest import TestData
-
 from .shared.database import Database
 
 
@@ -15,13 +14,7 @@ class TestRegisterEventSchema:
     ) -> None:
         client = database.get_client()
 
-        await client.register_event_schema(
-            "com.bar.baz",
-            {
-                "type": "object",
-                "properties": {}
-            }
-        )
+        await client.register_event_schema("com.bar.baz", {"type": "object", "properties": {}})
 
     @staticmethod
     @pytest.mark.asyncio
@@ -44,13 +37,9 @@ class TestRegisterEventSchema:
             ]
         )
 
-        with pytest.raises(ServerError, match='missing properties'):
+        with pytest.raises(ServerError, match="missing properties"):
             await client.register_event_schema(
-                "com.gornisht.ekht",
-                {
-                    "type": "object",
-                    "additionalProperties": False
-                }
+                "com.gornisht.ekht", {"type": "object", "additionalProperties": False}
             )
 
     @staticmethod
@@ -61,22 +50,13 @@ class TestRegisterEventSchema:
         client = database.get_client()
 
         await client.register_event_schema(
-            "com.gornisht.ekht",
-            {
-                "type": "object",
-                "properties": {},
-                "additionalProperties": False
-            }
+            "com.gornisht.ekht", {"type": "object", "properties": {}, "additionalProperties": False}
         )
 
-        with pytest.raises(ServerError, match='schema already exists'):
+        with pytest.raises(ServerError, match="schema already exists"):
             await client.register_event_schema(
                 "com.gornisht.ekht",
-                {
-                    "type": "object",
-                    "properties": {},
-                    "additionalProperties": False
-                }
+                {"type": "object", "properties": {}, "additionalProperties": False},
             )
 
     @staticmethod
@@ -88,9 +68,5 @@ class TestRegisterEventSchema:
 
         with pytest.raises(ServerError, match='value must be "object"'):
             await client.register_event_schema(
-                "com.gornisht.ekht",
-                {
-                    "type": "gurkenwasser",
-                    "properties": {}
-                }
+                "com.gornisht.ekht", {"type": "gurkenwasser", "properties": {}}
             )

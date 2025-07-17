@@ -1,5 +1,7 @@
 import pytest_asyncio
+
 from eventsourcingdb import EventCandidate
+
 from .shared.database import Database
 
 
@@ -13,14 +15,14 @@ async def database() -> Database:
 
 
 class TestData:
-    TEST_SOURCE_STRING = 'tag:thenativeweb.io,2023:eventsourcingdb:test'
-    REGISTERED_SUBJECT = '/users/registered'
-    LOGGED_IN_SUBJECT = '/users/logged-in'
-    REGISTERED_TYPE = 'io.thenativeweb.users.registered'
-    LOGGED_IN_TYPE = 'io.thenativeweb.users.logged-in'
-    JANE_DATA = {'name': 'jane'}
-    JOHN_DATA = {'name': 'john'}
-    APFEL_FRED_DATA = {'name': 'apfel fred'}
+    TEST_SOURCE_STRING = "tag:thenativeweb.io,2023:eventsourcingdb:test"
+    REGISTERED_SUBJECT = "/users/registered"
+    LOGGED_IN_SUBJECT = "/users/logged-in"
+    REGISTERED_TYPE = "io.thenativeweb.users.registered"
+    LOGGED_IN_TYPE = "io.thenativeweb.users.logged-in"
+    JANE_DATA = {"name": "jane"}
+    JOHN_DATA = {"name": "john"}
+    APFEL_FRED_DATA = {"name": "apfel fred"}
     TRACE_PARENT_1 = "00-10000000000000000000000000000000-1000000000000000-00"
     TRACE_PARENT_2 = "00-20000000000000000000000000000000-2000000000000000-00"
     TRACE_PARENT_3 = "00-30000000000000000000000000000000-3000000000000000-00"
@@ -38,7 +40,7 @@ async def prepared_database(
     # This is required in order to request a fixture defined in the same file
     # pylint: disable=redefined-outer-name
     database: Database,
-    test_data: TestData
+    test_data: TestData,
     # pylint: enable=redefined-outer-name
 ) -> Database:
     await database.get_client().write_events(
@@ -70,7 +72,7 @@ async def prepared_database(
                 type=test_data.LOGGED_IN_TYPE,
                 data=test_data.JOHN_DATA,
                 trace_parent=test_data.TRACE_PARENT_4,
-            )
+            ),
         ]
     )
 
@@ -81,17 +83,16 @@ async def prepared_database(
 async def events_for_mocked_server(
     # This is required in order to request a fixture defined in the same file
     # pylint: disable=redefined-outer-name
-    test_data: TestData
+    test_data: TestData,
     # pylint: enable=redefined-outer-name
 ) -> list[EventCandidate]:
-
     return [
         EventCandidate(
             source=test_data.TEST_SOURCE_STRING,
-            subject='com.foo.bar',
-            type='com.foo.bar',
+            subject="com.foo.bar",
+            type="com.foo.bar",
             data={},
             trace_parent=None,
-            trace_state=None
+            trace_state=None,
         )
     ]

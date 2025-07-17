@@ -1,27 +1,41 @@
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
-
 [project]
 name = "eventsourcingdb"
 version = "1.1.1"
 description = "The official Python client SDK for EventSourcingDB."
-authors = [
-	{ name = "the native web GmbH", email = "hello@thenativeweb.io" }
-]
+authors = [{ name = "the native web GmbH", email = "hello@thenativeweb.io" }]
+requires-python = ">=3.11, <=3.13"
 readme = "README.md"
 license = "MIT"
-packages = [{include = "eventsourcingdb"}]
+dependencies = [
+    "aiohttp==3.12.11",
+    "testcontainers==4.10.0",
+]
 
-[tool.poetry.dependencies]
-python = "^3.11"
-aiohttp = "3.12.14"
-testcontainers = "4.10.0"
+[dependency-groups]
+dev = [
+    "pytest==8.4.0",
+    "pytest-timeout==2.4.0",
+    "pytest-asyncio==0.26.0",
+    "pytest-cov==5.0.0",
+    "ruff==0.11.13",
+    "bandit==1.7.7",
+    "pyright==1.1.403",
+]
 
-[tool.poetry.group.dev.dependencies]
-pytest = "8.4.1"
-flask = "3.1.1"
-pylint = "3.3.7"
-autopep8 = "2.3.2"
-pytest-timeout = "2.4.0"
-pytest-asyncio = "1.0.0"
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.bandit]
+exclude_dirs = ["tests", ".venv"]
+skips = ["B101"]  
+
+[tool.hatch.build.targets.wheel]
+packages = ["eventsourcingdb"]
+
+[tool.hatch.build.targets.sdist]
+include = ["eventsourcingdb/**/*.py", "eventsourcingdb/py.typed"]
+
+[tool.pytest.ini_options]
+timeout = 30
+asyncio_default_fixture_loop_scope = "function"

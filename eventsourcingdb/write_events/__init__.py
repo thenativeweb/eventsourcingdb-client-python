@@ -1,3 +1,7 @@
-from .preconditions import Precondition
-from .preconditions import IsSubjectPristine
-from .preconditions import IsSubjectOnEventId
+from .preconditions import IsSubjectOnEventId, IsSubjectPristine, Precondition
+
+__all__ = [
+    "IsSubjectOnEventId",
+    "IsSubjectPristine",
+    "Precondition",
+]
