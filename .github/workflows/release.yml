@@ -49,7 +49,7 @@ jobs:
     - name: Build package
       if: ${{ steps.get_next_version.outputs.hasNextVersion == 'true' }}
       run: |
-        python -m build
+        uv build
     - name: Publish package
       if: ${{ steps.get_next_version.outputs.hasNextVersion == 'true' }}
       env:
