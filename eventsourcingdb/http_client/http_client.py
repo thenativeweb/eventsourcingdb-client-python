@@ -3,7 +3,6 @@ from types import TracebackType
 import aiohttp
 from aiohttp import ClientSession
 
-from ..errors.custom_error import CustomError
 from .get_get_headers import get_get_headers
 from .get_post_headers import get_post_headers
 from .response import Response
@@ -19,8 +18,8 @@ class HttpClient:
         self.__api_token = api_token
         self.__session: ClientSession | None = None
 
-    async def __aenter__(self) -> "HttpClient":
-        await self.initialize()
+    async def __aenter__(self) -> 'HttpClient':
+        await self.__initialize()
         return self
 
     async def __aexit__(
@@ -29,26 +28,30 @@ class HttpClient:
         exc_val: BaseException | None = None,
         exc_tb: TracebackType | None = None,
     ) -> None:
-        await self.close()
+        await self.__close()
 
-    async def initialize(self) -> None:
-        self.__session = aiohttp.ClientSession()
+    async def __initialize(self) -> None:
+        # If a session already exists, close it first to prevent leaks
+        if self.__session is not None:
+            await self.__session.close()
 
-    async def close(self) -> None:
+        self.__session = aiohttp.ClientSession(connector_owner=True)
+
+    async def __close(self) -> None:
         if self.__session is not None:
             await self.__session.close()
             self.__session = None
 
     @staticmethod
     def join_segments(first: str, *rest: str) -> str:
-        first_without_trailing_slash = first.rstrip("/")
-        rest_joined = "/".join([segment.strip("/") for segment in rest])
+        first_without_trailing_slash = first.rstrip('/')
+        rest_joined = '/'.join([segment.strip('/') for segment in rest])
 
-        return f"{first_without_trailing_slash}/{rest_joined}"
+        return f'{first_without_trailing_slash}/{rest_joined}'
 
     async def post(self, path: str, request_body: str) -> Response:
         if self.__session is None:
-            await self.initialize()
+            await self.__initialize()
 
         url_path = HttpClient.join_segments(self.__base_url, path)
         headers = get_post_headers(self.__api_token)
@@ -69,9 +72,7 @@ class HttpClient:
         with_authorization: bool = True,
     ) -> Response:
         if self.__session is None:
-            raise CustomError(
-                "HTTP client session not initialized. Call initialize() before making requests."
-            )
+            await self.__initialize()
 
         async def __request_executor() -> Response:
             url_path = HttpClient.join_segments(self.__base_url, path)
