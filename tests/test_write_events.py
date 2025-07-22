@@ -4,7 +4,7 @@ import pytest
 from eventsourcingdb import ServerError
 from eventsourcingdb import EventCandidate
 from eventsourcingdb import IsSubjectPristine, IsSubjectOnEventId
-from eventsourcingdb.write_events.preconditions import IsEventQLTrue
+from eventsourcingdb.write_events.preconditions import IsEventQlTrue
 
 from .conftest import TestData
 
@@ -244,7 +244,7 @@ class TestWriteSubjects:
                     data={}
                 )
             ],
-            [IsEventQLTrue('FROM e IN events PROJECT INTO COUNT() > 0')]
+            [IsEventQlTrue('FROM e IN events PROJECT INTO COUNT() > 0')]
         )
 
     @staticmethod
@@ -276,7 +276,7 @@ class TestWriteSubjects:
                         data={}
                     )
                 ],
-                [IsEventQLTrue('FROM e IN events PROJECT INTO COUNT() == 0')]
+                [IsEventQlTrue('FROM e IN events PROJECT INTO COUNT() == 0')]
             )
 
     @staticmethod
