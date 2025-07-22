@@ -1,13 +1,9 @@
-from aiohttp import ClientConnectorDNSError
 import pytest
+from aiohttp import ClientConnectorDNSError
 
-from eventsourcingdb import ServerError
-from eventsourcingdb import EventCandidate
-from eventsourcingdb import IsSubjectPristine, IsSubjectOnEventId
-from eventsourcingdb.write_events.preconditions import IsEventQlTrue
+from eventsourcingdb import EventCandidate, IsEventQlTrue, IsSubjectOnEventId, IsSubjectPristine, ServerError
 
 from .conftest import TestData
-
 from .shared.database import Database
 
 
@@ -25,9 +21,9 @@ class TestWriteSubjects:
                 [
                     EventCandidate(
                         source=test_data.TEST_SOURCE_STRING,
-                        subject='/',
-                        type='com.foo.bar',
-                        data={}
+                        subject="/",
+                        type="com.foo.bar",
+                        data={},
                     )
                 ]
             )
@@ -54,10 +50,7 @@ class TestWriteSubjects:
             await client.write_events(
                 [
                     EventCandidate(
-                        source=test_data.TEST_SOURCE_STRING,
-                        subject='',
-                        type='com.foo.bar',
-                        data={}
+                        source=test_data.TEST_SOURCE_STRING, subject="", type="com.foo.bar", data={}
                     )
                 ]
             )
@@ -72,14 +65,7 @@ class TestWriteSubjects:
 
         with pytest.raises(ServerError):
             await client.write_events(
-                [
-                    EventCandidate(
-                        source=test_data.TEST_SOURCE_STRING,
-                        subject='/',
-                        type='',
-                        data={}
-                    )
-                ]
+                [EventCandidate(source=test_data.TEST_SOURCE_STRING, subject="/", type="", data={})]
             )
 
     @staticmethod
@@ -93,10 +79,7 @@ class TestWriteSubjects:
         await client.write_events(
             [
                 EventCandidate(
-                    source=test_data.TEST_SOURCE_STRING,
-                    subject='/',
-                    type='com.foo.bar',
-                    data={}
+                    source=test_data.TEST_SOURCE_STRING, subject="/", type="com.foo.bar", data={}
                 )
             ]
         )
@@ -112,13 +95,10 @@ class TestWriteSubjects:
         await client.write_events(
             [
                 EventCandidate(
-                    source=test_data.TEST_SOURCE_STRING,
-                    subject='/',
-                    type='com.foo.bar',
-                    data={}
+                    source=test_data.TEST_SOURCE_STRING, subject="/", type="com.foo.bar", data={}
                 )
             ],
-            [IsSubjectPristine('/')]
+            [IsSubjectPristine("/")],
         )
 
     @staticmethod
@@ -132,10 +112,7 @@ class TestWriteSubjects:
         await client.write_events(
             [
                 EventCandidate(
-                    source=test_data.TEST_SOURCE_STRING,
-                    subject='/',
-                    type='com.foo.bar',
-                    data={}
+                    source=test_data.TEST_SOURCE_STRING, subject="/", type="com.foo.bar", data={}
                 )
             ]
         )
@@ -145,12 +122,12 @@ class TestWriteSubjects:
                 [
                     EventCandidate(
                         source=test_data.TEST_SOURCE_STRING,
-                        subject='/',
-                        type='com.foo.bar',
-                        data={}
+                        subject="/",
+                        type="com.foo.bar",
+                        data={},
                     )
                 ],
-                [IsSubjectPristine('/')]
+                [IsSubjectPristine("/")],
             )
 
     @staticmethod
@@ -164,10 +141,7 @@ class TestWriteSubjects:
         await client.write_events(
             [
                 EventCandidate(
-                    source=test_data.TEST_SOURCE_STRING,
-                    subject='/',
-                    type='com.foo.bar',
-                    data={}
+                    source=test_data.TEST_SOURCE_STRING, subject="/", type="com.foo.bar", data={}
                 )
             ]
         )
@@ -175,13 +149,10 @@ class TestWriteSubjects:
         await client.write_events(
             [
                 EventCandidate(
-                    source=test_data.TEST_SOURCE_STRING,
-                    subject='/',
-                    type='com.foo.bar',
-                    data={}
+                    source=test_data.TEST_SOURCE_STRING, subject="/", type="com.foo.bar", data={}
                 )
             ],
-            [IsSubjectOnEventId('/', '0')]
+            [IsSubjectOnEventId("/", "0")],
         )
 
     @staticmethod
@@ -195,10 +166,7 @@ class TestWriteSubjects:
         await client.write_events(
             [
                 EventCandidate(
-                    source=test_data.TEST_SOURCE_STRING,
-                    subject='/',
-                    type='com.foo.bar',
-                    data={}
+                    source=test_data.TEST_SOURCE_STRING, subject="/", type="com.foo.bar", data={}
                 )
             ]
         )
@@ -208,12 +176,12 @@ class TestWriteSubjects:
                 [
                     EventCandidate(
                         source=test_data.TEST_SOURCE_STRING,
-                        subject='/',
-                        type='com.foo.bar',
-                        data={}
+                        subject="/",
+                        type="com.foo.bar",
+                        data={},
                     )
                 ],
-                [IsSubjectOnEventId('/', '2')]
+                [IsSubjectOnEventId("/", "2")],
             )
 
     @staticmethod
@@ -227,10 +195,7 @@ class TestWriteSubjects:
         await client.write_events(
             [
                 EventCandidate(
-                    source=test_data.TEST_SOURCE_STRING,
-                    subject='/',
-                    type='com.foo.bar',
-                    data={}
+                    source=test_data.TEST_SOURCE_STRING, subject="/", type="com.foo.bar", data={}
                 )
             ]
         )
@@ -238,13 +203,10 @@ class TestWriteSubjects:
         await client.write_events(
             [
                 EventCandidate(
-                    source=test_data.TEST_SOURCE_STRING,
-                    subject='/',
-                    type='com.foo.bar',
-                    data={}
+                    source=test_data.TEST_SOURCE_STRING, subject="/", type="com.foo.bar", data={}
                 )
             ],
-            [IsEventQlTrue('FROM e IN events PROJECT INTO COUNT() > 0')]
+            [IsEventQlTrue("FROM e IN events PROJECT INTO COUNT() > 0")]
         )
 
     @staticmethod
@@ -258,10 +220,7 @@ class TestWriteSubjects:
         await client.write_events(
             [
                 EventCandidate(
-                    source=test_data.TEST_SOURCE_STRING,
-                    subject='/',
-                    type='com.foo.bar',
-                    data={}
+                    source=test_data.TEST_SOURCE_STRING, subject="/", type="com.foo.bar", data={}
                 )
             ]
         )
@@ -271,12 +230,12 @@ class TestWriteSubjects:
                 [
                     EventCandidate(
                         source=test_data.TEST_SOURCE_STRING,
-                        subject='/',
-                        type='com.foo.bar',
-                        data={}
+                        subject="/",
+                        type="com.foo.bar",
+                        data={},
                     )
                 ],
-                [IsEventQlTrue('FROM e IN events PROJECT INTO COUNT() == 0')]
+                [IsEventQlTrue("FROM e IN events PROJECT INTO COUNT() == 0")]
             )
 
     @staticmethod
@@ -288,12 +247,7 @@ class TestWriteSubjects:
         client = database.get_client()
 
         await client.register_event_schema(
-            "com.super.duper",
-            {
-                "type": "object",
-                "properties": {},
-                "additionalProperties": False
-            }
+            "com.super.duper", {"type": "object", "properties": {}, "additionalProperties": False}
         )
 
         with pytest.raises(ServerError):

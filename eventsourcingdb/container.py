@@ -13,45 +13,46 @@ class Container:
     def __init__(
         self,
     ) -> None:
-        self._image_name: str = 'thenativeweb/eventsourcingdb'
-        self._image_tag: str = 'latest'
-        self._api_token: str = 'secret'
+        self._image_name: str = "thenativeweb/eventsourcingdb"
+        self._image_tag: str = "latest"
+        self._api_token: str = "secret"
         self._internal_port: int = 3000
         self._container = None
         self._docker_client: DockerClient = docker.from_env()
         self._mapped_port: int | None = None
-        self._host = 'localhost'
+        self._host = "localhost"
 
     def _cleanup_existing_containers(self) -> None:
         try:
             containers = self._docker_client.containers.list(
-                filters={'ancestor': f'{self._image_name}:{self._image_tag}'})
+                filters={"ancestor": f"{self._image_name}:{self._image_tag}"}
+            )
         except errors.APIError as e:
-            logging.warning('Warning: Error listing existing containers: %s', e)
+            logging.warning("Warning: Error listing existing containers: %s", e)
             return
 
         for container in containers:
             try:
                 container.stop()
             except errors.APIError as e:
-                logging.warning('Warning: Error stopping container: %s', e)
+                logging.warning("Warning: Error stopping container: %s", e)
 
             try:
                 container.remove()
             except errors.APIError as e:
-                logging.warning('Warning: Error removing container: %s', e)
+                logging.warning("Warning: Error removing container: %s", e)
 
     def _create_container(self) -> None:
-        port_bindings = {f'{self._internal_port}/tcp': None}
+        port_bindings = {f"{self._internal_port}/tcp": None}
         self._container = self._docker_client.containers.run(
-            f'{self._image_name}:{self._image_tag}',
+            f"{self._image_name}:{self._image_tag}",
             command=[
-                'run',
-                '--api-token',
+                "run",
+                "--api-token",
                 self._api_token,
-                '--data-directory-temporary',
-                '--http-enabled',
-                '--https-enabled=false',
+                "--data-directory-temporary",
+                "--http-enabled",
+                "--https-enabled=false",
             ],
             ports=port_bindings,  # type: ignore
             detach=True,
@@ -61,11 +62,12 @@ class Container:
         port = None
         valid_mapping = True
         port_mappings = None
-        host_port_key = 'HostPort'
+        host_port_key = "HostPort"
 
         try:
-            port_mappings = container_info['NetworkSettings']['Ports'].get(
-                f'{self._internal_port}/tcp')
+            port_mappings = container_info["NetworkSettings"]["Ports"].get(
+                f"{self._internal_port}/tcp"
+            )
         except KeyError:
             valid_mapping = False
 
@@ -80,7 +82,7 @@ class Container:
 
     def _fetch_mapped_port(self) -> None:
         if self._container is None:
-            raise RuntimeError('Container failed to start')
+            raise RuntimeError("Container failed to start")
 
         max_retries, retry_delay = 5, 1
 
@@ -93,38 +95,43 @@ class Container:
                 time.sleep(retry_delay)
 
         self._stop_and_remove_container()
-        raise RuntimeError('Failed to determine mapped port')
+        raise RuntimeError("Failed to determine mapped port")
 
     def _get_container_info(self) -> dict | None:
         if self._container is None:
             return None
-        return self._docker_client.api.inspect_container(self._container.id)
+        try:
+            if self._container.id is None:
+                return None
+            return self._docker_client.api.inspect_container(self._container.id)
+        except (errors.NotFound, errors.APIError):
+            return None
 
     def get_api_token(self) -> str:
         return self._api_token
 
     def get_base_url(self) -> str:
         if self._container is None:
-            raise RuntimeError('Container must be running.')
-        return f'http://{self.get_host()}:{self.get_mapped_port()}'
+            raise RuntimeError("Container must be running.")
+        return f"http://{self.get_host()}:{self.get_mapped_port()}"
 
     def get_client(self) -> Client:
         return Client(self.get_base_url(), self.get_api_token())
 
     def get_host(self) -> str:
         if self._container is None:
-            raise RuntimeError('Container must be running.')
+            raise RuntimeError("Container must be running.")
         return self._host
 
     def get_mapped_port(self) -> int:
         if self._container is None or self._mapped_port is None:
-            raise RuntimeError('Container must be running.')
+            raise RuntimeError("Container must be running.")
         return self._mapped_port
 
     def is_running(self) -> bool:
         return self._container is not None
 
-    def start(self) -> 'Container':
+    def start(self) -> "Container":
         if self._container is not None:
             return self
 
@@ -132,7 +139,7 @@ class Container:
         self._cleanup_existing_containers()
         self._create_container()
         self._fetch_mapped_port()
-        self._wait_for_http('/api/v1/ping', timeout=20)
+        self._wait_for_http("/api/v1/ping", timeout=20)
 
         return self
 
@@ -148,7 +155,8 @@ class Container:
             self._docker_client.images.get(image_name)
         except errors.ImageNotFound:
             raise RuntimeError(
-                f'Could not pull image and no local image available: {error}') from error
+                f"Could not pull image and no local image available: {error}"
+            ) from error
 
         logging.warning("Warning: Could not pull image: %s. Using locally cached image.", error)
 
@@ -187,7 +195,7 @@ class Container:
 
     def _wait_for_http(self, path: str, timeout: int) -> None:
         base_url = self.get_base_url()
-        url = f'{base_url}{path}'
+        url = f"{base_url}{path}"
         start_time = time.time()
 
         max_attempts = int(timeout * 2)
@@ -201,7 +209,7 @@ class Container:
             time.sleep(0.5)
 
         self._stop_and_remove_container()
-        raise TimeoutError(f'Service failed to become ready within {timeout} seconds')
+        raise TimeoutError(f"Service failed to become ready within {timeout} seconds")
 
     def _check_endpoint_available(self, url: str) -> bool:
         try:
@@ -214,14 +222,14 @@ class Container:
     def _check_response_ok(self, response: requests.Response) -> bool:
         return response is not None and response.status_code == HTTPStatus.OK
 
-    def with_api_token(self, token: str) -> 'Container':
+    def with_api_token(self, token: str) -> "Container":
         self._api_token = token
         return self
 
-    def with_image_tag(self, tag: str) -> 'Container':
+    def with_image_tag(self, tag: str) -> "Container":
         self._image_tag = tag
         return self
 
-    def with_port(self, port: int) -> 'Container':
+    def with_port(self, port: int) -> "Container":
         self._internal_port = port
         return self

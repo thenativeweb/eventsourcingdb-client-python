@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Any
 
+
 @dataclass
 class EventCandidate:
     source: str
@@ -12,15 +13,15 @@ class EventCandidate:
 
     def to_json(self) -> dict[str, Any]:
         json = {
-            'data': self.data,
-            'source': self.source,
-            'subject': self.subject,
-            'type': self.type
+            "data": self.data,
+            "source": self.source,
+            "subject": self.subject,
+            "type": self.type,
         }
 
         if self.trace_parent is not None:
-            json['traceparent'] = self.trace_parent
+            json["traceparent"] = self.trace_parent
         if self.trace_state is not None:
-            json['tracestate'] = self.trace_state
+            json["tracestate"] = self.trace_state
 
         return json

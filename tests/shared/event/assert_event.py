@@ -8,13 +8,13 @@ from eventsourcingdb.event.event import Event
 
 
 def assert_event_equals(
-        event: Event,
-        source: str,
-        subject: str,
-        type_: str,
-        data: dict,
-        trace_parent: str | None,
-        trace_state: str | None
+    event: Event,
+    source: str,
+    subject: str,
+    type_: str,
+    data: dict,
+    trace_parent: str | None,
+    trace_state: str | None,
 ) -> None:
     assert event.source == source
     assert event.subject == subject

@@ -1,4 +1,8 @@
-from .preconditions import Precondition
-from .preconditions import IsSubjectPristine
-from .preconditions import IsSubjectOnEventId
-from .preconditions import IsEventQlTrue
+from .preconditions import IsEventQlTrue, IsSubjectOnEventId, IsSubjectPristine, Precondition
+
+__all__ = [
+    "IsEventQlTrue",
+    "IsSubjectOnEventId",
+    "IsSubjectPristine",
+    "Precondition",
+]

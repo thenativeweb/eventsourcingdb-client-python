@@ -35,14 +35,10 @@ class Database:
     @staticmethod
     async def _initialize_clients(container, api_token) -> tuple[Client, Client]:
         with_authorization_client = container.get_client()
-        await with_authorization_client.initialize()
-
         with_invalid_url_client = Client(
             base_url='http://localhost.invalid',
             api_token=api_token
         )
-        await with_invalid_url_client.initialize()
-
         return with_authorization_client, with_invalid_url_client
 
     @classmethod
@@ -111,6 +107,17 @@ class Database:
 
         raise ValueError(f'Unknown client type: {client_type}')
 
+    async def __aenter__(self) -> 'Database':
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None = None,
+        exc_val: BaseException | None = None,
+        exc_tb: object | None = None
+    ) -> None:
+        await self.stop()
+
     def get_base_url(self) -> str:
         return self.__container.get_base_url()
 
@@ -118,5 +125,18 @@ class Database:
         return self.__container.get_api_token()
 
     async def stop(self) -> None:
+        if self.__with_authorization_client:
+            try:
+                await self.__with_authorization_client.__aexit__(None, None, None)
+            except (ConnectionError) as e:
+                logging.warning("Error closing authorization client: %s", e)
+
+        if self.__with_invalid_url_client:
+            try:
+                await self.__with_invalid_url_client.__aexit__(None, None, None)
+            except (ConnectionError) as e:
+                logging.warning("Error closing invalid URL client: %s", e)
+
+        # Then stop the container
         if (container := getattr(self.__class__, '_Database__container', None)):
             container.stop()
