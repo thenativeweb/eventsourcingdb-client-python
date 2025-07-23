@@ -25,7 +25,7 @@ __all__ = [
     "IfEventIsMissingDuringObserve",
     "IfEventIsMissingDuringRead",
     "InternalError",
-		"IsEventQlTrue",
+    "IsEventQlTrue",
     "IsSubjectOnEventId",
     "IsSubjectPristine",
     "ObserveEventsOptions",

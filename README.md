@@ -117,7 +117,7 @@ written_events = await client.write_events(
     # events
   ],
   preconditions = [
-    IsEventQlTrue('FROM e IN events WHERE e.type == \'io.eventsourcingdb.library.book-borrowed\' PROJECT INTO COUNT() < 10')
+    IsEventQlTrue('FROM e IN events WHERE e.type == "io.eventsourcingdb.library.book-borrowed" PROJECT INTO COUNT() < 10')
   ],
 )
 ```
