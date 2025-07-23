@@ -1,7 +1,7 @@
 import pytest
 from aiohttp import ClientConnectorDNSError
 
-from eventsourcingdb import EventCandidate, IsSubjectOnEventId, IsSubjectPristine, ServerError
+from eventsourcingdb import EventCandidate, IsEventQlTrue, IsSubjectOnEventId, IsSubjectPristine, ServerError
 
 from .conftest import TestData
 from .shared.database import Database
@@ -182,6 +182,60 @@ class TestWriteSubjects:
                     )
                 ],
                 [IsSubjectOnEventId("/", "2")],
+            )
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_is_event_ql_true_precondition_works(
+        database: Database,
+        test_data: TestData,
+    ) -> None:
+        client = database.get_client()
+
+        await client.write_events(
+            [
+                EventCandidate(
+                    source=test_data.TEST_SOURCE_STRING, subject="/", type="com.foo.bar", data={}
+                )
+            ]
+        )
+
+        await client.write_events(
+            [
+                EventCandidate(
+                    source=test_data.TEST_SOURCE_STRING, subject="/", type="com.foo.bar", data={}
+                )
+            ],
+            [IsEventQlTrue("FROM e IN events PROJECT INTO COUNT() > 0")]
+        )
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_is_event_ql_true_precondition_fails(
+        database: Database,
+        test_data: TestData,
+    ) -> None:
+        client = database.get_client()
+
+        await client.write_events(
+            [
+                EventCandidate(
+                    source=test_data.TEST_SOURCE_STRING, subject="/", type="com.foo.bar", data={}
+                )
+            ]
+        )
+
+        with pytest.raises(ServerError):
+            await client.write_events(
+                [
+                    EventCandidate(
+                        source=test_data.TEST_SOURCE_STRING,
+                        subject="/",
+                        type="com.foo.bar",
+                        data={},
+                    )
+                ],
+                [IsEventQlTrue("FROM e IN events PROJECT INTO COUNT() == 0")]
             )
 
     @staticmethod

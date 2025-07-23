@@ -105,6 +105,25 @@ written_events = await client.write_events(
 
 *Note that according to the CloudEvents standard, event IDs must be of type string.*
 
+#### Using the `isEventQlTrue` precondition
+
+If you want to write events depending on an EventQL query, import the `IsEventQlTrue` class and pass it as a list of preconditions in the second argument:
+
+```python
+from eventsourcingdb import IsEventQlTrue
+
+written_events = await client.write_events(
+  events = [
+    # events
+  ],
+  preconditions = [
+    IsEventQlTrue('FROM e IN events WHERE e.type == "io.eventsourcingdb.library.book-borrowed" PROJECT INTO COUNT() < 10')
+  ],
+)
+```
+
+*Note that the query must return a single row with a single value, which is interpreted as a boolean.*
+
 ### Reading Events
 
 To read all events of a subject, call the `read_events` function with the subject as the first argument and an options object as the second argument. Set the `recursive` option to `False`. This ensures that only events of the given subject are returned, not events of nested subjects.
