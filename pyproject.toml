@@ -1,6 +1,6 @@
 [project]
 name = "eventsourcingdb"
-version = "1.3.3"
+version = "1.4.0"
 description = "The official Python client SDK for EventSourcingDB."
 authors = [{ name = "the native web GmbH", email = "hello@thenativeweb.io" }]
 requires-python = ">=3.11, <=3.13"
