@@ -187,6 +187,9 @@ class Client():
             async for raw_message in response.body:
                 message = parse_raw_message(raw_message)
 
+                if is_heartbeat(message):
+                    continue
+
                 if is_stream_error(message):
                     error_message = message.get('payload', {}).get('error', 'Unknown error')
                     raise ServerError(f"{error_message}.")
