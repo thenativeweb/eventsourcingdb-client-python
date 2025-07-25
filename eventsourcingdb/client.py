@@ -294,6 +294,38 @@ class Client():
                     f'was received \'{message}\'.'
                 )
 
+    async def read_event_type(self, event_type: str) -> EventType:
+        request_body = json.dumps({
+            'eventType': event_type
+        })
+
+        response: Response = await self.http_client.post(
+            path='/api/v1/read-event-type',
+            request_body=request_body,
+        )
+
+        async with response:
+            if response.status_code != HTTPStatus.OK:
+                raise ServerError(
+                    f'Unexpected response status: {response}'
+                )
+
+            response_data = await response.body.read()
+            response_data = bytes.decode(response_data, encoding='utf-8')
+            response_json = json.loads(response_data)
+
+            if not isinstance(response_json, dict):
+                raise ServerError(
+                    f'Failed to parse response \'{response_json}\' to dict.')
+
+            try:
+                return EventType.parse(response_json)
+            except ValidationError as validation_error:
+                raise ServerError(str(validation_error)) from validation_error
+            except Exception as other_error:
+                raise InternalError(str(other_error)) from other_error
+
+
     async def read_event_types(self) -> AsyncGenerator[EventType]:
         response: Response
         try:
