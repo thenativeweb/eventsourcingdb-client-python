@@ -498,6 +498,13 @@ async for event_type in event_types:
 await event_types.aclose()
 ```
 
+### Listing A Specific Event Type
+To list a specific event type, call the `read_event_type` function with the event type as an argument. The function returns an the detailed event type, which includes the schema:
+
+```python
+event_type = await client.read_event_type("io.eventsourcingdb.library.book-acquired")
+```
+
 ### Using Testcontainers
 
 Import the `Container` class, create an instance, call the `start` function to run a test container, get a client, run your test code, and finally call the `stop` function to stop the test container:
