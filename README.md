@@ -498,7 +498,8 @@ async for event_type in event_types:
 await event_types.aclose()
 ```
 
-### Listing A Specific Event Type
+### Listing a Specific Event Type
+
 To list a specific event type, call the `read_event_type` function with the event type as an argument. The function returns the detailed event type, which includes the schema:
 
 ```python
