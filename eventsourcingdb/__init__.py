@@ -10,7 +10,7 @@ from .observe_events import (
 )
 from .read_event_types import EventType
 from .read_events import IfEventIsMissingDuringRead, Order, ReadEventsOptions, ReadFromLatestEvent
-from .write_events import IsEventQlTrue, IsSubjectOnEventId, IsSubjectPristine, Precondition
+from .write_events import IsEventQlQueryTrue, IsSubjectOnEventId, IsSubjectPristine, Precondition
 
 __all__ = [
     "Bound",
@@ -25,7 +25,7 @@ __all__ = [
     "IfEventIsMissingDuringObserve",
     "IfEventIsMissingDuringRead",
     "InternalError",
-    "IsEventQlTrue",
+    "IsEventQlQueryTrue",
     "IsSubjectOnEventId",
     "IsSubjectPristine",
     "ObserveEventsOptions",

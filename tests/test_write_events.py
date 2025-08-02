@@ -1,7 +1,7 @@
 import pytest
 from aiohttp import ClientConnectorDNSError
 
-from eventsourcingdb import EventCandidate, IsEventQlTrue, IsSubjectOnEventId, IsSubjectPristine, ServerError
+from eventsourcingdb import EventCandidate, IsEventQlQueryTrue, IsSubjectOnEventId, IsSubjectPristine, ServerError
 
 from .conftest import TestData
 from .shared.database import Database
@@ -206,7 +206,7 @@ class TestWriteSubjects:
                     source=test_data.TEST_SOURCE_STRING, subject="/", type="com.foo.bar", data={}
                 )
             ],
-            [IsEventQlTrue("FROM e IN events PROJECT INTO COUNT() > 0")]
+            [IsEventQlQueryTrue("FROM e IN events PROJECT INTO COUNT() > 0")]
         )
 
     @staticmethod
@@ -235,7 +235,7 @@ class TestWriteSubjects:
                         data={},
                     )
                 ],
-                [IsEventQlTrue("FROM e IN events PROJECT INTO COUNT() == 0")]
+                [IsEventQlQueryTrue("FROM e IN events PROJECT INTO COUNT() == 0")]
             )
 
     @staticmethod

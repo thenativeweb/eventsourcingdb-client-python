@@ -105,19 +105,19 @@ written_events = await client.write_events(
 
 *Note that according to the CloudEvents standard, event IDs must be of type string.*
 
-#### Using the `isEventQlTrue` precondition
+#### Using the `isEventQlQueryTrue` precondition
 
-If you want to write events depending on an EventQL query, import the `IsEventQlTrue` class and pass it as a list of preconditions in the second argument:
+If you want to write events depending on an EventQL query, import the `IsEventQlQueryTrue` class and pass it as a list of preconditions in the second argument:
 
 ```python
-from eventsourcingdb import IsEventQlTrue
+from eventsourcingdb import IsEventQlQueryTrue
 
 written_events = await client.write_events(
   events = [
     # events
   ],
   preconditions = [
-    IsEventQlTrue('FROM e IN events WHERE e.type == "io.eventsourcingdb.library.book-borrowed" PROJECT INTO COUNT() < 10')
+    IsEventQlQueryTrue('FROM e IN events WHERE e.type == "io.eventsourcingdb.library.book-borrowed" PROJECT INTO COUNT() < 10')
   ],
 )
 ```

@@ -29,12 +29,12 @@ class IsSubjectOnEventId(Precondition):
         }
 
 @dataclass
-class IsEventQlTrue(Precondition):
+class IsEventQlQueryTrue(Precondition):
     query: str
 
     def to_json(self) -> dict[str, Any]:
         return {
-            'type': 'isEventQlTrue',
+            'type': 'isEventQlQueryTrue',
             'payload': {
                 'query': self.query
             }
