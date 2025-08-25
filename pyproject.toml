@@ -19,7 +19,7 @@ dev = [
     "pytest-cov==6.2.1",
     "ruff==0.12.10",
     "bandit==1.8.6",
-    "pyright==1.1.403",
+    "pyright==1.1.404",
     "twine==6.1.0",
 ]
 
