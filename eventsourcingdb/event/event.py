@@ -116,6 +116,9 @@ class Event:
         metadata_hash = sha256(metadata_bytes).hexdigest()
         data_hash = sha256(data_bytes).hexdigest()
 
+        print("########### Metadata hash: ", metadata_hash)
+        print("########### Data hash: ", data_hash)
+
         final_hash = sha256()
         final_hash.update(metadata_hash.encode("utf-8"))
         final_hash.update(data_hash.encode("utf-8"))
