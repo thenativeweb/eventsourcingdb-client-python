@@ -124,7 +124,7 @@ class Client():
 
         response_data = await response.body.read()
         response_data = bytes.decode(response_data, encoding='utf-8')
-        response_data = json.loads(response_data)
+        response_data = json.loads(response_data, object_pairs_hook=OrderedDict)
 
         if not isinstance(response_data, list):
             raise ServerError(

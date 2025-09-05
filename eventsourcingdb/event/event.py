@@ -10,7 +10,7 @@ from ..errors.validation_error import ValidationError
 Self = TypeVar("Self", bound="Event")
 
 
-@dataclass
+@dataclass(frozen=True)
 class Event:
     data: dict
     source: str
