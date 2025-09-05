@@ -110,10 +110,11 @@ class Event:
             self.data_content_type,
         ])
 
-        print("########### Metadata: ", metadata)
-
         metadata_bytes = metadata.encode("utf-8")
-        data_bytes = json.dumps(self.data).encode("utf-8")
+        data_bytes = json.dumps(
+                self.data,
+                separators=(',', ':')
+            ).encode("utf-8")
 
         metadata_hash = sha256(metadata_bytes).hexdigest()
         data_hash = sha256(data_bytes).hexdigest()
