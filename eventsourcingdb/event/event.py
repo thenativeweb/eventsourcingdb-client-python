@@ -19,6 +19,7 @@ class Event:
     spec_version: str
     event_id: str
     time: datetime
+    time_str: str
     data_content_type: str
     predecessor_hash: str
     hash: str
@@ -89,6 +90,7 @@ class Event:
             spec_version=spec_version,
             event_id=event_id,
             time=time,
+            time_str=time_str,
             data_content_type=data_content_type,
             predecessor_hash=predecessor_hash,
             hash=hash,
@@ -101,7 +103,7 @@ class Event:
             self.spec_version,
             self.event_id,
             self.predecessor_hash,
-            self.time.isoformat(sep="T"),
+            self.time_str,
             self.source,
             self.subject,
             self.type,
