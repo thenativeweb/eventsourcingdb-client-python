@@ -124,6 +124,9 @@ class Event:
         final_hash.update(data_hash.encode("utf-8"))
         final_hash_hex = final_hash.hexdigest()
 
+        print("########### Final hash: ", final_hash_hex)
+        print("########### Event hash: ", self.hash)
+
         if final_hash_hex != self.hash:
             raise ValidationError("Failed to verify hash.")
 
