@@ -113,7 +113,8 @@ class Event:
         metadata_bytes = metadata.encode("utf-8")
         data_bytes = json.dumps(
                 self.data,
-                separators=(',', ':')
+                separators=(',', ':'),
+                indent=None,
             ).encode("utf-8")
 
         metadata_hash = sha256(metadata_bytes).hexdigest()
