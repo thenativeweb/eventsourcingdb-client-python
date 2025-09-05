@@ -110,22 +110,18 @@ class Event:
             self.data_content_type,
         ])
 
+        print("########### Metadata: ", metadata)
+
         metadata_bytes = metadata.encode("utf-8")
         data_bytes = json.dumps(self.data).encode("utf-8")
 
         metadata_hash = sha256(metadata_bytes).hexdigest()
         data_hash = sha256(data_bytes).hexdigest()
 
-        print("########### Metadata hash: ", metadata_hash)
-        print("########### Data hash: ", data_hash)
-
         final_hash = sha256()
         final_hash.update(metadata_hash.encode("utf-8"))
         final_hash.update(data_hash.encode("utf-8"))
         final_hash_hex = final_hash.hexdigest()
-
-        print("########### Final hash: ", final_hash_hex)
-        print("########### Event hash: ", self.hash)
 
         if final_hash_hex != self.hash:
             raise ValidationError("Failed to verify hash.")
