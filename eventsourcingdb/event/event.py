@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime
+import json
+from hashlib import sha256
 from typing import Any, TypeVar
 
 from ..errors.internal_error import InternalError
@@ -93,6 +95,32 @@ class Event:
             trace_parent=trace_parent,
             trace_state=trace_state,
         )
+
+    def verify_hash(self) -> None:
+        metadata = "|".join([
+            self.spec_version,
+            self.event_id,
+            self.predecessor_hash,
+            self.time.isoformat(sep="T"),
+            self.source,
+            self.subject,
+            self.type,
+            self.data_content_type,
+        ])
+
+        metadata_bytes = metadata.encode("utf-8")
+        data_bytes = json.dumps(self.data).encode("utf-8")
+
+        metadata_hash = sha256(metadata_bytes).hexdigest()
+        data_hash = sha256(data_bytes).hexdigest()
+
+        final_hash = sha256()
+        final_hash.update(metadata_hash.encode("utf-8"))
+        final_hash.update(data_hash.encode("utf-8"))
+        final_hash_hex = final_hash.hexdigest()
+
+        if final_hash_hex != self.hash:
+            raise ValidationError("Failed to verify hash.")
 
     def to_json(self) -> dict[str, Any]:
         json = {
