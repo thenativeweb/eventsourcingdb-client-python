@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime
+import json
+from hashlib import sha256
 from typing import Any, TypeVar
 
 from ..errors.internal_error import InternalError
@@ -8,7 +10,7 @@ from ..errors.validation_error import ValidationError
 Self = TypeVar("Self", bound="Event")
 
 
-@dataclass
+@dataclass(frozen=True)
 class Event:
     data: dict
     source: str
@@ -17,6 +19,7 @@ class Event:
     spec_version: str
     event_id: str
     time: datetime
+    time_str: str
     data_content_type: str
     predecessor_hash: str
     hash: str
@@ -87,12 +90,43 @@ class Event:
             spec_version=spec_version,
             event_id=event_id,
             time=time,
+            time_str=time_str,
             data_content_type=data_content_type,
             predecessor_hash=predecessor_hash,
             hash=hash,
             trace_parent=trace_parent,
             trace_state=trace_state,
         )
+
+    def verify_hash(self) -> None:
+        metadata = "|".join([
+            self.spec_version,
+            self.event_id,
+            self.predecessor_hash,
+            self.time_str,
+            self.source,
+            self.subject,
+            self.type,
+            self.data_content_type,
+        ])
+
+        metadata_bytes = metadata.encode("utf-8")
+        data_bytes = json.dumps(
+                self.data,
+                separators=(',', ':'),
+                indent=None,
+            ).encode("utf-8")
+
+        metadata_hash = sha256(metadata_bytes).hexdigest()
+        data_hash = sha256(data_bytes).hexdigest()
+
+        final_hash = sha256()
+        final_hash.update(metadata_hash.encode("utf-8"))
+        final_hash.update(data_hash.encode("utf-8"))
+        final_hash_hex = final_hash.hexdigest()
+
+        if final_hash_hex != self.hash:
+            raise ValidationError("Failed to verify hash.")
 
     def to_json(self) -> dict[str, Any]:
         json = {
