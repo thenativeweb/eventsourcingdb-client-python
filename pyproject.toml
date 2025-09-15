@@ -17,7 +17,7 @@ dev = [
     "pytest-timeout==2.4.0",
     "pytest-asyncio==1.1.0",
     "pytest-cov==7.0.0",
-    "ruff==0.12.12",
+    "ruff==0.13.0",
     "bandit==1.8.6",
     "pyright==1.1.405",
     "twine==6.2.0",
