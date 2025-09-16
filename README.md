@@ -506,6 +506,16 @@ To list a specific event type, call the `read_event_type` function with the even
 event_type = await client.read_event_type("io.eventsourcingdb.library.book-acquired")
 ```
 
+### Verifying an Event's Hash
+
+To verify the integrity of an event, call the `verify_hash` function on the event instance. This recomputes the event's hash locally and compares it to the hash stored in the event. If the hashes differ, the function raises an error:
+
+```python
+event.verify_hash();
+```
+
+*Note that this only verifies the hash. If you also want to verify the signature, you can skip this step and call `verifySignature` directly, which performs a hash verification internally.*
+
 ### Using Testcontainers
 
 Import the `Container` class, create an instance, call the `start` function to run a test container, get a client, run your test code, and finally call the `stop` function to stop the test container:
