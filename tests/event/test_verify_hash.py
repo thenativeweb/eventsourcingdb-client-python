@@ -50,7 +50,8 @@ class TestVerifyHash:
 
         written_event = written_events[0]
 
-        invalid_hash = sha256("invalid hash").hexdigest()
+        invalid_hash_data = "invalid data".encode("utf-8")
+        invalid_hash = sha256(invalid_hash_data).hexdigest()
         written_event.hash = invalid_hash
 
         with pytest.raises(ValidationError):
