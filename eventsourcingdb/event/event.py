@@ -1,5 +1,7 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
+import json
+from hashlib import sha256
 from typing import Any, TypeVar
 
 from ..errors.internal_error import InternalError
@@ -17,6 +19,7 @@ class Event:
     spec_version: str
     event_id: str
     time: datetime
+    _time_from_server: str = field(init=False, repr=False)
     data_content_type: str
     predecessor_hash: str
     hash: str
@@ -45,10 +48,10 @@ class Event:
         if not isinstance(event_id, str):
             raise ValidationError(f"Failed to parse event_id '{event_id}' to string.")
 
-        time_str = unknown_object.get("time")
-        if not isinstance(time_str, str):
-            raise ValidationError(f"Failed to parse time '{time_str}' to string.")
-        time = Event.__parse_time(time_str)
+        time_from_server = unknown_object.get("time")
+        if not isinstance(time_from_server, str):
+            raise ValidationError(f"Failed to parse time '{time_from_server}' to string.")
+        time = Event.__parse_time(time_from_server)
 
         data_content_type = unknown_object.get("datacontenttype")
         if not isinstance(data_content_type, str):
@@ -79,7 +82,7 @@ class Event:
         if not isinstance(data, dict):
             raise ValidationError(f"Failed to parse data '{data}' to object.")
 
-        return Event(
+        event = Event(
             data=data,
             source=source,
             subject=subject,
@@ -93,6 +96,39 @@ class Event:
             trace_parent=trace_parent,
             trace_state=trace_state,
         )
+        event._time_from_server = time_from_server
+
+        return event
+
+    def verify_hash(self) -> None:
+        metadata = "|".join([
+            self.spec_version,
+            self.event_id,
+            self.predecessor_hash,
+            self._time_from_server,
+            self.source,
+            self.subject,
+            self.type,
+            self.data_content_type,
+        ])
+
+        metadata_bytes = metadata.encode("utf-8")
+        data_bytes = json.dumps(
+                self.data,
+                separators=(',', ':'),
+                indent=None,
+            ).encode("utf-8")
+
+        metadata_hash = sha256(metadata_bytes).hexdigest()
+        data_hash = sha256(data_bytes).hexdigest()
+
+        final_hash = sha256()
+        final_hash.update(metadata_hash.encode("utf-8"))
+        final_hash.update(data_hash.encode("utf-8"))
+        final_hash_hex = final_hash.hexdigest()
+
+        if final_hash_hex != self.hash:
+            raise ValidationError("Failed to verify hash.")
 
     def to_json(self) -> dict[str, Any]:
         json = {
@@ -117,17 +153,17 @@ class Event:
         return json
 
     @staticmethod
-    def __parse_time(time_str: str) -> datetime:
-        if not isinstance(time_str, str):
-            raise ValidationError(f"Failed to parse time '{time_str}' to datetime.")
+    def __parse_time(time_from_server: str) -> datetime:
+        if not isinstance(time_from_server, str):
+            raise ValidationError(f"Failed to parse time '{time_from_server}' to datetime.")
 
-        rest, sub_seconds = time_str.split(".")
+        rest, sub_seconds = time_from_server.split(".")
         sub_seconds = f"{sub_seconds[:6]:06}"
         try:
             return datetime.fromisoformat(f"{rest}.{sub_seconds}")
         except ValueError as value_error:
             raise ValidationError(
-                f"Failed to parse time '{time_str}' to datetime."
+                f"Failed to parse time '{time_from_server}' to datetime."
             ) from value_error
         except Exception as other_error:
             raise InternalError(str(other_error)) from other_error
