@@ -1,10 +1,10 @@
 import pytest
 
 from eventsourcingdb import EventCandidate
+from eventsourcingdb.errors.validation_error import ValidationError
 from hashlib import sha256
 
 from ..conftest import TestData
-from ...eventsourcingdb.errors.validation_error import ValidationError
 from ..shared.database import Database
 
 
