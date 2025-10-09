@@ -1,8 +1,8 @@
+import io
 import logging
-import tempfile
+import tarfile
 import time
 from http import HTTPStatus
-from pathlib import Path
 
 import docker
 import requests
@@ -26,7 +26,6 @@ class Container:
         self._mapped_port: int | None = None
         self._host = "localhost"
         self._signing_key: ed25519.Ed25519PrivateKey | None = None
-        self._temp_key_file: Path | None = None
 
     def _cleanup_existing_containers(self) -> None:
         try:
@@ -60,23 +59,8 @@ class Container:
             "--https-enabled=false",
         ]
 
-        volumes = None
-
         if self._signing_key is not None:
-            signing_key_bytes = self._signing_key.private_bytes(
-                encoding=serialization.Encoding.PEM,
-                format=serialization.PrivateFormat.PKCS8,
-                encryption_algorithm=serialization.NoEncryption()
-            )
-
-            # Create temporary file for signing key
-            temp_file = tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='.pem')
-            temp_file.write(signing_key_bytes)
-            temp_file.close()
-            self._temp_key_file = Path(temp_file.name)
-
             target_path = "/etc/esdb/signing-key.pem"
-            volumes = {str(self._temp_key_file): {'bind': target_path, 'mode': 'ro'}}
             command.extend(["--signing-key-file", target_path])
 
         self._container = self._docker_client.containers.run(
@@ -84,8 +68,29 @@ class Container:
             command=command,
             ports=port_bindings,  # type: ignore
             detach=True,
-            volumes=volumes,  # type: ignore
         )  # type: ignore
+
+        # Copy signing key into container if needed
+        if self._signing_key is not None:
+            signing_key_bytes = self._signing_key.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.PKCS8,
+                encryption_algorithm=serialization.NoEncryption()
+            )
+
+            # Create tar archive with the key file
+            tar_stream = io.BytesIO()
+            tar = tarfile.TarFile(fileobj=tar_stream, mode='w')
+
+            tarinfo = tarfile.TarInfo(name='signing-key.pem')
+            tarinfo.size = len(signing_key_bytes)
+            tarinfo.mode = 0o644
+
+            tar.addfile(tarinfo, io.BytesIO(signing_key_bytes))
+            tar.close()
+
+            tar_stream.seek(0)
+            self._container.put_archive('/etc/esdb', tar_stream)
 
     def _extract_port_from_container_info(self, container_info) -> int | None:
         port = None
@@ -212,14 +217,6 @@ class Container:
 
         self._container = None
         self._mapped_port = None
-
-        # Clean up temporary key file if it exists
-        if self._temp_key_file is not None and self._temp_key_file.exists():
-            try:
-                self._temp_key_file.unlink()
-            except Exception as e:
-                logging.warning("Warning: Error removing temporary key file: %s", e)
-            self._temp_key_file = None
 
     def _try_get_port_from_container(self) -> int | None:
         if not self._container:
