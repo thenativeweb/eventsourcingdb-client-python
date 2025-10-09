@@ -511,10 +511,26 @@ event_type = await client.read_event_type("io.eventsourcingdb.library.book-acqui
 To verify the integrity of an event, call the `verify_hash` function on the event instance. This recomputes the event's hash locally and compares it to the hash stored in the event. If the hashes differ, the function raises an error:
 
 ```python
-event.verify_hash();
+event.verify_hash()
 ```
 
-*Note that this only verifies the hash. If you also want to verify the signature, you can skip this step and call `verifySignature` directly, which performs a hash verification internally.*
+*Note that this only verifies the hash. If you also want to verify the signature, you can skip this step and call `verify_signature` directly, which performs a hash verification internally.*
+
+### Verifying an Event's Signature
+
+To verify the authenticity of an event, call the `verify_signature` function on the event instance. This requires the public key that matches the private key used for signing on the server.
+
+The function first verifies the event's hash, and then checks the signature. If any verification step fails, it raises an error:
+
+```python
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
+# ...
+
+verification_key = # public key as Ed25519PublicKey
+
+event.verify_signature(verification_key)
+```
 
 ### Using Testcontainers
 
@@ -559,6 +575,24 @@ container = (
     .with_api_token('secret')
 )
 ```
+
+To enable event signing in the test container, call the `with_signing_key` function. This generates an Ed25519 key pair for signing events:
+
+```python
+container = (
+  Container()
+    .with_signing_key()
+)
+```
+
+When event signing is enabled, you can retrieve the signing key and verification key:
+
+```python
+signing_key = container.get_signing_key()
+verification_key = container.get_verification_key()
+```
+
+The `signing_key` can be used when configuring the container to sign outgoing events. The `verification_key` can be passed to `verify_signature` when verifying events read from the database.
 
 #### Configuring the Client Manually
 

@@ -1,10 +1,14 @@
 import logging
+import tempfile
 import time
 from http import HTTPStatus
+from pathlib import Path
 
 import docker
 import requests
 from docker import DockerClient, errors
+from cryptography.hazmat.primitives.asymmetric import ed25519
+from cryptography.hazmat.primitives import serialization
 
 from .client import Client
 
@@ -21,6 +25,8 @@ class Container:
         self._docker_client: DockerClient = docker.from_env()
         self._mapped_port: int | None = None
         self._host = "localhost"
+        self._signing_key: ed25519.Ed25519PrivateKey | None = None
+        self._temp_key_file: Path | None = None
 
     def _cleanup_existing_containers(self) -> None:
         try:
@@ -44,18 +50,41 @@ class Container:
 
     def _create_container(self) -> None:
         port_bindings = {f"{self._internal_port}/tcp": None}
+
+        command = [
+            "run",
+            "--api-token",
+            self._api_token,
+            "--data-directory-temporary",
+            "--http-enabled",
+            "--https-enabled=false",
+        ]
+
+        volumes = None
+
+        if self._signing_key is not None:
+            signing_key_bytes = self._signing_key.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.PKCS8,
+                encryption_algorithm=serialization.NoEncryption()
+            )
+
+            # Create temporary file for signing key
+            temp_file = tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='.pem')
+            temp_file.write(signing_key_bytes)
+            temp_file.close()
+            self._temp_key_file = Path(temp_file.name)
+
+            target_path = "/etc/esdb/signing-key.pem"
+            volumes = {str(self._temp_key_file): {'bind': target_path, 'mode': 'ro'}}
+            command.extend(["--signing-key-file", target_path])
+
         self._container = self._docker_client.containers.run(
             f"{self._image_name}:{self._image_tag}",
-            command=[
-                "run",
-                "--api-token",
-                self._api_token,
-                "--data-directory-temporary",
-                "--http-enabled",
-                "--https-enabled=false",
-            ],
+            command=command,
             ports=port_bindings,  # type: ignore
             detach=True,
+            volumes=volumes,  # type: ignore
         )  # type: ignore
 
     def _extract_port_from_container_info(self, container_info) -> int | None:
@@ -184,6 +213,14 @@ class Container:
         self._container = None
         self._mapped_port = None
 
+        # Clean up temporary key file if it exists
+        if self._temp_key_file is not None and self._temp_key_file.exists():
+            try:
+                self._temp_key_file.unlink()
+            except Exception as e:
+                logging.warning("Warning: Error removing temporary key file: %s", e)
+            self._temp_key_file = None
+
     def _try_get_port_from_container(self) -> int | None:
         if not self._container:
             return None
@@ -233,3 +270,17 @@ class Container:
     def with_port(self, port: int) -> "Container":
         self._internal_port = port
         return self
+
+    def with_signing_key(self) -> "Container":
+        self._signing_key = ed25519.Ed25519PrivateKey.generate()
+        return self
+
+    def get_signing_key(self) -> ed25519.Ed25519PrivateKey:
+        if self._signing_key is None:
+            raise RuntimeError("Signing key not set.")
+        return self._signing_key
+
+    def get_verification_key(self) -> ed25519.Ed25519PublicKey:
+        if self._signing_key is None:
+            raise RuntimeError("Signing key not set.")
+        return self._signing_key.public_key()
