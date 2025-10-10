@@ -576,7 +576,7 @@ container = (
 )
 ```
 
-To enable event signing in the test container, call the `with_signing_key` function. This generates an Ed25519 key pair for signing events:
+If you want to sign events, call the `with_signing_key` function. This generates a new signing and verification key pair inside the container:
 
 ```python
 container = (
@@ -585,7 +585,7 @@ container = (
 )
 ```
 
-When event signing is enabled, you can retrieve the signing key and verification key:
+You can retrieve the private key (for signing) and the public key (for verifying signatures) once the container has been started:
 
 ```python
 signing_key = container.get_signing_key()
