@@ -78,19 +78,27 @@ class Container:
                 encryption_algorithm=serialization.NoEncryption()
             )
 
-            # Create tar archive with the key file
+            # Create tar archive with both the directory structure and the key file
             tar_stream = io.BytesIO()
             tar = tarfile.TarFile(fileobj=tar_stream, mode='w')
 
-            tarinfo = tarfile.TarInfo(name='signing-key.pem')
-            tarinfo.size = len(signing_key_bytes)
-            tarinfo.mode = 0o644
+            # Add directory entry
+            dir_info = tarfile.TarInfo(name='esdb')
+            dir_info.type = tarfile.DIRTYPE
+            dir_info.mode = 0o755
+            tar.addfile(dir_info)
 
-            tar.addfile(tarinfo, io.BytesIO(signing_key_bytes))
+            # Add the key file
+            file_info = tarfile.TarInfo(name='esdb/signing-key.pem')
+            file_info.size = len(signing_key_bytes)
+            file_info.mode = 0o644
+            tar.addfile(file_info, io.BytesIO(signing_key_bytes))
+
             tar.close()
-
             tar_stream.seek(0)
-            self._container.put_archive('/etc/esdb', tar_stream)
+
+            # Put the archive into /etc which should exist
+            self._container.put_archive('/etc', tar_stream)
 
     def _extract_port_from_container_info(self, container_info) -> int | None:
         port = None
