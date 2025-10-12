@@ -10,6 +10,7 @@ import json
 from .is_heartbeat import is_heartbeat
 from .is_stream_error import is_stream_error
 from .is_event import is_event
+from .is_valid_server_header import is_valid_server_header
 from .parse_raw_message import parse_raw_message
 from .read_events import ReadEventsOptions
 
@@ -56,6 +57,8 @@ class Client():
         ping_received_type = "io.eventsourcingdb.api.ping-received"
 
         response = await self.http_client.get("/api/v1/ping")
+        if not is_valid_server_header(response):
+            raise ServerError("Server must be EventSourcingDB")
         response_body = bytes.decode(await response.body.read(), encoding="utf-8")
 
         if response.status_code != HTTPStatus.OK:
@@ -80,6 +83,8 @@ class Client():
             request_body=request_body,
         )
         async with response:
+            if not is_valid_server_header(response):
+                raise ServerError("Server must be EventSourcingDB")
             if response.status_code != HTTPStatus.OK:
                 raise ServerError(
                     f'Failed to verify API token: {response}'
@@ -118,6 +123,8 @@ class Client():
             request_body=request_body,
         )
 
+        if not is_valid_server_header(response):
+            raise ServerError("Server must be EventSourcingDB")
         if response.status_code != HTTPStatus.OK:
             raise ServerError(
                 f'Unexpected response status: {response}'
@@ -151,6 +158,8 @@ class Client():
         )
 
         async with response:
+            if not is_valid_server_header(response):
+                raise ServerError("Server must be EventSourcingDB")
             if response.status_code != HTTPStatus.OK:
                 raise ServerError(
                     f'Unexpected response status: {response}'
@@ -181,6 +190,8 @@ class Client():
         )
 
         async with response:
+            if not is_valid_server_header(response):
+                raise ServerError("Server must be EventSourcingDB")
             if response.status_code != HTTPStatus.OK:
                 raise ServerError(
                     f'Unexpected response status: {response}'
@@ -222,6 +233,8 @@ class Client():
         )
 
         async with response:
+            if not is_valid_server_header(response):
+                raise ServerError("Server must be EventSourcingDB")
             if response.status_code != HTTPStatus.OK:
                 raise ServerError(
                     f'Unexpected response status: {response}'
@@ -257,6 +270,8 @@ class Client():
         )
 
         async with response:
+            if not is_valid_server_header(response):
+                raise ServerError("Server must be EventSourcingDB")
             if response.status_code != HTTPStatus.OK:
                 raise ServerError(
                     f'Unexpected response status: {response} '
@@ -276,6 +291,8 @@ class Client():
         )
 
         async with response:
+            if not is_valid_server_header(response):
+                raise ServerError("Server must be EventSourcingDB")
             if response.status_code != HTTPStatus.OK:
                 raise ServerError(
                     f'Unexpected response status: {response}'
@@ -306,6 +323,8 @@ class Client():
         )
 
         async with response:
+            if not is_valid_server_header(response):
+                raise ServerError("Server must be EventSourcingDB")
             if response.status_code != HTTPStatus.OK:
                 raise ServerError(
                     f'Unexpected response status: {response}'
@@ -340,6 +359,8 @@ class Client():
             raise InternalError(str(other_error)) from other_error
 
         async with response:
+            if not is_valid_server_header(response):
+                raise ServerError("Server must be EventSourcingDB")
             if response.status_code != HTTPStatus.OK:
                 raise ServerError(
                     f'Unexpected response status: {response}'
