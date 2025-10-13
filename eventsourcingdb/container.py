@@ -1,10 +1,14 @@
+import io
 import logging
+import tarfile
 import time
 from http import HTTPStatus
 
 import docker
 import requests
 from docker import DockerClient, errors
+from cryptography.hazmat.primitives.asymmetric import ed25519
+from cryptography.hazmat.primitives import serialization
 
 from .client import Client
 
@@ -21,6 +25,7 @@ class Container:
         self._docker_client: DockerClient = docker.from_env()
         self._mapped_port: int | None = None
         self._host = "localhost"
+        self._signing_key: ed25519.Ed25519PrivateKey | None = None
 
     def _cleanup_existing_containers(self) -> None:
         try:
@@ -44,19 +49,56 @@ class Container:
 
     def _create_container(self) -> None:
         port_bindings = {f"{self._internal_port}/tcp": None}
+
+        command = [
+            "run",
+            "--api-token",
+            self._api_token,
+            "--data-directory-temporary",
+            "--http-enabled",
+            "--https-enabled=false",
+        ]
+
+        if self._signing_key is not None:
+            target_path = "/etc/esdb/signing-key.pem"
+            command.extend(["--signing-key-file", target_path])
+
         self._container = self._docker_client.containers.run(
             f"{self._image_name}:{self._image_tag}",
-            command=[
-                "run",
-                "--api-token",
-                self._api_token,
-                "--data-directory-temporary",
-                "--http-enabled",
-                "--https-enabled=false",
-            ],
+            command=command,
             ports=port_bindings,  # type: ignore
             detach=True,
         )  # type: ignore
+
+        # Copy signing key into container if needed
+        if self._signing_key is not None:
+            signing_key_bytes = self._signing_key.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.PKCS8,
+                encryption_algorithm=serialization.NoEncryption()
+            )
+
+            # Create tar archive with both the directory structure and the key file
+            tar_stream = io.BytesIO()
+            tar = tarfile.TarFile(fileobj=tar_stream, mode='w')
+
+            # Add directory entry
+            dir_info = tarfile.TarInfo(name='esdb')
+            dir_info.type = tarfile.DIRTYPE
+            dir_info.mode = 0o755
+            tar.addfile(dir_info)
+
+            # Add the key file
+            file_info = tarfile.TarInfo(name='esdb/signing-key.pem')
+            file_info.size = len(signing_key_bytes)
+            file_info.mode = 0o644
+            tar.addfile(file_info, io.BytesIO(signing_key_bytes))
+
+            tar.close()
+            tar_stream.seek(0)
+
+            # Put the archive into /etc which should exist
+            self._container.put_archive('/etc', tar_stream)
 
     def _extract_port_from_container_info(self, container_info) -> int | None:
         port = None
@@ -233,3 +275,17 @@ class Container:
     def with_port(self, port: int) -> "Container":
         self._internal_port = port
         return self
+
+    def with_signing_key(self) -> "Container":
+        self._signing_key = ed25519.Ed25519PrivateKey.generate()
+        return self
+
+    def get_signing_key(self) -> ed25519.Ed25519PrivateKey:
+        if self._signing_key is None:
+            raise RuntimeError("Signing key not set.")
+        return self._signing_key
+
+    def get_verification_key(self) -> ed25519.Ed25519PublicKey:
+        if self._signing_key is None:
+            raise RuntimeError("Signing key not set.")
+        return self._signing_key.public_key()

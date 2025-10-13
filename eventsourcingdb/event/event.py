@@ -4,6 +4,8 @@ import json
 from hashlib import sha256
 from typing import Any, TypeVar
 
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
 from ..errors.internal_error import InternalError
 from ..errors.validation_error import ValidationError
 
@@ -25,6 +27,7 @@ class Event:
     hash: str
     trace_parent: str | None = None
     trace_state: str | None = None
+    signature: str | None = None
 
     @staticmethod
     def parse(unknown_object: dict) -> "Event":
@@ -78,6 +81,10 @@ class Event:
         if trace_state is not None and not isinstance(trace_state, str):
             raise ValidationError(f"Failed to parse trace_state '{trace_state}' to string.")
 
+        signature = unknown_object.get("signature")
+        if signature is not None and not isinstance(signature, str):
+            raise ValidationError(f"Failed to parse signature '{signature}' to string.")
+
         data = unknown_object.get("data")
         if not isinstance(data, dict):
             raise ValidationError(f"Failed to parse data '{data}' to object.")
@@ -95,6 +102,7 @@ class Event:
             hash=hash,
             trace_parent=trace_parent,
             trace_state=trace_state,
+            signature=signature,
         )
         event._time_from_server = time_from_server
 
@@ -130,6 +138,30 @@ class Event:
         if final_hash_hex != self.hash:
             raise ValidationError("Failed to verify hash.")
 
+    def verify_signature(self, verification_key: Ed25519PublicKey) -> None:
+        if self.signature is None:
+            raise ValidationError("Signature must not be none.")
+
+        self.verify_hash()
+
+        signature_prefix = "esdb:signature:v1:"
+
+        if not self.signature.startswith(signature_prefix):
+            raise ValidationError(f"Signature must start with '{signature_prefix}'.")
+
+        signature_hex = self.signature[len(signature_prefix):]
+        try:
+            signature_bytes = bytes.fromhex(signature_hex)
+        except ValueError as error:
+            raise ValidationError("Failed to decode signature.") from error
+
+        hash_bytes = self.hash.encode("utf-8")
+
+        try:
+            verification_key.verify(signature_bytes, hash_bytes)
+        except Exception as error:
+            raise ValidationError("Signature verification failed.") from error
+
     def to_json(self) -> dict[str, Any]:
         json = {
             "specversion": self.spec_version,
@@ -148,6 +180,8 @@ class Event:
             json["traceparent"] = self.trace_parent
         if self.trace_state is not None:
             json["tracestate"] = self.trace_state
+        if self.signature is not None:
+            json["signature"] = self.signature
         json["data"] = self.data
 
         return json

@@ -8,6 +8,7 @@ readme = "README.md"
 license = "MIT"
 dependencies = [
     "aiohttp==3.13.0",
+    "cryptography==43.0.0",
     "testcontainers==4.13.2",
 ]
 
@@ -29,7 +30,7 @@ build-backend = "hatchling.build"
 
 [tool.bandit]
 exclude_dirs = ["tests", ".venv"]
-skips = ["B101"]  
+skips = ["B101"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["eventsourcingdb"]
