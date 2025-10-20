@@ -86,6 +86,23 @@ written_events = await client.write_events(
 )
 ```
 
+#### Using the `isSubjectPopulated` precondition
+
+If you only want to write events in case a subject (such as `/books/42`) already has at least one event, import the `IsSubjectPopulated` class and pass it as the second argument as a list of preconditions:
+
+```python
+from eventsourcingdb import IsSubjectPopulated
+
+written_events = await client.write_events(
+  events = [
+    # events
+  ],
+  preconditions = [
+    IsSubjectPopulated('/books/42')
+  ],
+)
+```
+
 #### Using the `isSubjectOnEventId` precondition
 
 If you only want to write events in case the last event of a subject (such as `/books/42`) has a specific ID (e.g., `0`), import the `IsSubjectOnEventId` class and pass it as a list of preconditions in the second argument:
