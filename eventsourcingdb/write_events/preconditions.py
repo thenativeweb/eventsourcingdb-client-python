@@ -18,6 +18,14 @@ class IsSubjectPristine(Precondition):
 
 
 @dataclass
+class IsSubjectPopulated(Precondition):
+    subject: str
+
+    def to_json(self) -> dict[str, Any]:
+        return {"type": "isSubjectPopulated", "payload": {"subject": self.subject}}
+
+
+@dataclass
 class IsSubjectOnEventId(Precondition):
     subject: str
     event_id: str

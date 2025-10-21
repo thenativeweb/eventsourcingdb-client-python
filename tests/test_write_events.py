@@ -1,7 +1,14 @@
 import pytest
 from aiohttp import ClientConnectorDNSError
 
-from eventsourcingdb import EventCandidate, IsEventQlQueryTrue, IsSubjectOnEventId, IsSubjectPristine, ServerError
+from eventsourcingdb import (
+    EventCandidate,
+    IsEventQlQueryTrue,
+    IsSubjectOnEventId,
+    IsSubjectPopulated,
+    IsSubjectPristine,
+    ServerError,
+)
 
 from .conftest import TestData
 from .shared.database import Database
@@ -129,6 +136,58 @@ class TestWriteSubjects:
                 ],
                 [IsSubjectPristine("/")],
             )
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_is_subject_populated_precondition_fails_for_empty_subject(
+        database: Database,
+        test_data: TestData,
+    ) -> None:
+        client = database.get_client()
+
+        with pytest.raises(ServerError):
+            await client.write_events(
+                [
+                    EventCandidate(
+                        source=test_data.TEST_SOURCE_STRING,
+                        subject="/",
+                        type="com.foo.bar",
+                        data={},
+                    )
+                ],
+                [IsSubjectPopulated("/")],
+            )
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_is_subject_populated_precondition_works_for_existing_subject(
+        database: Database,
+        test_data: TestData,
+    ) -> None:
+        client = database.get_client()
+
+        await client.write_events(
+            [
+                EventCandidate(
+                    source=test_data.TEST_SOURCE_STRING,
+                    subject="/",
+                    type="com.foo.bar",
+                    data={"value": 23},
+                )
+            ]
+        )
+
+        await client.write_events(
+            [
+                EventCandidate(
+                    source=test_data.TEST_SOURCE_STRING,
+                    subject="/",
+                    type="com.foo.bar",
+                    data={"value": 42},
+                )
+            ],
+            [IsSubjectPopulated("/")],
+        )
 
     @staticmethod
     @pytest.mark.asyncio
