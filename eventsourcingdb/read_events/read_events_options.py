@@ -21,10 +21,10 @@ class ReadEventsOptions:
             json["order"] = self.order.value
 
         if self.lower_bound is not None:
-            json["lowerBound"] = {"id": str(self.lower_bound.id), "type": self.lower_bound.type}
+            json["lowerBound"] = {"id": str(self.lower_bound.id), "type": self.lower_bound.type.value}
 
         if self.upper_bound is not None:
-            json["upperBound"] = {"id": str(self.upper_bound.id), "type": self.upper_bound.type}
+            json["upperBound"] = {"id": str(self.upper_bound.id), "type": self.upper_bound.type.value}
 
         if self.from_latest_event is not None:
             json["fromLatestEvent"] = self.from_latest_event.to_json()

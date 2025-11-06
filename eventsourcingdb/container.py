@@ -260,7 +260,6 @@ class Container:
             return False
         return self._check_response_ok(response)
 
-    # pylint: disable=R6301
     def _check_response_ok(self, response: requests.Response) -> bool:
         return response is not None and response.status_code == HTTPStatus.OK
 
