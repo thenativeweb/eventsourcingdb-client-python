@@ -6,7 +6,7 @@ from typing import Any
 class Precondition(ABC):
     @abstractmethod
     def to_json(self) -> Any:
-        raise NotImplementedError
+        ...
 
 
 @dataclass

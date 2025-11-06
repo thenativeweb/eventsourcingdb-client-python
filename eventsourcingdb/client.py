@@ -2,7 +2,7 @@ from collections import OrderedDict
 from collections.abc import AsyncGenerator
 
 from types import TracebackType
-from typing import Any, TypeVar
+from typing import Any, TypeAlias, TypeVar
 
 from http import HTTPStatus
 import json
@@ -25,6 +25,14 @@ from .http_client import HttpClient, Response
 
 
 T = TypeVar('T')
+
+# Type aliases for commonly used types
+JsonDict: TypeAlias = dict[str, Any]
+EventCandidateList: TypeAlias = list[EventCandidate]
+PreconditionList: TypeAlias = list[Precondition]
+EventStream: TypeAlias = AsyncGenerator[Event, None]
+EventTypeStream: TypeAlias = AsyncGenerator[EventType, None]
+SubjectStream: TypeAlias = AsyncGenerator[str, None]
 
 
 class Client():
@@ -50,6 +58,14 @@ class Client():
     @property
     def http_client(self) -> HttpClient:
         return self.__http_client
+
+    def _validate_response(self, response: Response, error_message: str | None = None) -> None:
+        """Validate that response comes from EventSourcingDB and has OK status."""
+        if not is_valid_server_header(response):
+            raise ServerError("Server must be EventSourcingDB")
+        if response.status_code != HTTPStatus.OK:
+            msg = error_message or f"Unexpected response status: {response}"
+            raise ServerError(msg)
 
     async def ping(self) -> None:
         specversion_field = "specversion"
@@ -83,18 +99,12 @@ class Client():
             request_body=request_body,
         )
         async with response:
-            if not is_valid_server_header(response):
-                raise ServerError("Server must be EventSourcingDB")
-            if response.status_code != HTTPStatus.OK:
-                raise ServerError(
-                    f'Failed to verify API token: {response}'
-                )
+            self._validate_response(response, f"Failed to verify API token: {response}")
 
             response_data = await response.body.read()
             response_data = bytes.decode(response_data, encoding='utf-8')
             response_json = json.loads(response_data)
 
-            # pylint: disable=R2004
             if not isinstance(response_json, dict) or 'type' not in response_json:
                 raise ServerError('Failed to parse response: {response}')
 
@@ -104,8 +114,8 @@ class Client():
 
     async def write_events(
         self,
-        event_candidates: list[EventCandidate],
-        preconditions: list[Precondition] = None  # type: ignore
+        event_candidates: EventCandidateList,
+        preconditions: PreconditionList | None = None
     ) -> list[Event]:
         if preconditions is None:
             preconditions = []
@@ -117,18 +127,12 @@ class Client():
             }
         )
 
-        response: Response
         response = await self.http_client.post(
             path='/api/v1/write-events',
             request_body=request_body,
         )
 
-        if not is_valid_server_header(response):
-            raise ServerError("Server must be EventSourcingDB")
-        if response.status_code != HTTPStatus.OK:
-            raise ServerError(
-                f'Unexpected response status: {response}'
-            )
+        self._validate_response(response)
 
         response_data = await response.body.read()
         response_data = bytes.decode(response_data, encoding='utf-8')
@@ -147,7 +151,7 @@ class Client():
         self,
         subject: str,
         options: ReadEventsOptions
-    ) -> AsyncGenerator[Event]:
+    ) -> EventStream:
         request_body = json.dumps({
             'subject': subject,
             'options': options.to_json()
@@ -158,12 +162,7 @@ class Client():
         )
 
         async with response:
-            if not is_valid_server_header(response):
-                raise ServerError("Server must be EventSourcingDB")
-            if response.status_code != HTTPStatus.OK:
-                raise ServerError(
-                    f'Unexpected response status: {response}'
-                )
+            self._validate_response(response)
             async for raw_message in response.body:
                 message = parse_raw_message(raw_message)
 
@@ -190,12 +189,7 @@ class Client():
         )
 
         async with response:
-            if not is_valid_server_header(response):
-                raise ServerError("Server must be EventSourcingDB")
-            if response.status_code != HTTPStatus.OK:
-                raise ServerError(
-                    f'Unexpected response status: {response}'
-                )
+            self._validate_response(response)
             async for raw_message in response.body:
                 message = parse_raw_message(raw_message)
 
@@ -205,7 +199,6 @@ class Client():
                 if is_stream_error(message):
                     error_message = message.get('payload', {}).get('error', 'Unknown error')
                     raise ServerError(f"{error_message}.")
-                # pylint: disable=R2004
                 if message.get('type') == 'row':
                     payload = message['payload']
 
@@ -221,7 +214,7 @@ class Client():
         self,
         subject: str,
         options: ObserveEventsOptions
-    ) -> AsyncGenerator[Event]:
+    ) -> EventStream:
         request_body = json.dumps({
             'subject': subject,
             'options': options.to_json()
@@ -233,12 +226,7 @@ class Client():
         )
 
         async with response:
-            if not is_valid_server_header(response):
-                raise ServerError("Server must be EventSourcingDB")
-            if response.status_code != HTTPStatus.OK:
-                raise ServerError(
-                    f'Unexpected response status: {response}'
-                )
+            self._validate_response(response)
             async for raw_message in response.body:
                 message = parse_raw_message(raw_message)
 
@@ -258,7 +246,7 @@ class Client():
                     f'{message}.'
                 )
 
-    async def register_event_schema(self, event_type: str, json_schema: dict) -> None:
+    async def register_event_schema(self, event_type: str, json_schema: JsonDict) -> None:
         request_body = json.dumps({
             'eventType': event_type,
             'schema': json_schema,
@@ -273,14 +261,14 @@ class Client():
             if not is_valid_server_header(response):
                 raise ServerError("Server must be EventSourcingDB")
             if response.status_code != HTTPStatus.OK:
-                raise ServerError(
-                    f'Unexpected response status: {response} '
-                )
+                error_body = await response.body.read()
+                error_text = bytes.decode(error_body, encoding="utf-8")
+                raise ServerError(error_text)
 
     async def read_subjects(
         self,
         base_subject: str
-    ) -> AsyncGenerator[str]:
+    ) -> SubjectStream:
         request_body = json.dumps({
             'baseSubject': base_subject
         })
@@ -291,12 +279,7 @@ class Client():
         )
 
         async with response:
-            if not is_valid_server_header(response):
-                raise ServerError("Server must be EventSourcingDB")
-            if response.status_code != HTTPStatus.OK:
-                raise ServerError(
-                    f'Unexpected response status: {response}'
-                )
+            self._validate_response(response)
             async for raw_message in response.body:
                 message = parse_raw_message(raw_message)
 
@@ -325,13 +308,13 @@ class Client():
         async with response:
             if not is_valid_server_header(response):
                 raise ServerError("Server must be EventSourcingDB")
-            if response.status_code != HTTPStatus.OK:
-                raise ServerError(
-                    f'Unexpected response status: {response}'
-                )
 
             response_data = await response.body.read()
             response_data = bytes.decode(response_data, encoding='utf-8')
+
+            if response.status_code != HTTPStatus.OK:
+                raise ServerError(response_data)
+
             response_json = json.loads(response_data)
 
             if not isinstance(response_json, dict):
@@ -346,25 +329,19 @@ class Client():
                 raise InternalError(str(other_error)) from other_error
 
 
-    async def read_event_types(self) -> AsyncGenerator[EventType]:
-        response: Response
+    async def read_event_types(self) -> EventTypeStream:
         try:
             response = await self.http_client.post(
                 path='/api/v1/read-event-types',
                 request_body='',
             )
-        except CustomError as custom_error:
-            raise custom_error
-        except Exception as other_error:
-            raise InternalError(str(other_error)) from other_error
+        except CustomError:
+            raise
+        except Exception as error:
+            raise InternalError(str(error)) from error
 
         async with response:
-            if not is_valid_server_header(response):
-                raise ServerError("Server must be EventSourcingDB")
-            if response.status_code != HTTPStatus.OK:
-                raise ServerError(
-                    f'Unexpected response status: {response}'
-                )
+            self._validate_response(response)
             async for raw_message in response.body:
                 message = parse_raw_message(raw_message)
 

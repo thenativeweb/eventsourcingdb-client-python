@@ -14,7 +14,7 @@ class TestReadEventType:
     async def test_fails_if_the_event_type_does_not_exist(
         database: Database,
     ) -> None:
-        with pytest.raises(ServerError, match=re.compile("^Server error occurred: Unexpected response status: status_code=404 Not Found")):
+        with pytest.raises(ServerError, match="event type .* not found"):
             await database.get_client().read_event_type("non.existent.event.type")
 
     @staticmethod
@@ -22,7 +22,7 @@ class TestReadEventType:
     async def test_fails_if_the_event_type_is_malformed(
         database: Database,
     ) -> None:
-        with pytest.raises(ServerError, match=re.compile("^Server error occurred: Unexpected response status: status_code=400 Bad Request")):
+        with pytest.raises(ServerError, match="invalid event type"):
             await database.get_client().read_event_type("malformed.event.type.")
 
     @staticmethod

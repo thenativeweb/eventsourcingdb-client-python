@@ -68,10 +68,9 @@ class Event:
                 f"Failed to parse predecessor_hash '{predecessor_hash}' to string."
             )
 
-        # pylint: disable=W0622
-        hash = unknown_object.get("hash")
-        if not isinstance(hash, str):
-            raise ValidationError(f"Failed to parse hash '{hash}' to string.")
+        event_hash = unknown_object.get("hash")
+        if not isinstance(event_hash, str):
+            raise ValidationError(f"Failed to parse hash '{event_hash}' to string.")
 
         trace_parent = unknown_object.get("traceparent")
         if trace_parent is not None and not isinstance(trace_parent, str):
@@ -99,7 +98,7 @@ class Event:
             time=time,
             data_content_type=data_content_type,
             predecessor_hash=predecessor_hash,
-            hash=hash,
+            hash=event_hash,
             trace_parent=trace_parent,
             trace_state=trace_state,
             signature=signature,
@@ -192,7 +191,7 @@ class Event:
             raise ValidationError(f"Failed to parse time '{time_from_server}' to datetime.")
 
         rest, sub_seconds = time_from_server.split(".")
-        sub_seconds = f"{sub_seconds[:6]:06}"
+        sub_seconds = sub_seconds[:6].ljust(6, "0")
         try:
             return datetime.fromisoformat(f"{rest}.{sub_seconds}")
         except ValueError as value_error:

@@ -74,17 +74,12 @@ class HttpClient:
         if self.__session is None:
             await self.__initialize()
 
-        async def __request_executor() -> Response:
-            url_path = HttpClient.join_segments(self.__base_url, path)
-            headers = get_get_headers(self.__api_token, with_authorization)
+        url_path = HttpClient.join_segments(self.__base_url, path)
+        headers = get_get_headers(self.__api_token, with_authorization)
 
-            async_response = await self.__session.get(  # type: ignore
-                url_path,
-                headers=headers,
-            )
+        async_response = await self.__session.get(  # type: ignore
+            url_path,
+            headers=headers,
+        )
 
-            response = Response(async_response)
-
-            return response
-
-        return await __request_executor()
+        return Response(async_response)
