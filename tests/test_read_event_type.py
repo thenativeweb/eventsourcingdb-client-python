@@ -1,4 +1,3 @@
-import re
 import pytest
 
 from eventsourcingdb import EventCandidate, EventType
