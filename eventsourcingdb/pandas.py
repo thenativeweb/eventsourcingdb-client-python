@@ -20,6 +20,22 @@ async def events_to_dataframe(events: AsyncGenerator[Event, None]) -> pd.DataFra
     Returns:
         A pandas DataFrame with all event fields as columns
     """
+    columns = [
+        "event_id",
+        "time",
+        "source",
+        "subject",
+        "type",
+        "data",
+        "spec_version",
+        "data_content_type",
+        "predecessor_hash",
+        "hash",
+        "trace_parent",
+        "trace_state",
+        "signature",
+    ]
+
     event_list = []
 
     async for event in events:
@@ -40,4 +56,4 @@ async def events_to_dataframe(events: AsyncGenerator[Event, None]) -> pd.DataFra
         }
         event_list.append(event_dict)
 
-    return pd.DataFrame(event_list)
+    return pd.DataFrame(event_list, columns=columns)
