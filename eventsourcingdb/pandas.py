@@ -40,23 +40,23 @@ async def events_to_dataframe(events: AsyncGenerator[Event, None]) -> pd.DataFra
         }
         event_list.append(event_dict)
 
-    if len(event_list) == 0:
-        return pd.DataFrame(  # type: ignore[call-overload]
-            columns=[
-                "event_id",
-                "time",
-                "source",
-                "subject",
-                "type",
-                "data",
-                "spec_version",
-                "data_content_type",
-                "predecessor_hash",
-                "hash",
-                "trace_parent",
-                "trace_state",
-                "signature",
-            ]
-        )
+    df = pd.DataFrame(event_list)
 
-    return pd.DataFrame(event_list)
+    if len(event_list) == 0:
+        df.columns = pd.Index([
+            "event_id",
+            "time",
+            "source",
+            "subject",
+            "type",
+            "data",
+            "spec_version",
+            "data_content_type",
+            "predecessor_hash",
+            "hash",
+            "trace_parent",
+            "trace_state",
+            "signature",
+        ])
+
+    return df
