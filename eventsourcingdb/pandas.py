@@ -41,7 +41,7 @@ async def events_to_dataframe(events: AsyncGenerator[Event, None]) -> pd.DataFra
         event_list.append(event_dict)
 
     if len(event_list) == 0:
-        return pd.DataFrame(
+        return pd.DataFrame(  # type: ignore[call-overload]
             columns=[
                 "event_id",
                 "time",
