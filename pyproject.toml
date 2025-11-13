@@ -22,6 +22,10 @@ dev = [
     "bandit==1.8.6",
     "pyright==1.1.407",
     "twine==6.2.0",
+    "pandas>=2.0.0",
+]
+pandas = [
+    "pandas>=2.0.0",
 ]
 
 [build-system]

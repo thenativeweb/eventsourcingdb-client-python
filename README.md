@@ -314,6 +314,60 @@ async for row in rows:
 await rows.aclose()
 ```
 
+### Converting Events to pandas DataFrame
+
+For data analysis and exploration, you can convert event streams to pandas DataFrames. To use this feature, install the client SDK with pandas support:
+
+```shell
+pip install eventsourcingdb[pandas]
+```
+
+Import the `events_to_dataframe` function from the `eventsourcingdb.pandas` module and pass an event stream to it:
+
+```python
+from eventsourcingdb import Client, ReadEventsOptions
+from eventsourcingdb.pandas import events_to_dataframe
+
+events = client.read_events(
+  subject = '/books',
+  options = ReadEventsOptions(
+    recursive = True
+  ),
+)
+
+df = await events_to_dataframe(events)
+```
+
+The resulting DataFrame includes all event fields as columns: `event_id`, `time`, `source`, `subject`, `type`, `data`, `spec_version`, `data_content_type`, `predecessor_hash`, `hash`, `trace_parent`, `trace_state`, and `signature`.
+
+The `data` field remains as a dict column, which you can access directly:
+
+```python
+# Access the data field
+for index, row in df.iterrows():
+  print(row['data'])
+```
+
+#### Flattening the Data Field
+
+For analysis of specific event types, you may want to flatten the `data` field into separate columns. Use pandas' `json_normalize` function:
+
+```python
+import pandas as pd
+
+# Filter for a specific event type first
+book_acquired_df = df[df['type'] == 'io.eventsourcingdb.library.book-acquired']
+
+# Flatten the data field
+flattened_df = book_acquired_df.join(
+  pd.json_normalize(book_acquired_df['data'])
+)
+
+# Now you can access data fields as columns
+print(flattened_df['title'])
+print(flattened_df['author'])
+```
+
 ### Observing Events
 
 To observe all events of a subject, call the `observe_events` function with the subject as the first argument and an options object as the second argument. Set the `recursive` option to `False`. This ensures that only events of the given subject are returned, not events of nested subjects.
