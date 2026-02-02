@@ -9,7 +9,7 @@ license = "MIT"
 dependencies = [
     "aiohttp==3.13.3",
     "cryptography==46.0.4",
-    "testcontainers==4.14.0",
+    "testcontainers==4.14.1",
 ]
 
 [dependency-groups]
