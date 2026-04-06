@@ -7,7 +7,7 @@ requires-python = ">=3.11, <3.15"
 readme = "README.md"
 license = "MIT"
 dependencies = [
-    "aiohttp==3.13.4",
+    "aiohttp==3.13.5",
     "cryptography==46.0.6",
     "testcontainers==4.14.2",
 ]
