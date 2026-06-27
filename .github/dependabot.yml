@@ -1,43 +1,73 @@
 version: 2
 updates:
-- package-ecosystem: pip
-  directory: "/"
-  cooldown:
-    default-days: 7
-  schedule:
-    interval: weekly
-  open-pull-requests-limit: 10
-  assignees:
-  - thenativeweb/internal_dev
-  labels:
-  - Dependencies
-  commit-message:
-    prefix: chore
+  - package-ecosystem: pip
+    directory: "/"
+    cooldown:
+      default-days: 7
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    assignees:
+      - goloroden
+    labels:
+      - Dependencies
+    commit-message:
+      prefix: fix
+      prefix-development: chore
+    groups:
+      pip-production:
+        dependency-type: production
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+      pip-development:
+        dependency-type: development
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
 
-- package-ecosystem: docker
-  directory: "/tests/shared/docker/eventsourcingdb"
-  cooldown:
-    default-days: 7
-  schedule:
-    interval: weekly
-  open-pull-requests-limit: 10
-  assignees:
-  - thenativeweb/internal_dev
-  labels:
-  - Dependencies
-  commit-message:
-    prefix: chore
+  - package-ecosystem: docker
+    directory: "/tests/shared/docker/eventsourcingdb"
+    cooldown:
+      default-days: 7
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    assignees:
+      - goloroden
+    labels:
+      - Dependencies
+    commit-message:
+      prefix: chore
+    groups:
+      docker:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
 
-- package-ecosystem: "github-actions"
-  directory: "/"
-  cooldown:
-    default-days: 7
-  schedule:
-    interval: weekly
-  open-pull-requests-limit: 10
-  assignees:
-  - thenativeweb/internal_dev
-  labels:
-  - Dependencies
-  commit-message:
-    prefix: chore
+  - package-ecosystem: github-actions
+    directory: "/"
+    cooldown:
+      default-days: 7
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    assignees:
+      - goloroden
+    labels:
+      - Dependencies
+    commit-message:
+      prefix: chore
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
