@@ -1,6 +1,6 @@
+import json
 from dataclasses import dataclass, field
 from datetime import datetime
-import json
 from hashlib import sha256
 from typing import Any, TypeVar
 
@@ -108,16 +108,16 @@ class Event:
         return event
 
     def verify_hash(self) -> None:
-        metadata = "|".join([
-            self.spec_version,
-            self.event_id,
-            self.predecessor_hash,
-            self._time_from_server,
-            self.source,
-            self.subject,
-            self.type,
-            self.data_content_type,
-        ])
+        metadata = (
+            f"{self.spec_version}|"
+            f"{self.event_id}|"
+            f"{self.predecessor_hash}|"
+            f"{self._time_from_server}|"
+            f"{self.source}|"
+            f"{self.subject}|"
+            f"{self.type}|"
+            f"{self.data_content_type}"
+        )
 
         metadata_bytes = metadata.encode("utf-8")
         data_bytes = json.dumps(

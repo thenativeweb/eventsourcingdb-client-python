@@ -1,9 +1,10 @@
-import pytest
-
-from cryptography.hazmat.primitives.asymmetric import ed25519
-from eventsourcingdb import EventCandidate, Container
-from eventsourcingdb.errors.validation_error import ValidationError
 from hashlib import sha256
+
+import pytest
+from cryptography.hazmat.primitives.asymmetric import ed25519
+
+from eventsourcingdb import Container, EventCandidate
+from eventsourcingdb.errors.validation_error import ValidationError
 
 from ..conftest import TestData
 
@@ -70,7 +71,7 @@ class TestVerifySignature:
             written_event = written_events[0]
             assert written_event.signature is not None
 
-            invalid_hash_data = "invalid hash".encode("utf-8")
+            invalid_hash_data = b"invalid hash"
             invalid_hash = sha256(invalid_hash_data).hexdigest()
             written_event.hash = invalid_hash
 

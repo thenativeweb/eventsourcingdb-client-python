@@ -1,4 +1,5 @@
 from types import TracebackType
+from typing import Self
 
 import aiohttp
 from aiohttp import ClientSession
@@ -18,13 +19,13 @@ class HttpClient:
         self.__api_token = api_token
         self.__session: ClientSession | None = None
 
-    async def __aenter__(self) -> 'HttpClient':
+    async def __aenter__(self) -> Self:
         await self.__initialize()
         return self
 
     async def __aexit__(
         self,
-        exc_type: BaseException | None = None,
+        exc_type: type[BaseException] | None = None,
         exc_val: BaseException | None = None,
         exc_tb: TracebackType | None = None,
     ) -> None:
