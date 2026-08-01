@@ -7,7 +7,4 @@ def is_valid_server_header(response: Response) -> bool:
     if not server_header:
         return False
 
-    if not server_header.startswith('EventSourcingDB/'):
-        return False
-
-    return True
+    return server_header.startswith('EventSourcingDB/')

@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 import pytest_asyncio
 
 from eventsourcingdb import EventCandidate
@@ -20,9 +22,9 @@ class TestData:
     LOGGED_IN_SUBJECT = "/users/logged-in"
     REGISTERED_TYPE = "io.thenativeweb.users.registered"
     LOGGED_IN_TYPE = "io.thenativeweb.users.logged-in"
-    JANE_DATA = {"name": "jane"}
-    JOHN_DATA = {"name": "john"}
-    APFEL_FRED_DATA = {"name": "apfel fred"}
+    JANE_DATA: ClassVar[dict[str, str]] = {"name": "jane"}
+    JOHN_DATA: ClassVar[dict[str, str]] = {"name": "john"}
+    APFEL_FRED_DATA: ClassVar[dict[str, str]] = {"name": "apfel fred"}
     TRACE_PARENT_1 = "00-10000000000000000000000000000000-1000000000000000-00"
     TRACE_PARENT_2 = "00-20000000000000000000000000000000-2000000000000000-00"
     TRACE_PARENT_3 = "00-30000000000000000000000000000000-3000000000000000-00"

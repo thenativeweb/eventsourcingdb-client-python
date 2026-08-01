@@ -4,8 +4,8 @@ from .http_client import HttpClient
 from .response import Response
 
 __all__ = [
-    "get_get_headers",
-    "get_post_headers",
     "HttpClient",
     "Response",
+    "get_get_headers",
+    "get_post_headers",
 ]

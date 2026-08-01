@@ -1,28 +1,23 @@
+import json
 from collections import OrderedDict
 from collections.abc import AsyncGenerator
-
-from types import TracebackType
-from typing import Any, TypeAlias, TypeVar
-
 from http import HTTPStatus
-import json
-
-from .is_heartbeat import is_heartbeat
-from .is_stream_error import is_stream_error
-from .is_event import is_event
-from .is_valid_server_header import is_valid_server_header
-from .parse_raw_message import parse_raw_message
-from .read_events import ReadEventsOptions
+from types import TracebackType
+from typing import Any, Self, TypeAlias, TypeVar
 
 from .errors import CustomError, InternalError, ServerError, ValidationError
 from .event import Event, EventCandidate
-from .observe_events import ObserveEventsOptions
-from .read_event_types import EventType, is_event_type
-from .read_subjects import is_subject
-
-from .write_events import Precondition
 from .http_client import HttpClient, Response
-
+from .is_event import is_event
+from .is_heartbeat import is_heartbeat
+from .is_stream_error import is_stream_error
+from .is_valid_server_header import is_valid_server_header
+from .observe_events import ObserveEventsOptions
+from .parse_raw_message import parse_raw_message
+from .read_event_types import EventType, is_event_type
+from .read_events import ReadEventsOptions
+from .read_subjects import is_subject
+from .write_events import Precondition
 
 T = TypeVar('T')
 
@@ -35,7 +30,7 @@ EventTypeStream: TypeAlias = AsyncGenerator[EventType, None]
 SubjectStream: TypeAlias = AsyncGenerator[str, None]
 
 
-class Client():
+class Client:
     def __init__(
         self,
         base_url: str,
@@ -43,13 +38,13 @@ class Client():
     ) -> None:
         self.__http_client = HttpClient(base_url=base_url, api_token=api_token)
 
-    async def __aenter__(self) -> 'Client':
+    async def __aenter__(self) -> Self:
         await self.__http_client.__aenter__()
         return self
 
     async def __aexit__(
         self,
-        exc_type: BaseException | None = None,
+        exc_type: type[BaseException] | None = None,
         exc_val: BaseException | None = None,
         exc_tb: TracebackType | None = None,
     ) -> None:

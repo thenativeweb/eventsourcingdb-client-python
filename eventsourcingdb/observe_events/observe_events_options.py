@@ -18,12 +18,11 @@ class ObserveEventsOptions:
                 "ObserveEventsOptions are invalid: lower_bound must be a Bound object."
             )
 
-        if self.from_latest_event is not None:
-            if self.lower_bound is not None:
-                raise ValidationError(
-                    "ReadEventsOptions are invalid: "
-                    "lowerBound and fromLatestEvent are mutually exclusive"
-                )
+        if self.from_latest_event is not None and self.lower_bound is not None:
+            raise ValidationError(
+                "ReadEventsOptions are invalid: "
+                "lowerBound and fromLatestEvent are mutually exclusive"
+            )
 
     def to_json(self) -> dict[str, Any]:
         result: dict[str, Any] = {
