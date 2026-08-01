@@ -3,6 +3,7 @@ import logging
 import tarfile
 import time
 from http import HTTPStatus
+from typing import ClassVar
 
 import docker
 import requests
@@ -16,6 +17,10 @@ logger = logging.getLogger(__name__)
 
 
 class Container:
+    # Images already pulled in this process. Every container start would
+    # otherwise hit the registry again, even though the image is local.
+    _pulled_images: ClassVar[set[str]] = set()
+
     def __init__(
         self,
     ) -> None:
@@ -191,10 +196,17 @@ class Container:
         return self
 
     def _pull_or_get_image(self) -> None:
+        image = f"{self._image_name}:{self._image_tag}"
+
+        if image in Container._pulled_images:
+            return
+
         try:
             self._docker_client.images.pull(self._image_name, self._image_tag)
         except errors.APIError as e:
             self._handle_image_pull_error(e)
+
+        Container._pulled_images.add(image)
 
     def _handle_image_pull_error(self, error) -> None:
         image_name = f"{self._image_name}:{self._image_tag}"
