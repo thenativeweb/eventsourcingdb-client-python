@@ -1,5 +1,6 @@
 from collections.abc import Mapping
 from http import HTTPStatus
+from typing import Self
 
 import aiohttp
 from aiohttp import StreamReader
@@ -11,14 +12,14 @@ class Response:
     def __init__(self, response: aiohttp.ClientResponse) -> None:
         self.__response: aiohttp.ClientResponse = response
 
-    async def __aenter__(self) -> "Response":
+    async def __aenter__(self) -> Self:
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
         if not self.__response.closed:
             self.__response.close()
 
-    def __enter__(self) -> "Response":
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:

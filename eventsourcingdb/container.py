@@ -6,11 +6,13 @@ from http import HTTPStatus
 
 import docker
 import requests
-from docker import DockerClient, errors
-from cryptography.hazmat.primitives.asymmetric import ed25519
 from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ed25519
+from docker import DockerClient, errors
 
 from .client import Client
+
+logger = logging.getLogger(__name__)
 
 
 class Container:
@@ -33,19 +35,19 @@ class Container:
                 filters={"ancestor": f"{self._image_name}:{self._image_tag}"}
             )
         except errors.APIError as e:
-            logging.warning("Warning: Error listing existing containers: %s", e)
+            logger.warning("Warning: Error listing existing containers: %s", e)
             return
 
         for container in containers:
             try:
                 container.stop()
             except errors.APIError as e:
-                logging.warning("Warning: Error stopping container: %s", e)
+                logger.warning("Warning: Error stopping container: %s", e)
 
             try:
                 container.remove()
             except errors.APIError as e:
-                logging.warning("Warning: Error removing container: %s", e)
+                logger.warning("Warning: Error removing container: %s", e)
 
     def _create_container(self) -> None:
         port_bindings = {f"{self._internal_port}/tcp": None}
@@ -200,7 +202,7 @@ class Container:
                 f"Could not pull image and no local image available: {error}"
             ) from error
 
-        logging.warning("Warning: Could not pull image: %s. Using locally cached image.", error)
+        logger.warning("Warning: Could not pull image: %s. Using locally cached image.", error)
 
     def stop(self) -> None:
         self._stop_and_remove_container()
@@ -212,16 +214,16 @@ class Container:
         try:
             self._container.stop()
         except errors.NotFound as e:
-            logging.warning("Warning: Container not found while stopping: %s", e)
+            logger.warning("Warning: Container not found while stopping: %s", e)
         except errors.APIError as e:
-            logging.warning("Warning: API error while stopping container: %s", e)
+            logger.warning("Warning: API error while stopping container: %s", e)
 
         try:
             self._container.remove()
         except errors.NotFound as e:
-            logging.warning("Warning: Container not found while removing: %s", e)
+            logger.warning("Warning: Container not found while removing: %s", e)
         except errors.APIError as e:
-            logging.warning("Warning: API error while removing container: %s", e)
+            logger.warning("Warning: API error while removing container: %s", e)
 
         self._container = None
         self._mapped_port = None

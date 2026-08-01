@@ -1,8 +1,9 @@
+from hashlib import sha256
+
 import pytest
 
 from eventsourcingdb import EventCandidate
 from eventsourcingdb.errors.validation_error import ValidationError
-from hashlib import sha256
 
 from ..conftest import TestData
 from ..shared.database import Database
@@ -50,7 +51,7 @@ class TestVerifyHash:
 
         written_event = written_events[0]
 
-        invalid_hash_data = "invalid data".encode("utf-8")
+        invalid_hash_data = b"invalid data"
         invalid_hash = sha256(invalid_hash_data).hexdigest()
         written_event.hash = invalid_hash
 

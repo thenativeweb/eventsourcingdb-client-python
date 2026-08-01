@@ -1,10 +1,14 @@
+import asyncio
 import logging
 import os
-import time
 import uuid
+from types import TracebackType
+from typing import Self
 
 from eventsourcingdb.client import Client
 from eventsourcingdb.container import Container
+
+logger = logging.getLogger(__name__)
 
 
 class Database:
@@ -54,9 +58,9 @@ class Database:
             except OSError as caught_error:
                 error = caught_error
                 retry = True
-            except Exception as unexpected_error:
+            except Exception:
                 container.stop()
-                raise unexpected_error
+                raise
             else:
                 retry = False
 
@@ -65,11 +69,11 @@ class Database:
                     container.stop()
                     msg = f'Failed to initialize database container after {max_retries} attempts'
                     raise RuntimeError(f'{msg}: {error}') from error
-                logging.warning(
+                logger.warning(
                     'Container startup attempt %d failed: %s. Retrying in %s seconds...',
                     attempt + 1, error, retry_delay
                 )
-                time.sleep(retry_delay)
+                await asyncio.sleep(retry_delay)
                 container.stop()
                 container = cls._create_container(api_token, "latest")
                 continue
@@ -82,9 +86,9 @@ class Database:
                     container,
                     api_token
                 )
-            except Exception as client_error:
+            except Exception:
                 container.stop()
-                raise client_error
+                raise
 
             return cls(Database.__create_key, with_authorization_client, with_invalid_url_client)
 
@@ -107,14 +111,14 @@ class Database:
 
         raise ValueError(f'Unknown client type: {client_type}')
 
-    async def __aenter__(self) -> 'Database':
+    async def __aenter__(self) -> Self:
         return self
 
     async def __aexit__(
         self,
         exc_type: type[BaseException] | None = None,
         exc_val: BaseException | None = None,
-        exc_tb: object | None = None
+        exc_tb: TracebackType | None = None
     ) -> None:
         await self.stop()
 
@@ -129,13 +133,13 @@ class Database:
             try:
                 await self.__with_authorization_client.__aexit__(None, None, None)
             except (ConnectionError) as e:
-                logging.warning("Error closing authorization client: %s", e)
+                logger.warning("Error closing authorization client: %s", e)
 
         if self.__with_invalid_url_client:
             try:
                 await self.__with_invalid_url_client.__aexit__(None, None, None)
             except (ConnectionError) as e:
-                logging.warning("Error closing invalid URL client: %s", e)
+                logger.warning("Error closing invalid URL client: %s", e)
 
         # Then stop the container
         if (container := getattr(self.__class__, '_Database__container', None)):
