@@ -22,7 +22,7 @@ jobs:
         fetch-depth: '0'
         token: ${{ secrets.TOKEN_GITHUB_TO_GITHUB_REPOSITORIES_RW }}
     - name: Use Python
-      uses: actions/setup-python@v6.3.0
+      uses: actions/setup-python@v7.0.0
       with:
         python-version: '3.14'
     - name: Install dependencies

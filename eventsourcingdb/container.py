@@ -65,11 +65,12 @@ class Container:
             target_path = "/etc/esdb/signing-key.pem"
             command.extend(["--signing-key-file", target_path])
 
-        self._container = self._docker_client.containers.run(
+        # Only create the container for now, so that the signing key can be copied
+        # into it before the server starts and tries to read it.
+        self._container = self._docker_client.containers.create(
             f"{self._image_name}:{self._image_tag}",
             command=command,
             ports=port_bindings,  # type: ignore
-            detach=True,
         )  # type: ignore
 
         # Copy signing key into container if needed
@@ -101,6 +102,8 @@ class Container:
 
             # Put the archive into /etc which should exist
             self._container.put_archive('/etc', tar_stream)
+
+        self._container.start()
 
     def _extract_port_from_container_info(self, container_info) -> int | None:
         port = None
