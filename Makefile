@@ -2,11 +2,15 @@ PACKAGE := eventsourcingdb
 TEST_DIR := tests
 PYTHON_DIRS := $(PACKAGE) $(TEST_DIR)
 
-qa: analyze typecheck security test 
+qa: verify-lock analyze typecheck security test
 
 analyze:
 	@echo "Running code analysis..."
 	@uv run ruff check $(PYTHON_DIRS)
+
+verify-lock:
+	@echo "Verifying dependency lock..."
+	@uv lock --check
 
 build: qa clean
 	@echo "Build prepared."
@@ -61,4 +65,5 @@ typecheck:
 		security \
 		test \
 		typecheck \
+		verify-lock \
 		clean

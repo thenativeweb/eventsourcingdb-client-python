@@ -1,6 +1,6 @@
 version: 2
 updates:
-  - package-ecosystem: pip
+  - package-ecosystem: uv
     directory: "/"
     cooldown:
       default-days: 7
@@ -15,14 +15,14 @@ updates:
       prefix: fix
       prefix-development: chore
     groups:
-      pip-production:
+      uv-production:
         dependency-type: production
         patterns:
           - "*"
         update-types:
           - minor
           - patch
-      pip-development:
+      uv-development:
         dependency-type: development
         patterns:
           - "*"
