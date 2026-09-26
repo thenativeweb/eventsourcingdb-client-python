@@ -663,7 +663,7 @@ signing_key = container.get_signing_key()
 verification_key = container.get_verification_key()
 ```
 
-The `signing_key` can be used when configuring the container to sign outgoing events. The `verification_key` can be passed to `verify_signature` when verifying events read from the database.
+The `signing_key` is the private key EventSourcingDB signs events with. The `verification_key` can be passed to `verify_signature` when verifying events read from the database.
 
 #### Configuring the Client Manually
 
