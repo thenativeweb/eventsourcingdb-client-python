@@ -64,6 +64,8 @@ class Container:
             "--data-directory-temporary",
             "--http-enabled",
             "--https-enabled=false",
+            "--http-port",
+            str(self._internal_port),
         ]
 
         if self._signing_key is not None:
