@@ -292,6 +292,8 @@ async for row in client.run_eventql_query(
 
 *Note that each row returned by the generator matches the projection specified in your query.*
 
+While the query runs, the server sends a heartbeat every second whenever there is no row to send. If neither a row nor a heartbeat arrives for 30 seconds, the generator closes the connection and raises a `HeartbeatTimeoutError`, which is a subclass of `ServerError`. For details, see [Detecting a Stalled Connection](#detecting-a-stalled-connection).
+
 #### Aborting a Query
 
 If you need to abort a query use `break` or `return` within the `async for` loop. However, this only works if there is currently an iteration going on.
@@ -455,6 +457,26 @@ async for event in client.observe_events(
 ```
 
 *Note that `from_latest_event` and `lower_bound` can not be provided at the same time.*
+
+#### Detecting a Stalled Connection
+
+While observing, the server sends a heartbeat every second whenever there is no new event. If neither an event nor a heartbeat arrives for 30 seconds, for example because a proxy keeps the connection open but no longer passes anything on, the generator closes the connection and raises a `HeartbeatTimeoutError`. Since `HeartbeatTimeoutError` is a subclass of `ServerError`, you can handle it specifically or together with other server errors:
+
+```python
+from eventsourcingdb import HeartbeatTimeoutError, ObserveEventsOptions
+
+try:
+  async for event in client.observe_events(
+    subject = '/books/42',
+    options = ObserveEventsOptions(
+      recursive = False
+    ),
+  ):
+    pass
+except HeartbeatTimeoutError:
+  # Neither an event nor a heartbeat arrived for 30 seconds.
+  pass
+```
 
 #### Aborting Observing
 
