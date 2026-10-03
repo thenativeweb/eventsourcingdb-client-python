@@ -12,9 +12,9 @@ WriteStream = Callable[[web.StreamResponse], Awaitable[None]]
 
 class StreamServer:
     """
-    A local HTTP server that stands in for EventSourcingDB. It answers
-    observe-events and run-eventql-query with whatever the given function
-    writes to the stream, so that tests can control every single line.
+    A local HTTP server that stands in for EventSourcingDB. It answers every
+    POST request, whatever its path, with whatever the given function writes
+    to the stream, so that tests can control every single line.
     """
 
     def __init__(self, write_stream: WriteStream) -> None:
@@ -25,8 +25,7 @@ class StreamServer:
 
     async def __aenter__(self) -> Self:
         application = web.Application()
-        application.router.add_post('/api/v1/observe-events', self.__handle)
-        application.router.add_post('/api/v1/run-eventql-query', self.__handle)
+        application.router.add_post('/{path:.*}', self.__handle)
 
         # Cancelling the handler when the client disconnects is what lets
         # tests notice that the client closed the connection.

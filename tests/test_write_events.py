@@ -1,10 +1,9 @@
 import asyncio
 
 import pytest
-from aiohttp import ClientConnectorDNSError
+from aiohttp import ClientConnectorDNSError, web
 
 from eventsourcingdb import (
-    Client,
     EventCandidate,
     IsEventQlQueryTrue,
     IsSubjectOnEventId,
@@ -15,7 +14,7 @@ from eventsourcingdb import (
 
 from .conftest import TEST_DEADLINE_SECONDS, TestData
 from .shared.database import Database
-from .shared.local_server import LocalServer, never_answer
+from .shared.stream_server import StreamServer
 
 
 class TestWriteSubjects:
@@ -333,10 +332,12 @@ class TestWriteSubjects:
     async def test_throws_an_error_if_server_answers_slower_than_the_session_timeout(
         test_data: TestData,
     ) -> None:
-        async with (
-            LocalServer("/api/v1/write-events", never_answer) as server,
-            Client(server.get_base_url(), "secret") as client,
-        ):
+        async def write_stream(_: web.StreamResponse) -> None:
+            await asyncio.Event().wait()
+
+        async with StreamServer(write_stream) as server:
+            client = server.get_client()
+
             with pytest.raises(TimeoutError):
                 async with asyncio.timeout(TEST_DEADLINE_SECONDS) as deadline:
                     await client.write_events(
