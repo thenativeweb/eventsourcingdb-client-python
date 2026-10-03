@@ -1,10 +1,15 @@
 from typing import ClassVar
 
+import aiohttp
+import pytest
 import pytest_asyncio
 
 from eventsourcingdb import EventCandidate
 
 from .shared.database import Database
+
+SESSION_TIMEOUT_SECONDS = 1
+TEST_DEADLINE_SECONDS = 3
 
 
 @pytest_asyncio.fixture
@@ -98,3 +103,15 @@ async def events_for_mocked_server(
             trace_state=None,
         )
     ]
+
+
+@pytest.fixture
+def short_session_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+    # By default, aiohttp limits every request of a session to five minutes.
+    # Shortening that limit shows within seconds which requests it applies to.
+    # Only sessions created after this fixture has run pick up the new limit.
+    monkeypatch.setattr(
+        aiohttp.client,
+        "DEFAULT_TIMEOUT",
+        aiohttp.ClientTimeout(total=SESSION_TIMEOUT_SECONDS, sock_connect=30),
+    )

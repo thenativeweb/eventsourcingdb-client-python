@@ -1,9 +1,13 @@
+import asyncio
+
 import pytest
-from aiohttp import ClientConnectorDNSError
+from aiohttp import ClientConnectorDNSError, web
 
 from eventsourcingdb import EventCandidate
 
+from .conftest import TEST_DEADLINE_SECONDS
 from .shared.database import Database
+from .shared.stream_server import StreamServer
 
 
 class TestRunEventQLQuery:
@@ -71,3 +75,22 @@ class TestRunEventQLQuery:
         second_row = rows_read[1]
         assert second_row["id"] == TestRunEventQLQuery.SECOND_EVENT_ID
         assert second_row["data"]["value"] == TestRunEventQLQuery.SECOND_EVENT_VALUE
+
+    @staticmethod
+    @pytest.mark.asyncio
+    @pytest.mark.usefixtures("short_session_timeout")
+    async def test_keeps_running_a_query_for_longer_than_the_session_timeout() -> None:
+        async def write_stream(response: web.StreamResponse) -> None:
+            while True:
+                await response.write(b'{"type":"heartbeat","payload":{}}\n')
+                await asyncio.sleep(1)
+
+        async with StreamServer(write_stream) as server:
+            client = server.get_client()
+
+            with pytest.raises(TimeoutError):
+                async with asyncio.timeout(TEST_DEADLINE_SECONDS) as deadline:
+                    async for _ in client.run_eventql_query("FROM e IN events PROJECT INTO e"):
+                        pass
+
+        assert deadline.expired(), "The query must only end at the deadline of the test."

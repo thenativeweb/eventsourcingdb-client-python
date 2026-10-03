@@ -480,6 +480,8 @@ except HeartbeatTimeoutError:
 
 #### Aborting Observing
 
+Observing has no time limit of its own and runs until you abort it.
+
 If you need to abort observing use `break` or `return` within the `async for` loop. However, this only works if there is currently an iteration going on.
 
 To abort observing independently of that, store the generator in a variable, and close it explicitly:

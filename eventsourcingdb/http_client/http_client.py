@@ -8,6 +8,11 @@ from .get_get_headers import get_get_headers
 from .get_post_headers import get_post_headers
 from .response import Response
 
+# A stream, such as observing events, runs for as long as the caller keeps
+# reading it, so only connecting is limited, not the request as a whole. Every
+# other request keeps the limit of the session.
+STREAM_TIMEOUT = aiohttp.ClientTimeout(total=None, sock_connect=30)
+
 
 class HttpClient:
     def __init__(
@@ -50,17 +55,24 @@ class HttpClient:
 
         return f'{first_without_trailing_slash}/{rest_joined}'
 
-    async def post(self, path: str, request_body: str) -> Response:
+    async def post(
+        self,
+        path: str,
+        request_body: str,
+        is_stream: bool = False,
+    ) -> Response:
         if self.__session is None:
             await self.__initialize()
 
         url_path = HttpClient.join_segments(self.__base_url, path)
         headers = get_post_headers(self.__api_token)
+        timeout = STREAM_TIMEOUT if is_stream else self.__session.timeout  # type: ignore
 
         async_response = await self.__session.post(  # type: ignore
             url_path,
             data=request_body,
             headers=headers,
+            timeout=timeout,
         )
 
         response = Response(async_response)
