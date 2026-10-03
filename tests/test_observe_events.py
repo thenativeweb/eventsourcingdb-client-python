@@ -6,6 +6,7 @@ from aiohttp import ClientConnectorDNSError
 from eventsourcingdb import (
     Bound,
     BoundType,
+    Client,
     EventCandidate,
     IfEventIsMissingDuringObserve,
     ObserveEventsOptions,
@@ -13,7 +14,7 @@ from eventsourcingdb import (
     ServerError,
 )
 
-from .conftest import TestData
+from .conftest import TEST_DEADLINE_SECONDS, TestData
 from .shared.database import Database
 from .shared.event.assert_event import assert_event_equals
 
@@ -411,3 +412,19 @@ class TestObserveEvents:
         assert events_processed > events_to_process, (
             "Expected to process some events before cancellation"
         )
+
+    @staticmethod
+    @pytest.mark.asyncio
+    @pytest.mark.usefixtures("short_session_timeout")
+    async def test_keeps_observing_for_longer_than_the_session_timeout(
+        database: Database,
+    ) -> None:
+        # A client of its own, because a session picks up its timeout when it is
+        # created, which has to happen after the timeout was shortened.
+        async with Client(database.get_base_url(), database.get_api_token()) as client:
+            with pytest.raises(TimeoutError):
+                async with asyncio.timeout(TEST_DEADLINE_SECONDS) as deadline:
+                    async for _ in client.observe_events("/", ObserveEventsOptions(recursive=True)):
+                        pass
+
+        assert deadline.expired(), "Observing must only end at the deadline of the test."

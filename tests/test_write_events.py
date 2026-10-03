@@ -1,7 +1,10 @@
+import asyncio
+
 import pytest
 from aiohttp import ClientConnectorDNSError
 
 from eventsourcingdb import (
+    Client,
     EventCandidate,
     IsEventQlQueryTrue,
     IsSubjectOnEventId,
@@ -10,8 +13,9 @@ from eventsourcingdb import (
     ServerError,
 )
 
-from .conftest import TestData
+from .conftest import TEST_DEADLINE_SECONDS, TestData
 from .shared.database import Database
+from .shared.local_server import LocalServer, never_answer
 
 
 class TestWriteSubjects:
@@ -322,3 +326,30 @@ class TestWriteSubjects:
                     ),
                 ]
             )
+
+    @staticmethod
+    @pytest.mark.asyncio
+    @pytest.mark.usefixtures("short_session_timeout")
+    async def test_throws_an_error_if_server_answers_slower_than_the_session_timeout(
+        test_data: TestData,
+    ) -> None:
+        async with (
+            LocalServer("/api/v1/write-events", never_answer) as server,
+            Client(server.get_base_url(), "secret") as client,
+        ):
+            with pytest.raises(TimeoutError):
+                async with asyncio.timeout(TEST_DEADLINE_SECONDS) as deadline:
+                    await client.write_events(
+                        [
+                            EventCandidate(
+                                source=test_data.TEST_SOURCE_STRING,
+                                subject="/",
+                                type="com.foo.bar",
+                                data={},
+                            )
+                        ]
+                    )
+
+        assert not deadline.expired(), (
+            "The session timeout must end the request before the deadline of the test does."
+        )

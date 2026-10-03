@@ -154,6 +154,7 @@ class Client:
         response: Response = await self.__http_client.post(
             path='/api/v1/read-events',
             request_body=request_body,
+            is_stream=True,
         )
 
         async with response:
@@ -181,6 +182,7 @@ class Client:
         response: Response = await self.__http_client.post(
             path='/api/v1/run-eventql-query',
             request_body=request_body,
+            is_stream=True,
         )
 
         async with response:
@@ -218,6 +220,7 @@ class Client:
         response: Response = await self.http_client.post(
             path='/api/v1/observe-events',
             request_body=request_body,
+            is_stream=True,
         )
 
         async with response:
@@ -271,6 +274,7 @@ class Client:
         response: Response = await self.http_client.post(
             path='/api/v1/read-subjects',
             request_body=request_body,
+            is_stream=True,
         )
 
         async with response:
@@ -329,6 +333,7 @@ class Client:
             response = await self.http_client.post(
                 path='/api/v1/read-event-types',
                 request_body='',
+                is_stream=True,
             )
         except CustomError:
             raise
