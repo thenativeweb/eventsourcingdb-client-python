@@ -16,6 +16,7 @@ from .observe_events import ObserveEventsOptions
 from .parse_raw_message import parse_raw_message
 from .read_event_types import EventType, is_event_type
 from .read_events import ReadEventsOptions
+from .read_lines_with_heartbeat_timeout import read_lines_with_heartbeat_timeout
 from .read_subjects import is_subject
 from .write_events import Precondition
 
@@ -185,7 +186,7 @@ class Client:
 
         async with response:
             self._validate_response(response)
-            async for raw_message in response.body:
+            async for raw_message in read_lines_with_heartbeat_timeout(response.body):
                 message = parse_raw_message(raw_message)
 
                 if is_heartbeat(message):
@@ -222,7 +223,7 @@ class Client:
 
         async with response:
             self._validate_response(response)
-            async for raw_message in response.body:
+            async for raw_message in read_lines_with_heartbeat_timeout(response.body):
                 message = parse_raw_message(raw_message)
 
                 if is_heartbeat(message):

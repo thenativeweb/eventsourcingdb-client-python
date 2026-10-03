@@ -4,6 +4,7 @@ from .container import Container
 from .errors import (
     ClientError,
     CustomError,
+    HeartbeatTimeoutError,
     InternalError,
     ServerError,
     ValidationError,
@@ -39,6 +40,7 @@ __all__ = [
     "Event",
     "EventCandidate",
     "EventType",
+    "HeartbeatTimeoutError",
     "IfEventIsMissingDuringObserve",
     "IfEventIsMissingDuringRead",
     "InternalError",
