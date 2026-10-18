@@ -38,8 +38,14 @@ class ChooseTransport:
         if self.__transport is not None:
             return self.__transport
 
+        # A ping that failed is never shared with a later request, even before
+        # its callback has forgotten it.
         probe = self.__probe
-        if probe is None or probe.get_loop() is not asyncio.get_running_loop():
+        if (
+            probe is None
+            or probe.get_loop() is not asyncio.get_running_loop()
+            or (probe.done() and not ChooseTransport.__succeeded(probe))
+        ):
             probe = asyncio.create_task(self.__detect())
             probe.add_done_callback(self.__remember)
             self.__probe = probe
@@ -52,12 +58,14 @@ class ChooseTransport:
         if self.__probe is probe:
             self.__probe = None
 
+        if ChooseTransport.__succeeded(probe):
+            self.__transport = probe.result()
+
+    @staticmethod
+    def __succeeded(probe: asyncio.Task[Transport]) -> bool:
         # Asking for the exception also keeps asyncio from warning about one
         # that nobody retrieved, if no request waits for the ping anymore.
-        if probe.cancelled() or probe.exception() is not None:
-            return
-
-        self.__transport = probe.result()
+        return not probe.cancelled() and probe.exception() is None
 
     async def __detect(self) -> Transport:
         response = await self.__http_client.get(PROBE_PATH)
