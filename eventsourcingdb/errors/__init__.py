@@ -3,6 +3,7 @@ from .custom_error import CustomError
 from .heartbeat_timeout_error import HeartbeatTimeoutError
 from .internal_error import InternalError
 from .server_error import ServerError
+from .unsupported_hash_version_error import UnsupportedHashVersionError
 from .validation_error import ValidationError
 
 __all__ = [
@@ -11,5 +12,6 @@ __all__ = [
     "HeartbeatTimeoutError",
     "InternalError",
     "ServerError",
+    "UnsupportedHashVersionError",
     "ValidationError",
 ]

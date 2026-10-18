@@ -7,6 +7,7 @@ from .errors import (
     HeartbeatTimeoutError,
     InternalError,
     ServerError,
+    UnsupportedHashVersionError,
     ValidationError,
 )
 from .event import Event, EventCandidate
@@ -55,5 +56,6 @@ __all__ = [
     "ReadEventsOptions",
     "ReadFromLatestEvent",
     "ServerError",
+    "UnsupportedHashVersionError",
     "ValidationError",
 ]

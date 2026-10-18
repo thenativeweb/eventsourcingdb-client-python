@@ -4,19 +4,31 @@ from hashlib import sha256
 import pytest
 from aiohttp import web
 
-from eventsourcingdb import Event, EventCandidate, ReadEventsOptions
+from eventsourcingdb import (
+    Event,
+    EventCandidate,
+    ReadEventsOptions,
+    UnsupportedHashVersionError,
+)
 from eventsourcingdb.errors.validation_error import ValidationError
 
 from ..conftest import TestData
 from ..shared.database import Database
 from ..shared.stream_server import StreamServer
-from .fixtures import READ_EVENTS_WITH_HASH_V1, WRITTEN_EVENTS_WITH_HASH_V1
+from .fixtures import (
+    READ_EVENTS_WITH_HASH_V1,
+    READ_EVENTS_WITH_HASH_V2,
+    WRITTEN_EVENTS_WITH_HASH_V1,
+    WRITTEN_EVENTS_WITH_HASH_V2,
+)
 
 READ_EVENTS = [
     pytest.param(READ_EVENTS_WITH_HASH_V1, id='v1'),
+    pytest.param(READ_EVENTS_WITH_HASH_V2, id='v2'),
 ]
 WRITTEN_EVENTS = [
     pytest.param(WRITTEN_EVENTS_WITH_HASH_V1, id='v1'),
+    pytest.param(WRITTEN_EVENTS_WITH_HASH_V2, id='v2'),
 ]
 
 
@@ -196,3 +208,29 @@ class TestVerifyHashOfFixedEvents:
         event = Event.parse(json.loads(lines[1])['payload'])
 
         event.verify_hash()
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_fails_if_a_trace_field_of_an_event_with_a_hash_of_version_2_was_changed() -> None:
+        # Unlike version 1, version 2 also covers traceparent and tracestate.
+        events = await read_events_from(
+            [line.replace('foo=bar', 'foo=baz') for line in READ_EVENTS_WITH_HASH_V2]
+        )
+
+        events[0].verify_hash()
+        with pytest.raises(ValidationError, match='Failed to verify hash.'):
+            events[1].verify_hash()
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_fails_with_the_version_if_the_hash_is_of_an_unknown_version() -> None:
+        events = await read_events_from(
+            [line.replace('esdb:hash:v2:', 'esdb:hash:v3:') for line in READ_EVENTS_WITH_HASH_V2]
+        )
+
+        for event in events:
+            with pytest.raises(UnsupportedHashVersionError, match="Hash version 'v3' is not supported.") as error:
+                event.verify_hash()
+
+            assert error.value.version == 'v3'
+            assert isinstance(error.value, ValidationError)

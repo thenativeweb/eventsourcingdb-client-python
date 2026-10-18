@@ -609,6 +609,8 @@ To verify the integrity of an event, call the `verify_hash` function on the even
 event.verify_hash()
 ```
 
+The hash of an event has a version. EventSourcingDB writes hashes of version 2, which start with `esdb:hash:v2:`, since version 1.3, while events written before keep their hashes of version 1, which have no prefix. The `verify_hash` function supports both versions and computes the hash over the event's data exactly as the server sent it. If the hash is of a version the client SDK does not support, the function raises an `UnsupportedHashVersionError`, whose `version` attribute names the version.
+
 *Note that this only verifies the hash. If you also want to verify the signature, you can skip this step and call `verify_signature` directly, which performs a hash verification internally.*
 
 ### Verifying an Event's Signature

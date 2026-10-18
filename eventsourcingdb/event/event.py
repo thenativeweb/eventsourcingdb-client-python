@@ -7,9 +7,16 @@ from typing import Any, TypeVar
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 from ..errors.internal_error import InternalError
+from ..errors.unsupported_hash_version_error import UnsupportedHashVersionError
 from ..errors.validation_error import ValidationError
 
 Self = TypeVar("Self", bound="Event")
+
+# A hash of version 1 has no prefix, a hash of any later version starts with
+# the prefix followed by its version, such as esdb:hash:v2:.
+HASH_PREFIX = "esdb:hash:"
+HASH_V2_PREFIX = "esdb:hash:v2:"
+MISSING_FIELD = "-"
 
 
 @dataclass
@@ -117,6 +124,19 @@ class Event:
         return event
 
     def verify_hash(self) -> None:
+        if self.hash.startswith(HASH_PREFIX):
+            version = self.hash[len(HASH_PREFIX):].partition(":")[0]
+            if version != "v2":
+                raise UnsupportedHashVersionError(version)
+
+            expected_hash = self.__compute_hash_v2()
+        else:
+            expected_hash = self.__compute_hash_v1()
+
+        if expected_hash != self.hash:
+            raise ValidationError("Failed to verify hash.")
+
+    def __compute_hash_v1(self) -> str:
         metadata = (
             f"{self.spec_version}|"
             f"{self.event_id}|"
@@ -136,10 +156,28 @@ class Event:
         final_hash = sha256()
         final_hash.update(metadata_hash.encode("utf-8"))
         final_hash.update(data_hash.encode("utf-8"))
-        final_hash_hex = final_hash.hexdigest()
 
-        if final_hash_hex != self.hash:
-            raise ValidationError("Failed to verify hash.")
+        return final_hash.hexdigest()
+
+    def __compute_hash_v2(self) -> str:
+        # Every field is on a line of its own, and the data comes last, without a
+        # line feed after it.
+        fields = [
+            HASH_V2_PREFIX,
+            self.spec_version,
+            self.event_id,
+            self.predecessor_hash,
+            self._time_from_server,
+            self.source,
+            self.subject,
+            self.type,
+            self.data_content_type,
+            MISSING_FIELD if self.trace_parent is None else self.trace_parent,
+            MISSING_FIELD if self.trace_state is None else self.trace_state,
+        ]
+        content = "\n".join(fields).encode("utf-8") + b"\n" + self.__get_data_bytes()
+
+        return HASH_V2_PREFIX + sha256(content).hexdigest()
 
     def __get_data_bytes(self) -> bytes:
         serialized_data = Event.__serialize_data(self.data)
