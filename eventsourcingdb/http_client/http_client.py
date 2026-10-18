@@ -81,7 +81,6 @@ class HttpClient:
         self,
         path: str,
         request_body: str,
-        is_stream: bool = False,
     ) -> Response:
         if self.__session is None:
             await self.__initialize()
@@ -90,8 +89,6 @@ class HttpClient:
         headers = get_post_headers(self.__api_token)
 
         async_response = await self.__send(
-            url_path,
-            is_stream,
             lambda stall_guard: self.__session.post(  # type: ignore
                 url_path,
                 data=request_body,
@@ -114,8 +111,6 @@ class HttpClient:
         headers = get_get_headers(self.__api_token, with_authorization)
 
         async_response = await self.__send(
-            url_path,
-            False,
             lambda stall_guard: self.__session.get(  # type: ignore
                 url_path,
                 headers=headers,
@@ -127,8 +122,6 @@ class HttpClient:
 
     async def __send(
         self,
-        url_path: str,
-        is_stream: bool,
         send: Callable[[StallGuard], Awaitable[aiohttp.ClientResponse]],
     ) -> aiohttp.ClientResponse:
         stall_guard = StallGuard(self.__stall_timeout)
@@ -137,18 +130,11 @@ class HttpClient:
             async with stall_guard:
                 return await send(stall_guard)
         except TimeoutError as error:
+            # Only the stall guard means that the server stalled, any other
+            # timeout, such as one of the caller, is passed on. A stall is a
+            # stall wherever it happens: while waiting for a free connection
+            # of the pool, while connecting, while sending the request, and
+            # while waiting for the response.
             if not stall_guard.expired():
                 raise
-
-            # The errors are the ones that a stalling request ended with before
-            # there was a stall timeout: connecting ended after 30 seconds, and
-            # any other request than a stream after five minutes, also while it
-            # waited for a free connection of the pool. A stream used to wait
-            # forever, so it gets an error of its own.
-            if not stall_guard.is_waiting_for_connection and not stall_guard.is_connected:
-                raise aiohttp.ConnectionTimeoutError(
-                    f'Connection timeout to host {url_path}'
-                ) from error
-            if is_stream:
-                raise ConnectionStalledError(self.__stall_timeout) from error
-            raise
+            raise ConnectionStalledError(self.__stall_timeout) from error

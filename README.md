@@ -58,14 +58,9 @@ client = Client(
 
 The stall timeout cannot be turned off: it must be a finite number of seconds greater than zero, otherwise creating the client raises a `ValueError`.
 
-What a request raises once the server stalls depends on the request:
+Once the server stalls, every request raises a `ConnectionStalledError`, which is a subclass of `ServerError`, whether it stalls while connecting, while sending the request, while waiting for the response, or in the middle of a stream. Its `stall_timeout` attribute holds the stall timeout in seconds. For details on streams, see [Detecting a Stalled Connection](#detecting-a-stalled-connection).
 
-- If connecting to the server stalls, the request raises aiohttp's `ConnectionTimeoutError`. `read_event_types` wraps it in an `InternalError`, as it does with every error of the connection.
-- `ping`, `verify_api_token`, `write_events`, `register_event_schema`, and `read_event_type` raise a `TimeoutError`.
-- `read_events`, `read_subjects`, and `read_event_types` raise a `ConnectionStalledError`, which is a subclass of `ServerError`.
-- `observe_events` and `run_eventql_query` raise a `HeartbeatTimeoutError` once the server has answered, and a `ConnectionStalledError` before. `HeartbeatTimeoutError` is a subclass of `ConnectionStalledError`. For details, see [Detecting a Stalled Connection](#detecting-a-stalled-connection).
-
-The stall timeout also covers the time a request waits for a free connection: a client keeps at most 100 connections open at the same time, so with as many streams open, a further request waits until one of them ends. If it waits for longer than the stall timeout, it fails as if the server had stalled after the request was sent, with a `TimeoutError` or a `ConnectionStalledError` as listed above.
+The stall timeout also covers the time a request waits for a free connection: a client keeps at most 100 connections open at the same time, so with as many streams open, a further request waits until one of them ends. If it waits for longer than the stall timeout, it raises a `ConnectionStalledError` as well.
 
 In any case, the client closes the connection. Your own timeouts and cancellations, such as `asyncio.timeout`, still apply and can end a request earlier.
 
@@ -317,7 +312,7 @@ async for row in client.run_eventql_query(
 
 *Note that each row returned by the generator matches the projection specified in your query.*
 
-While the query runs, the server sends a heartbeat every second whenever there is no row to send. If neither a row nor a heartbeat arrives for the [stall timeout](#configuring-the-stall-timeout), 30 seconds by default, the generator closes the connection and raises a `HeartbeatTimeoutError`, which is a subclass of `ConnectionStalledError` and of `ServerError`. For details, see [Detecting a Stalled Connection](#detecting-a-stalled-connection).
+While the query runs, the server sends a heartbeat every second whenever there is no row to send. If neither a row nor a heartbeat arrives for the [stall timeout](#configuring-the-stall-timeout), 30 seconds by default, the generator closes the connection and raises a `ConnectionStalledError`, which is a subclass of `ServerError`. For details, see [Detecting a Stalled Connection](#detecting-a-stalled-connection).
 
 #### Aborting a Query
 
@@ -485,10 +480,10 @@ async for event in client.observe_events(
 
 #### Detecting a Stalled Connection
 
-While observing, the server sends a heartbeat every second whenever there is no new event. If neither an event nor a heartbeat arrives for the [stall timeout](#configuring-the-stall-timeout), 30 seconds by default, for example because a proxy keeps the connection open but no longer passes anything on, the generator closes the connection and raises a `HeartbeatTimeoutError`. Since `HeartbeatTimeoutError` is a subclass of `ConnectionStalledError`, which in turn is a subclass of `ServerError`, you can handle it specifically, together with other stalled connections, or together with other server errors:
+While observing, the server sends a heartbeat every second whenever there is no new event. If neither an event nor a heartbeat arrives for the [stall timeout](#configuring-the-stall-timeout), 30 seconds by default, for example because a proxy keeps the connection open but no longer passes anything on, the generator closes the connection and raises a `ConnectionStalledError`. Since `ConnectionStalledError` is a subclass of `ServerError`, you can handle it specifically or together with other server errors:
 
 ```python
-from eventsourcingdb import HeartbeatTimeoutError, ObserveEventsOptions
+from eventsourcingdb import ConnectionStalledError, ObserveEventsOptions
 
 try:
   async for event in client.observe_events(
@@ -498,7 +493,7 @@ try:
     ),
   ):
     pass
-except HeartbeatTimeoutError:
+except ConnectionStalledError:
   # Neither an event nor a heartbeat arrived for the stall timeout.
   pass
 ```

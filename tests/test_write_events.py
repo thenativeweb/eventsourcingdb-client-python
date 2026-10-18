@@ -4,6 +4,7 @@ import pytest
 from aiohttp import ClientConnectorDNSError, web
 
 from eventsourcingdb import (
+    ConnectionStalledError,
     EventCandidate,
     IsEventQlQueryTrue,
     IsSubjectOnEventId,
@@ -337,7 +338,7 @@ class TestWriteSubjects:
         async with StreamServer(write_stream, stall_timeout=STALL_TIMEOUT_SECONDS) as server:
             client = server.get_client()
 
-            with pytest.raises(TimeoutError):
+            with pytest.raises(ConnectionStalledError):
                 async with asyncio.timeout(TEST_DEADLINE_SECONDS) as deadline:
                     await client.write_events(
                         [

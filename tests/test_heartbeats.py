@@ -10,14 +10,13 @@ from aiohttp import web
 from eventsourcingdb import (
     Client,
     ConnectionStalledError,
-    HeartbeatTimeoutError,
     ObserveEventsOptions,
 )
 from eventsourcingdb.http_client import Response
 
 from .shared.stream_server import StreamServer
 
-SHORT_HEARTBEAT_TIMEOUT_SECONDS = 0.5
+SHORT_STALL_TIMEOUT_SECONDS = 0.5
 GUARD_TIMEOUT_SECONDS = 5
 
 HEARTBEAT_LINE = b'{"type":"heartbeat","payload":{}}\n'
@@ -67,11 +66,10 @@ async def stall() -> None:
 
 
 def stream_server(write_stream: Callable[[web.StreamResponse], Any]) -> StreamServer:
-    # The heartbeat timeout is the stall timeout of the client.
-    return StreamServer(write_stream, stall_timeout=SHORT_HEARTBEAT_TIMEOUT_SECONDS)
+    return StreamServer(write_stream, stall_timeout=SHORT_STALL_TIMEOUT_SECONDS)
 
 
-class TestHeartbeatTimeout:
+class TestHeartbeats:
     @staticmethod
     @pytest.mark.asyncio
     @pytest.mark.parametrize('start_stream', STREAMS)
@@ -86,17 +84,17 @@ class TestHeartbeatTimeout:
             started_at = time.monotonic()
 
             with pytest.raises(
-                HeartbeatTimeoutError,
-                match='No event and no heartbeat arrived for 0.5 seconds',
+                ConnectionStalledError,
+                match='Nothing arrived from the server for 0.5 seconds',
             ) as error:
                 async with asyncio.timeout(GUARD_TIMEOUT_SECONDS):
                     async for _ in start_stream(server.get_client()):
                         pass
 
             elapsed_seconds = time.monotonic() - started_at
-            assert elapsed_seconds >= SHORT_HEARTBEAT_TIMEOUT_SECONDS
-            assert elapsed_seconds < SHORT_HEARTBEAT_TIMEOUT_SECONDS + 1
-            assert isinstance(error.value, ConnectionStalledError)
+            assert elapsed_seconds >= SHORT_STALL_TIMEOUT_SECONDS
+            assert elapsed_seconds < SHORT_STALL_TIMEOUT_SECONDS + 1
+            assert type(error.value) is ConnectionStalledError
 
             async with asyncio.timeout(GUARD_TIMEOUT_SECONDS):
                 await server.client_disconnected.wait()
@@ -128,7 +126,7 @@ class TestHeartbeatTimeout:
 
             elapsed_seconds = time.monotonic() - started_at
             assert len(items) == 1
-            assert elapsed_seconds > SHORT_HEARTBEAT_TIMEOUT_SECONDS
+            assert elapsed_seconds > SHORT_STALL_TIMEOUT_SECONDS
 
     @staticmethod
     @pytest.mark.asyncio
@@ -156,7 +154,7 @@ class TestHeartbeatTimeout:
     @staticmethod
     @pytest.mark.asyncio
     @pytest.mark.parametrize('start_stream', STREAMS)
-    async def test_cancelling_ends_stream_without_heartbeat_timeout(
+    async def test_cancelling_ends_stream_without_a_stalled_connection(
         start_stream: StartStream,
     ) -> None:
         async def write_stream(response: web.StreamResponse) -> None:
@@ -169,7 +167,7 @@ class TestHeartbeatTimeout:
                     pass
 
             task = asyncio.create_task(consume_stream())
-            await asyncio.sleep(SHORT_HEARTBEAT_TIMEOUT_SECONDS / 2)
+            await asyncio.sleep(SHORT_STALL_TIMEOUT_SECONDS / 2)
             task.cancel()
 
             with pytest.raises(asyncio.CancelledError):
@@ -180,7 +178,7 @@ class TestHeartbeatTimeout:
     @staticmethod
     @pytest.mark.asyncio
     @pytest.mark.parametrize('start_stream', STREAMS)
-    async def test_does_not_report_timeout_of_caller_as_heartbeat_timeout(
+    async def test_does_not_report_timeout_of_caller_as_a_stalled_connection(
         start_stream: StartStream,
     ) -> None:
         async def write_stream(response: web.StreamResponse) -> None:
@@ -189,13 +187,13 @@ class TestHeartbeatTimeout:
 
         async with stream_server(write_stream) as server:
             with pytest.raises(TimeoutError):
-                async with asyncio.timeout(SHORT_HEARTBEAT_TIMEOUT_SECONDS / 2):
+                async with asyncio.timeout(SHORT_STALL_TIMEOUT_SECONDS / 2):
                     async for _ in start_stream(server.get_client()):
                         pass
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_passes_on_timeouts_that_are_not_heartbeat_timeouts() -> None:
+    async def test_passes_on_timeouts_that_are_not_stalls() -> None:
         class TimingOutStream:
             @staticmethod
             async def readany() -> bytes:
@@ -208,14 +206,16 @@ class TestHeartbeatTimeout:
             def close() -> None:
                 pass
 
-        response = Response(TimingOutResponse(), SHORT_HEARTBEAT_TIMEOUT_SECONDS)  # type: ignore
+        response = Response(TimingOutResponse(), SHORT_STALL_TIMEOUT_SECONDS)  # type: ignore
 
-        with pytest.raises(TimeoutError, match='Session timed out'):
-            async for _ in response.read_lines(HeartbeatTimeoutError):
+        with pytest.raises(TimeoutError, match='Session timed out') as error:
+            async for _ in response.read_lines():
                 pass
 
+        assert type(error.value) is TimeoutError
+
     @staticmethod
-    def test_keeps_the_message_of_the_default_heartbeat_timeout() -> None:
-        assert str(HeartbeatTimeoutError()) == (
-            'Server error occurred: No event and no heartbeat arrived for 30 seconds'
+    def test_names_the_stall_timeout_in_the_message() -> None:
+        assert str(ConnectionStalledError(30)) == (
+            'Server error occurred: Nothing arrived from the server for 30 seconds'
         )

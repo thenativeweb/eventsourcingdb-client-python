@@ -15,8 +15,6 @@ from eventsourcingdb import (
     Client,
     ConnectionStalledError,
     EventCandidate,
-    HeartbeatTimeoutError,
-    InternalError,
     ObserveEventsOptions,
     ReadEventsOptions,
     ServerError,
@@ -92,10 +90,8 @@ async def run_eventql_query(client: Client) -> None:
         pass
 
 
-# Before there was a stall timeout, a stalling request that is not a stream
-# ended with a TimeoutError after five minutes, so it still does. A stream
-# waited forever, so it ends with a ConnectionStalledError, or, once the
-# response has arrived, with a HeartbeatTimeoutError if it sends heartbeats.
+# Every request ends with a ConnectionStalledError once the server stalls,
+# whether it is a stream or not.
 ONE_SHOT_REQUESTS = [
     pytest.param(ping, id='ping'),
     pytest.param(verify_api_token, id='verify_api_token'),
@@ -116,17 +112,19 @@ HEARTBEAT_STREAMS = [
 # Partial responses, after which the server stalls. register_event_schema does
 # not read the body of a successful response, so it has none.
 PARTIAL_RESPONSES = [
-    pytest.param(ping, b'{"specversion":', TimeoutError, id='ping'),
-    pytest.param(verify_api_token, b'{"type":', TimeoutError, id='verify_api_token'),
-    pytest.param(write_events, b'[', TimeoutError, id='write_events'),
-    pytest.param(read_event_type, b'{"eventType":', TimeoutError, id='read_event_type'),
+    pytest.param(ping, b'{"specversion":', ConnectionStalledError, id='ping'),
+    pytest.param(verify_api_token, b'{"type":', ConnectionStalledError, id='verify_api_token'),
+    pytest.param(write_events, b'[', ConnectionStalledError, id='write_events'),
+    pytest.param(read_event_type, b'{"eventType":', ConnectionStalledError, id='read_event_type'),
     pytest.param(read_events, b'{"type":"event",', ConnectionStalledError, id='read_events'),
     pytest.param(read_subjects, b'{"type":"subject",', ConnectionStalledError, id='read_subjects'),
     pytest.param(
         read_event_types, b'{"type":"eventType",', ConnectionStalledError, id='read_event_types'
     ),
-    pytest.param(observe_events, HEARTBEAT_LINE, HeartbeatTimeoutError, id='observe_events'),
-    pytest.param(run_eventql_query, HEARTBEAT_LINE, HeartbeatTimeoutError, id='run_eventql_query'),
+    pytest.param(observe_events, HEARTBEAT_LINE, ConnectionStalledError, id='observe_events'),
+    pytest.param(
+        run_eventql_query, HEARTBEAT_LINE, ConnectionStalledError, id='run_eventql_query'
+    ),
 ]
 
 # Complete responses, which the server sends in parts.
@@ -233,27 +231,20 @@ class TestStallTimeout:
 
     @staticmethod
     @pytest.mark.asyncio
-    @pytest.mark.parametrize(
-        ('request_', 'expected_error'),
-        [pytest.param(*parameter.values, TimeoutError, id=parameter.id) for parameter in ONE_SHOT_REQUESTS]
-        + [
-            pytest.param(*parameter.values, ConnectionStalledError, id=parameter.id)
-            for parameter in STREAMS + HEARTBEAT_STREAMS
-        ],
-    )
+    @pytest.mark.parametrize('request_', ONE_SHOT_REQUESTS + STREAMS + HEARTBEAT_STREAMS)
     async def test_fails_if_the_server_does_not_answer_within_the_stall_timeout(
-        request_: Request, expected_error: type[Exception]
+        request_: Request,
     ) -> None:
         async with StreamServer(None, stall_timeout=STALL_TIMEOUT_SECONDS) as server:
             started_at = time.monotonic()
 
-            with pytest.raises(expected_error) as error:
+            with pytest.raises(ConnectionStalledError) as error:
                 async with asyncio.timeout(GUARD_TIMEOUT_SECONDS) as guard:
                     await request_(server.get_client())
 
             elapsed_seconds = time.monotonic() - started_at
             assert not guard.expired()
-            assert type(error.value) is expected_error
+            assert type(error.value) is ConnectionStalledError
             assert elapsed_seconds >= STALL_TIMEOUT_SECONDS
             assert elapsed_seconds < STALL_TIMEOUT_SECONDS + 1
 
@@ -358,19 +349,17 @@ class TestStallTimeout:
     @staticmethod
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
-        ('request_', 'expected_error'),
+        'request_',
         [
-            pytest.param(ping, aiohttp.ConnectionTimeoutError, id='ping'),
-            pytest.param(write_events, aiohttp.ConnectionTimeoutError, id='write_events'),
-            pytest.param(read_events, aiohttp.ConnectionTimeoutError, id='read_events'),
-            pytest.param(observe_events, aiohttp.ConnectionTimeoutError, id='observe_events'),
-            # Reading event types wraps any error that is not one of the client
-            # SDK in an InternalError, as it does for every connection error.
-            pytest.param(read_event_types, InternalError, id='read_event_types'),
+            pytest.param(ping, id='ping'),
+            pytest.param(write_events, id='write_events'),
+            pytest.param(read_events, id='read_events'),
+            pytest.param(observe_events, id='observe_events'),
+            pytest.param(read_event_types, id='read_event_types'),
         ],
     )
-    async def test_fails_with_a_connection_timeout_if_connecting_stalls(
-        monkeypatch: pytest.MonkeyPatch, request_: Request, expected_error: type[Exception]
+    async def test_fails_with_a_stalled_connection_if_connecting_stalls(
+        monkeypatch: pytest.MonkeyPatch, request_: Request
     ) -> None:
         monkeypatch.setattr(aiohttp.connector, 'DefaultResolver', HangingResolver)
 
@@ -379,16 +368,15 @@ class TestStallTimeout:
         ) as client:
             started_at = time.monotonic()
 
-            with pytest.raises(expected_error) as error:
+            with pytest.raises(ConnectionStalledError) as error:
                 async with asyncio.timeout(GUARD_TIMEOUT_SECONDS) as guard:
                     await request_(client)
 
             elapsed_seconds = time.monotonic() - started_at
             assert not guard.expired()
+            assert type(error.value) is ConnectionStalledError
             assert elapsed_seconds >= STALL_TIMEOUT_SECONDS
             assert elapsed_seconds < STALL_TIMEOUT_SECONDS + 1
-            if expected_error is InternalError:
-                assert isinstance(error.value.__cause__, aiohttp.ConnectionTimeoutError)
 
     @staticmethod
     @pytest.mark.asyncio
@@ -403,7 +391,7 @@ class TestStallTimeout:
             async with Client(
                 f'http://127.0.0.1:{port}', 'secret', stall_timeout=STALL_TIMEOUT_SECONDS
             ) as client:
-                with pytest.raises(TimeoutError) as error:
+                with pytest.raises(ConnectionStalledError) as error:
                     async with asyncio.timeout(GUARD_TIMEOUT_SECONDS) as guard:
                         # Far more data than the buffers of the connection hold,
                         # so that sending stalls once they are full.
@@ -419,23 +407,23 @@ class TestStallTimeout:
                         )
 
                 assert not guard.expired()
-                assert type(error.value) is TimeoutError
+                assert type(error.value) is ConnectionStalledError
         finally:
             server.close()
 
     @staticmethod
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
-        ('request_', 'expected_error'),
+        'request_',
         [
-            pytest.param(ping, TimeoutError, id='ping'),
-            pytest.param(write_events, TimeoutError, id='write_events'),
-            pytest.param(read_events, ConnectionStalledError, id='read_events'),
-            pytest.param(observe_events, ConnectionStalledError, id='observe_events'),
+            pytest.param(ping, id='ping'),
+            pytest.param(write_events, id='write_events'),
+            pytest.param(read_events, id='read_events'),
+            pytest.param(observe_events, id='observe_events'),
         ],
     )
     async def test_fails_if_a_request_waits_for_a_free_connection_for_longer_than_the_stall_timeout(
-        single_connection: None, request_: Request, expected_error: type[Exception]
+        single_connection: None, request_: Request
     ) -> None:
         async def write_stream(response: web.StreamResponse) -> None:
             # The first query keeps the only connection busy for good.
@@ -451,13 +439,13 @@ class TestStallTimeout:
             try:
                 started_at = time.monotonic()
 
-                with pytest.raises(expected_error) as error:
+                with pytest.raises(ConnectionStalledError) as error:
                     async with asyncio.timeout(GUARD_TIMEOUT_SECONDS) as guard:
                         await request_(client)
 
                 elapsed_seconds = time.monotonic() - started_at
                 assert not guard.expired()
-                assert type(error.value) is expected_error
+                assert type(error.value) is ConnectionStalledError
                 assert elapsed_seconds >= STALL_TIMEOUT_SECONDS
                 assert elapsed_seconds < STALL_TIMEOUT_SECONDS + 1
             finally:
