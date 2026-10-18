@@ -87,8 +87,8 @@ from eventsourcingdb import DbApiError, ErrorCode, IsSubjectPristine
 
 try:
   written_events = await client.write_events(
-    events = [
-      # events
+    event_candidates = [
+      # event candidates
     ],
     preconditions = [
       IsSubjectPristine('/books/42')
@@ -115,8 +115,8 @@ from eventsourcingdb import OutcomeUnknownError
 
 try:
   written_events = await client.write_events(
-    events = [
-      # events
+    event_candidates = [
+      # event candidates
     ],
   )
 except OutcomeUnknownError as error:
@@ -128,25 +128,27 @@ except OutcomeUnknownError as error:
 
 ### Writing Events
 
-Call the `write_events` function and hand over a list with one or more events. You do not have to provide all event fields – some are automatically added by the server.
+Call the `write_events` function and hand over a list with one or more event candidates. You do not have to provide all event fields – some are automatically added by the server.
 
-Specify `source`, `subject`, `type`, and `data` according to the [CloudEvents](https://docs.eventsourcingdb.io/fundamentals/cloud-events/) format.
+Specify `source`, `subject`, `type`, and `data` according to the [CloudEvents](https://docs.eventsourcingdb.io/fundamentals/cloud-events/) format. Optionally, specify `trace_parent` and `trace_state`.
 
 The function returns the written events, including the fields added by the server:
 
 ```python
+from eventsourcingdb import EventCandidate
+
 written_events = await client.write_events(
-  events = [
-    {
-      'source': 'https://library.eventsourcingdb.io',
-      'subject': '/books/42',
-      'type': 'io.eventsourcingdb.library.book-acquired',
-      'data': {
+  event_candidates = [
+    EventCandidate(
+      source = 'https://library.eventsourcingdb.io',
+      subject = '/books/42',
+      type = 'io.eventsourcingdb.library.book-acquired',
+      data = {
         'title': '2001 – A Space Odyssey',
         'author': 'Arthur C. Clarke',
         'isbn': '978-0756906788',
       },
-    }
+    )
   ]
 )
 ```
@@ -159,8 +161,8 @@ If you only want to write events in case a subject (such as `/books/42`) does no
 from eventsourcingdb import IsSubjectPristine
 
 written_events = await client.write_events(
-  events = [
-    # events
+  event_candidates = [
+    # event candidates
   ],
   preconditions = [
     IsSubjectPristine('/books/42')
@@ -176,8 +178,8 @@ If you only want to write events in case a subject (such as `/books/42`) already
 from eventsourcingdb import IsSubjectPopulated
 
 written_events = await client.write_events(
-  events = [
-    # events
+  event_candidates = [
+    # event candidates
   ],
   preconditions = [
     IsSubjectPopulated('/books/42')
@@ -193,8 +195,8 @@ If you only want to write events in case the last event of a subject (such as `/
 from eventsourcingdb import IsSubjectOnEventId
 
 written_events = await client.write_events(
-  events = [
-    # events
+  event_candidates = [
+    # event candidates
   ],
   preconditions = [
     IsSubjectOnEventId('/books/42', '0')
@@ -212,8 +214,8 @@ If you want to write events depending on an EventQL query, import the `IsEventQl
 from eventsourcingdb import IsEventQlQueryTrue
 
 written_events = await client.write_events(
-  events = [
-    # events
+  event_candidates = [
+    # event candidates
   ],
   preconditions = [
     IsEventQlQueryTrue('FROM e IN events WHERE e.type == "io.eventsourcingdb.library.book-borrowed" PROJECT INTO COUNT() < 10')
