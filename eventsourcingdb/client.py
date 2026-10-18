@@ -1,28 +1,15 @@
-import json
-from collections import OrderedDict
 from collections.abc import AsyncGenerator
-from http import HTTPStatus
+from contextlib import aclosing
 from types import TracebackType
 from typing import Any, Self, TypeAlias, TypeVar
 
-from .errors import (
-    CustomError,
-    InternalError,
-    ServerError,
-    ValidationError,
-)
+from .errors import CustomError, InternalError
 from .event import Event, EventCandidate
-from .event.find_raw_data import defer_raw_data_of_events, defer_raw_data_of_stream_item
-from .http_client import DEFAULT_STALL_TIMEOUT_SECONDS, HttpClient, Response
-from .is_event import is_event
-from .is_heartbeat import is_heartbeat
-from .is_stream_error import is_stream_error
-from .is_valid_server_header import is_valid_server_header
+from .http_client import DEFAULT_STALL_TIMEOUT_SECONDS, HttpClient
 from .observe_events import ObserveEventsOptions
-from .parse_raw_message import parse_raw_message
-from .read_event_types import EventType, is_event_type
+from .read_event_types import EventType
 from .read_events import ReadEventsOptions
-from .read_subjects import is_subject
+from .transport import ChooseTransport
 from .write_events import Precondition
 
 T = TypeVar('T')
@@ -49,6 +36,7 @@ class Client:
             api_token=api_token,
             stall_timeout=stall_timeout,
         )
+        self.__transports = ChooseTransport(self.__http_client)
 
     async def __aenter__(self) -> Self:
         await self.__http_client.__aenter__()
@@ -66,58 +54,13 @@ class Client:
     def http_client(self) -> HttpClient:
         return self.__http_client
 
-    def _validate_response(self, response: Response, error_message: str | None = None) -> None:
-        """Validate that response comes from EventSourcingDB and has OK status."""
-        if not is_valid_server_header(response):
-            raise ServerError("Server must be EventSourcingDB")
-        if response.status_code != HTTPStatus.OK:
-            msg = error_message or f"Unexpected response status: {response}"
-            raise ServerError(msg)
-
     async def ping(self) -> None:
-        specversion_field = "specversion"
-        type_field = "type"
-        ping_received_type = "io.eventsourcingdb.api.ping-received"
-
-        response = await self.http_client.get("/api/v1/ping")
-        if not is_valid_server_header(response):
-            raise ServerError("Server must be EventSourcingDB")
-        response_body = bytes.decode(await response.read(), encoding="utf-8")
-
-        if response.status_code != HTTPStatus.OK:
-            raise ServerError(f"Received unexpected response: {response_body}")
-
-        response_json = json.loads(response_body)
-        if (
-            isinstance(response_json, dict)
-            and specversion_field in response_json
-            and type_field in response_json
-            and response_json.get(type_field) == ping_received_type
-        ):
-            return
-
-        raise ServerError(f"Received unexpected response: {response_body}")
+        transport = await self.__transports.get()
+        await transport.ping()
 
     async def verify_api_token(self) -> None:
-        request_body = json.dumps({})
-
-        response: Response = await self.http_client.post(
-            path='/api/v1/verify-api-token',
-            request_body=request_body,
-        )
-        async with response:
-            self._validate_response(response, f"Failed to verify API token: {response}")
-
-            response_data = await response.read()
-            response_data = bytes.decode(response_data, encoding='utf-8')
-            response_json = json.loads(response_data)
-
-            if not isinstance(response_json, dict) or 'type' not in response_json:
-                raise ServerError('Failed to parse response: {response}')
-
-            expected_event_type = 'io.eventsourcingdb.api.api-token-verified'
-            if response_json.get('type') != expected_event_type:
-                raise ServerError(f'Failed to verify API token: {response}')
+        transport = await self.__transports.get()
+        await transport.verify_api_token()
 
     async def write_events(
         self,
@@ -127,254 +70,63 @@ class Client:
         if preconditions is None:
             preconditions = []
 
-        request_body = json.dumps(
-            {
-                'events': [event_candidate.to_json() for event_candidate in event_candidates],
-                'preconditions': [precondition.to_json() for precondition in preconditions]
-            }
-        )
-
-        response = await self.http_client.post(
-            path='/api/v1/write-events',
-            request_body=request_body,
-        )
-
-        self._validate_response(response)
-
-        response_text = bytes.decode(await response.read(), encoding='utf-8')
-        response_data = json.loads(response_text, object_pairs_hook=OrderedDict)
-
-        if not isinstance(response_data, list):
-            raise ServerError(
-                f'Failed to parse response \'{response_data}\' to list.')
-
-        result = []
-        for unparsed_event_context, find_data_from_server in zip(
-            response_data, defer_raw_data_of_events(response_text, len(response_data)), strict=True
-        ):
-            result.append(Event._parse_from_server(unparsed_event_context, find_data_from_server))
-        return result
+        transport = await self.__transports.get()
+        return await transport.write_events(event_candidates, preconditions)
 
     async def read_events(
         self,
         subject: str,
         options: ReadEventsOptions
     ) -> EventStream:
-        request_body = json.dumps({
-            'subject': subject,
-            'options': options.to_json()
-        })
-        response: Response = await self.__http_client.post(
-            path='/api/v1/read-events',
-            request_body=request_body,
-        )
-
-        async with response:
-            self._validate_response(response)
-            async for raw_message in response.read_lines():
-                message = parse_raw_message(raw_message)
-
-                if is_stream_error(message):
-                    raise ServerError(f'{message["payload"]["error"]}.')
-
-                if is_event(message):
-                    event = Event._parse_from_server(
-                        message['payload'],
-                        defer_raw_data_of_stream_item(raw_message),
-                    )
-                    yield event
-                    continue
-
-                raise ServerError(
-                    f'Failed to read events, an unexpected stream item was received: '
-                    f'{message}.'
-                )
+        transport = await self.__transports.get()
+        async with aclosing(transport.read_events(subject, options)) as events:
+            async for event in events:
+                yield event
 
     async def run_eventql_query(self, query: str) -> AsyncGenerator[Any]:
-        request_body = json.dumps({
-            'query': query,
-        })
-        response: Response = await self.__http_client.post(
-            path='/api/v1/run-eventql-query',
-            request_body=request_body,
-        )
-
-        async with response:
-            self._validate_response(response)
-            async for raw_message in response.read_lines():
-                message = parse_raw_message(raw_message)
-
-                if is_heartbeat(message):
-                    continue
-
-                if is_stream_error(message):
-                    error_message = message.get('payload', {}).get('error', 'Unknown error')
-                    raise ServerError(f"{error_message}.")
-                if message.get('type') == 'row':
-                    payload = message['payload']
-
-                    yield payload
-                    continue
-
-                raise ServerError(
-                    'Failed to execute EventQL query, an unexpected stream item was received: '
-                    f'{message}.'
-                )
+        transport = await self.__transports.get()
+        async with aclosing(transport.run_eventql_query(query)) as rows:
+            async for row in rows:
+                yield row
 
     async def observe_events(
         self,
         subject: str,
         options: ObserveEventsOptions
     ) -> EventStream:
-        request_body = json.dumps({
-            'subject': subject,
-            'options': options.to_json()
-        })
-
-        response: Response = await self.http_client.post(
-            path='/api/v1/observe-events',
-            request_body=request_body,
-        )
-
-        async with response:
-            self._validate_response(response)
-            async for raw_message in response.read_lines():
-                message = parse_raw_message(raw_message)
-
-                if is_heartbeat(message):
-                    continue
-
-                if is_stream_error(message):
-                    raise ServerError(f'{message["payload"]["error"]}.')
-
-                if is_event(message):
-                    event = Event._parse_from_server(
-                        message['payload'],
-                        defer_raw_data_of_stream_item(raw_message),
-                    )
-                    yield event
-                    continue
-
-                raise ServerError(
-                    f'Failed to read events, an unexpected stream item was received: '
-                    f'{message}.'
-                )
+        transport = await self.__transports.get()
+        async with aclosing(transport.observe_events(subject, options)) as events:
+            async for event in events:
+                yield event
 
     async def register_event_schema(self, event_type: str, json_schema: JsonDict) -> None:
-        request_body = json.dumps({
-            'eventType': event_type,
-            'schema': json_schema,
-        })
-
-        response: Response = await self.http_client.post(
-            path='/api/v1/register-event-schema',
-            request_body=request_body,
-        )
-
-        async with response:
-            if not is_valid_server_header(response):
-                raise ServerError("Server must be EventSourcingDB")
-            if response.status_code != HTTPStatus.OK:
-                error_body = await response.read()
-                error_text = bytes.decode(error_body, encoding="utf-8")
-                raise ServerError(error_text)
+        transport = await self.__transports.get()
+        await transport.register_event_schema(event_type, json_schema)
 
     async def read_subjects(
         self,
         base_subject: str
     ) -> SubjectStream:
-        request_body = json.dumps({
-            'baseSubject': base_subject
-        })
-
-        response: Response = await self.http_client.post(
-            path='/api/v1/read-subjects',
-            request_body=request_body,
-        )
-
-        async with response:
-            self._validate_response(response)
-            async for raw_message in response.read_lines():
-                message = parse_raw_message(raw_message)
-
-                if is_stream_error(message):
-                    raise ServerError(message['payload']['error'])
-
-                if is_subject(message):
-                    yield message['payload']['subject']
-                    continue
-
-                raise ServerError(
-                    f'Failed to read subjects, an unexpected stream item '
-                    f'was received \'{message}\'.'
-                )
+        transport = await self.__transports.get()
+        async with aclosing(transport.read_subjects(base_subject)) as subjects:
+            async for subject in subjects:
+                yield subject
 
     async def read_event_type(self, event_type: str) -> EventType:
-        request_body = json.dumps({
-            'eventType': event_type
-        })
-
-        response: Response = await self.http_client.post(
-            path='/api/v1/read-event-type',
-            request_body=request_body,
-        )
-
-        async with response:
-            if not is_valid_server_header(response):
-                raise ServerError("Server must be EventSourcingDB")
-
-            response_data = await response.read()
-            response_data = bytes.decode(response_data, encoding='utf-8')
-
-            if response.status_code != HTTPStatus.OK:
-                raise ServerError(response_data)
-
-            response_json = json.loads(response_data)
-
-            if not isinstance(response_json, dict):
-                raise ServerError(
-                    f'Failed to parse response \'{response_json}\' to dict.')
-
-            try:
-                return EventType.parse(response_json)
-            except ValidationError as validation_error:
-                raise ServerError(str(validation_error)) from validation_error
-            except Exception as other_error:
-                raise InternalError(str(other_error)) from other_error
-
+        transport = await self.__transports.get()
+        return await transport.read_event_type(event_type)
 
     async def read_event_types(self) -> EventTypeStream:
+        # Reading event types wraps every error of the request that is not one
+        # of the client SDK in an InternalError, so choosing the transport,
+        # which may send a request of its own, does as well.
         try:
-            response = await self.http_client.post(
-                path='/api/v1/read-event-types',
-                request_body='',
-                )
+            transport = await self.__transports.get()
         except CustomError:
             raise
         except Exception as error:
             raise InternalError(str(error)) from error
 
-        async with response:
-            self._validate_response(response)
-            async for raw_message in response.read_lines():
-                message = parse_raw_message(raw_message)
-
-                if is_stream_error(message):
-                    raise ServerError(message['payload']['error'])
-
-                if is_event_type(message):
-                    event_type: EventType
-                    try:
-                        event_type = EventType.parse(message['payload'])
-                    except ValidationError as validation_error:
-                        raise ServerError(str(validation_error)) from validation_error
-                    except Exception as other_error:
-                        raise InternalError(str(other_error)) from other_error
-
-                    yield event_type
-                    continue
-
-                raise ServerError(
-                    f'Failed to read event types, an unexpected '
-                    f'stream item was received \'{message}\'.'
-                )
+        async with aclosing(transport.read_event_types()) as event_types:
+            async for event_type in event_types:
+                yield event_type
