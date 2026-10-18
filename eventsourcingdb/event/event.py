@@ -1,4 +1,5 @@
 import json
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from hashlib import sha256
@@ -6,10 +7,21 @@ from typing import Any, TypeVar
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
+from ..errors.hash_verification_failed_error import HashVerificationFailedError
 from ..errors.internal_error import InternalError
+from ..errors.signature_verification_failed_error import (
+    SignatureVerificationFailedError,
+)
+from ..errors.unsupported_hash_version_error import UnsupportedHashVersionError
 from ..errors.validation_error import ValidationError
 
 Self = TypeVar("Self", bound="Event")
+
+# A hash of version 1 has no prefix, a hash of any later version starts with
+# the prefix followed by its version, such as esdb:hash:v2:.
+HASH_PREFIX = "esdb:hash:"
+HASH_V2_PREFIX = "esdb:hash:v2:"
+MISSING_FIELD = "-"
 
 
 @dataclass
@@ -22,6 +34,11 @@ class Event:
     event_id: str
     time: datetime
     _time_from_server: str = field(init=False, repr=False)
+    # Finds the data exactly as the server sent it, which is what the hash
+    # covers, in the raw response the event was parsed from.
+    _find_data_from_server: Callable[[], bytes | None] | None = field(
+        default=None, init=False, repr=False, compare=False
+    )
     data_content_type: str
     predecessor_hash: str
     hash: str
@@ -107,7 +124,29 @@ class Event:
 
         return event
 
+    @staticmethod
+    def _parse_from_server(
+        unknown_object: dict, find_data_from_server: Callable[[], bytes | None]
+    ) -> "Event":
+        event = Event.parse(unknown_object)
+        event._find_data_from_server = find_data_from_server
+
+        return event
+
     def verify_hash(self) -> None:
+        if self.hash.startswith(HASH_PREFIX):
+            version = self.hash[len(HASH_PREFIX):].partition(":")[0]
+            if version != "v2":
+                raise UnsupportedHashVersionError(version)
+
+            expected_hash = self.__compute_hash_v2()
+        else:
+            expected_hash = self.__compute_hash_v1()
+
+        if expected_hash != self.hash:
+            raise HashVerificationFailedError()
+
+    def __compute_hash_v1(self) -> str:
         metadata = (
             f"{self.spec_version}|"
             f"{self.event_id}|"
@@ -120,22 +159,60 @@ class Event:
         )
 
         metadata_bytes = metadata.encode("utf-8")
-        data_bytes = json.dumps(
-                self.data,
-                separators=(',', ':'),
-                indent=None,
-            ).encode("utf-8")
 
         metadata_hash = sha256(metadata_bytes).hexdigest()
-        data_hash = sha256(data_bytes).hexdigest()
+        data_hash = sha256(self.__get_data_bytes()).hexdigest()
 
         final_hash = sha256()
         final_hash.update(metadata_hash.encode("utf-8"))
         final_hash.update(data_hash.encode("utf-8"))
-        final_hash_hex = final_hash.hexdigest()
 
-        if final_hash_hex != self.hash:
-            raise ValidationError("Failed to verify hash.")
+        return final_hash.hexdigest()
+
+    def __compute_hash_v2(self) -> str:
+        # Every field is on a line of its own, and the data comes last, without a
+        # line feed after it.
+        fields = [
+            HASH_V2_PREFIX,
+            self.spec_version,
+            self.event_id,
+            self.predecessor_hash,
+            self._time_from_server,
+            self.source,
+            self.subject,
+            self.type,
+            self.data_content_type,
+            MISSING_FIELD if self.trace_parent is None else self.trace_parent,
+            MISSING_FIELD if self.trace_state is None else self.trace_state,
+        ]
+        content = "\n".join(fields).encode("utf-8") + b"\n" + self.__get_data_bytes()
+
+        return HASH_V2_PREFIX + sha256(content).hexdigest()
+
+    def __get_data_bytes(self) -> bytes:
+        serialized_data = Event.__serialize_data(self.data)
+        data_from_server = (
+            None if self._find_data_from_server is None else self._find_data_from_server()
+        )
+
+        # The data as the server sent it is only what the hash covers as long as
+        # the data of the event has not been changed since.
+        if data_from_server is not None and (
+            Event.__serialize_data(json.loads(data_from_server)) == serialized_data
+        ):
+            return data_from_server
+
+        # An event that was not received from the server, for example one that
+        # was parsed from a dict, does not know its data as sent by the server.
+        return serialized_data.encode("utf-8")
+
+    @staticmethod
+    def __serialize_data(data: Any) -> str:
+        return json.dumps(
+            data,
+            separators=(',', ':'),
+            indent=None,
+        )
 
     def verify_signature(self, verification_key: Ed25519PublicKey) -> None:
         if self.signature is None:
@@ -146,20 +223,20 @@ class Event:
         signature_prefix = "esdb:signature:v1:"
 
         if not self.signature.startswith(signature_prefix):
-            raise ValidationError(f"Signature must start with '{signature_prefix}'.")
+            raise SignatureVerificationFailedError(f"Signature must start with '{signature_prefix}'.")
 
         signature_hex = self.signature[len(signature_prefix):]
         try:
             signature_bytes = bytes.fromhex(signature_hex)
         except ValueError as error:
-            raise ValidationError("Failed to decode signature.") from error
+            raise SignatureVerificationFailedError("Failed to decode signature.") from error
 
         hash_bytes = self.hash.encode("utf-8")
 
         try:
             verification_key.verify(signature_bytes, hash_bytes)
         except Exception as error:
-            raise ValidationError("Signature verification failed.") from error
+            raise SignatureVerificationFailedError("Signature verification failed.") from error
 
     def to_json(self) -> dict[str, Any]:
         json = {

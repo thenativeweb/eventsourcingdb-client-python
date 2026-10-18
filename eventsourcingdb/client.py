@@ -5,9 +5,16 @@ from http import HTTPStatus
 from types import TracebackType
 from typing import Any, Self, TypeAlias, TypeVar
 
-from .errors import CustomError, InternalError, ServerError, ValidationError
+from .errors import (
+    CustomError,
+    HeartbeatTimeoutError,
+    InternalError,
+    ServerError,
+    ValidationError,
+)
 from .event import Event, EventCandidate
-from .http_client import HttpClient, Response
+from .event.find_raw_data import defer_raw_data_of_events, defer_raw_data_of_stream_item
+from .http_client import DEFAULT_STALL_TIMEOUT_SECONDS, HttpClient, Response
 from .is_event import is_event
 from .is_heartbeat import is_heartbeat
 from .is_stream_error import is_stream_error
@@ -16,7 +23,6 @@ from .observe_events import ObserveEventsOptions
 from .parse_raw_message import parse_raw_message
 from .read_event_types import EventType, is_event_type
 from .read_events import ReadEventsOptions
-from .read_lines_with_heartbeat_timeout import read_lines_with_heartbeat_timeout
 from .read_subjects import is_subject
 from .write_events import Precondition
 
@@ -36,8 +42,14 @@ class Client:
         self,
         base_url: str,
         api_token: str,
+        *,
+        stall_timeout: float = DEFAULT_STALL_TIMEOUT_SECONDS,
     ) -> None:
-        self.__http_client = HttpClient(base_url=base_url, api_token=api_token)
+        self.__http_client = HttpClient(
+            base_url=base_url,
+            api_token=api_token,
+            stall_timeout=stall_timeout,
+        )
 
     async def __aenter__(self) -> Self:
         await self.__http_client.__aenter__()
@@ -71,7 +83,7 @@ class Client:
         response = await self.http_client.get("/api/v1/ping")
         if not is_valid_server_header(response):
             raise ServerError("Server must be EventSourcingDB")
-        response_body = bytes.decode(await response.body.read(), encoding="utf-8")
+        response_body = bytes.decode(await response.read(), encoding="utf-8")
 
         if response.status_code != HTTPStatus.OK:
             raise ServerError(f"Received unexpected response: {response_body}")
@@ -97,7 +109,7 @@ class Client:
         async with response:
             self._validate_response(response, f"Failed to verify API token: {response}")
 
-            response_data = await response.body.read()
+            response_data = await response.read()
             response_data = bytes.decode(response_data, encoding='utf-8')
             response_json = json.loads(response_data)
 
@@ -130,17 +142,18 @@ class Client:
 
         self._validate_response(response)
 
-        response_data = await response.body.read()
-        response_data = bytes.decode(response_data, encoding='utf-8')
-        response_data = json.loads(response_data, object_pairs_hook=OrderedDict)
+        response_text = bytes.decode(await response.read(), encoding='utf-8')
+        response_data = json.loads(response_text, object_pairs_hook=OrderedDict)
 
         if not isinstance(response_data, list):
             raise ServerError(
                 f'Failed to parse response \'{response_data}\' to list.')
 
         result = []
-        for unparsed_event_context in response_data:
-            result.append(Event.parse(unparsed_event_context))
+        for unparsed_event_context, find_data_from_server in zip(
+            response_data, defer_raw_data_of_events(response_text, len(response_data)), strict=True
+        ):
+            result.append(Event._parse_from_server(unparsed_event_context, find_data_from_server))
         return result
 
     async def read_events(
@@ -160,14 +173,17 @@ class Client:
 
         async with response:
             self._validate_response(response)
-            async for raw_message in response.body:
+            async for raw_message in response.read_lines():
                 message = parse_raw_message(raw_message)
 
                 if is_stream_error(message):
                     raise ServerError(f'{message["payload"]["error"]}.')
 
                 if is_event(message):
-                    event = Event.parse(message['payload'])
+                    event = Event._parse_from_server(
+                        message['payload'],
+                        defer_raw_data_of_stream_item(raw_message),
+                    )
                     yield event
                     continue
 
@@ -188,7 +204,7 @@ class Client:
 
         async with response:
             self._validate_response(response)
-            async for raw_message in read_lines_with_heartbeat_timeout(response.body):
+            async for raw_message in response.read_lines(HeartbeatTimeoutError):
                 message = parse_raw_message(raw_message)
 
                 if is_heartbeat(message):
@@ -226,7 +242,7 @@ class Client:
 
         async with response:
             self._validate_response(response)
-            async for raw_message in read_lines_with_heartbeat_timeout(response.body):
+            async for raw_message in response.read_lines(HeartbeatTimeoutError):
                 message = parse_raw_message(raw_message)
 
                 if is_heartbeat(message):
@@ -236,7 +252,10 @@ class Client:
                     raise ServerError(f'{message["payload"]["error"]}.')
 
                 if is_event(message):
-                    event = Event.parse(message['payload'])
+                    event = Event._parse_from_server(
+                        message['payload'],
+                        defer_raw_data_of_stream_item(raw_message),
+                    )
                     yield event
                     continue
 
@@ -260,7 +279,7 @@ class Client:
             if not is_valid_server_header(response):
                 raise ServerError("Server must be EventSourcingDB")
             if response.status_code != HTTPStatus.OK:
-                error_body = await response.body.read()
+                error_body = await response.read()
                 error_text = bytes.decode(error_body, encoding="utf-8")
                 raise ServerError(error_text)
 
@@ -280,7 +299,7 @@ class Client:
 
         async with response:
             self._validate_response(response)
-            async for raw_message in response.body:
+            async for raw_message in response.read_lines():
                 message = parse_raw_message(raw_message)
 
                 if is_stream_error(message):
@@ -309,7 +328,7 @@ class Client:
             if not is_valid_server_header(response):
                 raise ServerError("Server must be EventSourcingDB")
 
-            response_data = await response.body.read()
+            response_data = await response.read()
             response_data = bytes.decode(response_data, encoding='utf-8')
 
             if response.status_code != HTTPStatus.OK:
@@ -343,7 +362,7 @@ class Client:
 
         async with response:
             self._validate_response(response)
-            async for raw_message in response.body:
+            async for raw_message in response.read_lines():
                 message = parse_raw_message(raw_message)
 
                 if is_stream_error(message):
