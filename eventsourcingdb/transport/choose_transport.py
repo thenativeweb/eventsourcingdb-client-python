@@ -51,8 +51,11 @@ class ChooseTransport:
             self.__probe = probe
 
         # The ping goes on if one of the requests that wait for it is
-        # cancelled, since the others still need it.
-        return await asyncio.shield(probe)
+        # cancelled, since the others still need it. Waiting for it, unlike
+        # shielding it, does not make asyncio log the error of a ping that
+        # fails after the request that waited for it was cancelled.
+        await asyncio.wait({probe})
+        return probe.result()
 
     def __remember(self, probe: asyncio.Task[Transport]) -> None:
         if self.__probe is probe:

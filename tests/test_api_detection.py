@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 import aiohttp
 import pytest
@@ -23,6 +24,7 @@ from .shared.stream_server import (
 from .shared.util.get_random_available_port import get_random_available_port
 
 GUARD_TIMEOUT_SECONDS = 5
+
 
 def answer_probe_with_status(status: int, text: str = 'nope'):
     async def answer_probe(_: web.Request) -> web.StreamResponse:
@@ -341,6 +343,47 @@ class TestApiDetection:
 
             assert server.probe_count == 1
             assert [request.path for request in server.requests] == ['/api/v2/data/read-events']
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_logs_nothing_if_the_ping_fails_after_the_request_that_started_it_is_cancelled(
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        probe_arrived = asyncio.Event()
+        release_probe = asyncio.Event()
+        failed = False
+
+        async def answer_probe(request: web.Request) -> web.StreamResponse:
+            nonlocal failed
+            if failed:
+                return await answer_probe_with_v2_api(request)
+
+            failed = True
+            probe_arrived.set()
+            await release_probe.wait()
+            return web.Response(status=500, text='internal server error', headers=SERVER_HEADER)
+
+        async with v2_stream_server(answer_probe=answer_probe) as server:
+            first_request = asyncio.create_task(read_all_events(server))
+
+            async with asyncio.timeout(GUARD_TIMEOUT_SECONDS):
+                await probe_arrived.wait()
+                first_request.cancel()
+                with pytest.raises(asyncio.CancelledError):
+                    await first_request
+
+                # A request that comes while the ping runs shares it, and gets
+                # its error once the ping is done.
+                second_request = asyncio.create_task(read_all_events(server))
+                release_probe.set()
+                with pytest.raises(DbApiError):
+                    await second_request
+
+                await read_all_events(server)
+
+            assert server.probe_count == 2
+
+        assert [record for record in caplog.records if record.levelno >= logging.ERROR] == []
 
 
 class TestApiDetectionAgainstEventSourcingDB:
