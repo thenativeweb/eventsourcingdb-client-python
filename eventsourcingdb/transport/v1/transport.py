@@ -41,7 +41,7 @@ from .is_subject import is_subject
 from .parse_event_type import parse_event_type
 
 PING_PATH = '/api/v1/ping'
-VERIFY_API_TOKEN_PATH = '/api/v1/verify-api-token'
+VERIFY_PATH = '/api/v1/verify-api-token'
 RUN_EVENTQL_QUERY_PATH = '/api/v1/run-eventql-query'
 OBSERVE_EVENTS_PATH = '/api/v1/observe-events'
 READ_SUBJECTS_PATH = '/api/v1/read-subjects'
@@ -100,11 +100,11 @@ class V1Transport(Transport):
         request_body = json.dumps({})
 
         response: Response = await self.__http_client.post(
-            path=VERIFY_API_TOKEN_PATH,
+            path=VERIFY_PATH,
             request_body=request_body,
         )
         async with response:
-            await ensure_answer_is_ok(response, VERIFY_API_TOKEN_PATH)
+            await ensure_answer_is_ok(response, VERIFY_PATH)
 
             response_data = await response.read()
             response_data = bytes.decode(response_data, encoding='utf-8')

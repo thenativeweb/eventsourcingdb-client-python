@@ -15,7 +15,7 @@ from ..transport import Transport
 from .envelopes import Envelope, read_envelope, read_envelopes, unexpected_envelope
 
 PING_PATH = '/api/v2/system/ping'
-VERIFY_TOKEN_PATH = '/api/v2/system/verify-token'
+VERIFY_PATH = '/api/v2/system/verify-token'
 WRITE_EVENTS_PATH = '/api/v2/data/write-events'
 REGISTER_EVENT_SCHEMA_PATH = '/api/v2/data/register-event-schema'
 READ_EVENT_TYPE_PATH = '/api/v2/data/read-event-type'
@@ -31,7 +31,7 @@ SUBJECT_TYPE = 'subject'
 ROW_TYPE = 'row'
 
 PING_RECEIVED_TYPE = 'io.eventsourcingdb.api.ping-received'
-TOKEN_VERIFIED_TYPE = 'io.eventsourcingdb.api.token-verified'
+VERIFIED_TYPE = 'io.eventsourcingdb.api.token-verified'
 EVENT_SCHEMA_REGISTERED_TYPE = 'io.eventsourcingdb.api.event-schema-registered'
 
 # The key of an envelope that holds the event, in which the data of the event
@@ -92,11 +92,11 @@ class V2Transport(Transport):
             raise unexpected_envelope(envelope)
 
     async def verify_api_token(self) -> None:
-        response = await self.__http_client.post(VERIFY_TOKEN_PATH)
+        response = await self.__http_client.post(VERIFY_PATH)
         async with response:
             envelope = await read_envelope(response)
 
-        if not is_api_event(envelope, TOKEN_VERIFIED_TYPE):
+        if not is_api_event(envelope, VERIFIED_TYPE):
             raise unexpected_envelope(envelope)
 
     async def write_events(
