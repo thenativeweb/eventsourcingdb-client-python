@@ -1,6 +1,7 @@
+import functools
 import json
 import re
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 
 # The hash of an event covers its data exactly as the server sent it. Parsing
 # the data and serializing it again does not reproduce these bytes, since the
@@ -10,6 +11,37 @@ from collections.abc import Iterator
 
 DECODER = json.JSONDecoder()
 WHITESPACE = re.compile(r'[ \t\n\r]*')
+
+# Finding the data costs about as much as parsing the response once more, so
+# the client only keeps the raw response with every event, and the data is
+# found once a hash is verified.
+FindRawData = Callable[[], bytes | None]
+
+
+def defer_raw_data_of_stream_item(raw_message: bytes) -> FindRawData:
+    """
+    Returns a function that finds the data of the event in the given stream
+    item once it is called.
+    """
+    return functools.partial(find_raw_data_of_raw_stream_item, raw_message)
+
+
+def defer_raw_data_of_events(text: str, count: int) -> list[FindRawData]:
+    """
+    Returns a function per event of a JSON array of events that finds the data
+    of that event once it is called. The data of all events is found at once,
+    the first time any of them is needed.
+    """
+    find_all = functools.cache(functools.partial(find_raw_data_of_events, text))
+    return [functools.partial(find_raw_data_at, find_all, index) for index in range(count)]
+
+
+def find_raw_data_of_raw_stream_item(raw_message: bytes) -> bytes | None:
+    return find_raw_data_of_stream_item(raw_message.decode('utf-8'))
+
+
+def find_raw_data_at(find_all: Callable[[], list[bytes | None]], index: int) -> bytes | None:
+    return find_all()[index]
 
 
 def find_raw_data_of_event(text: str, index: int = 0) -> bytes | None:

@@ -1,4 +1,5 @@
 import json
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from hashlib import sha256
@@ -33,8 +34,11 @@ class Event:
     event_id: str
     time: datetime
     _time_from_server: str = field(init=False, repr=False)
-    # The data exactly as the server sent it, which is what the hash covers.
-    _data_from_server: bytes | None = field(default=None, init=False, repr=False, compare=False)
+    # Finds the data exactly as the server sent it, which is what the hash
+    # covers, in the raw response the event was parsed from.
+    _find_data_from_server: Callable[[], bytes | None] | None = field(
+        default=None, init=False, repr=False, compare=False
+    )
     data_content_type: str
     predecessor_hash: str
     hash: str
@@ -121,9 +125,11 @@ class Event:
         return event
 
     @staticmethod
-    def _parse_from_server(unknown_object: dict, data_from_server: bytes | None) -> "Event":
+    def _parse_from_server(
+        unknown_object: dict, find_data_from_server: Callable[[], bytes | None]
+    ) -> "Event":
         event = Event.parse(unknown_object)
-        event._data_from_server = data_from_server
+        event._find_data_from_server = find_data_from_server
 
         return event
 
@@ -185,13 +191,16 @@ class Event:
 
     def __get_data_bytes(self) -> bytes:
         serialized_data = Event.__serialize_data(self.data)
+        data_from_server = (
+            None if self._find_data_from_server is None else self._find_data_from_server()
+        )
 
         # The data as the server sent it is only what the hash covers as long as
         # the data of the event has not been changed since.
-        if self._data_from_server is not None and (
-            Event.__serialize_data(json.loads(self._data_from_server)) == serialized_data
+        if data_from_server is not None and (
+            Event.__serialize_data(json.loads(data_from_server)) == serialized_data
         ):
-            return self._data_from_server
+            return data_from_server
 
         # An event that was not received from the server, for example one that
         # was parsed from a dict, does not know its data as sent by the server.

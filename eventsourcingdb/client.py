@@ -13,7 +13,7 @@ from .errors import (
     ValidationError,
 )
 from .event import Event, EventCandidate
-from .event.find_raw_data import find_raw_data_of_events, find_raw_data_of_stream_item
+from .event.find_raw_data import defer_raw_data_of_events, defer_raw_data_of_stream_item
 from .http_client import DEFAULT_STALL_TIMEOUT_SECONDS, HttpClient, Response
 from .is_event import is_event
 from .is_heartbeat import is_heartbeat
@@ -150,10 +150,10 @@ class Client:
                 f'Failed to parse response \'{response_data}\' to list.')
 
         result = []
-        for unparsed_event_context, data_from_server in zip(
-            response_data, find_raw_data_of_events(response_text), strict=True
+        for unparsed_event_context, find_data_from_server in zip(
+            response_data, defer_raw_data_of_events(response_text, len(response_data)), strict=True
         ):
-            result.append(Event._parse_from_server(unparsed_event_context, data_from_server))
+            result.append(Event._parse_from_server(unparsed_event_context, find_data_from_server))
         return result
 
     async def read_events(
@@ -182,7 +182,7 @@ class Client:
                 if is_event(message):
                     event = Event._parse_from_server(
                         message['payload'],
-                        find_raw_data_of_stream_item(bytes.decode(raw_message, encoding='utf-8')),
+                        defer_raw_data_of_stream_item(raw_message),
                     )
                     yield event
                     continue
@@ -254,7 +254,7 @@ class Client:
                 if is_event(message):
                     event = Event._parse_from_server(
                         message['payload'],
-                        find_raw_data_of_stream_item(bytes.decode(raw_message, encoding='utf-8')),
+                        defer_raw_data_of_stream_item(raw_message),
                     )
                     yield event
                     continue
