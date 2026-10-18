@@ -7,6 +7,7 @@ from eventsourcingdb import Container, EventCandidate
 from eventsourcingdb.errors.validation_error import ValidationError
 
 from ..conftest import TestData
+from ..shared.image_tag import get_image_tag
 
 
 class TestVerifySignature:
@@ -15,7 +16,7 @@ class TestVerifySignature:
     async def test_returns_error_if_signature_is_none(
         test_data: TestData,
     ) -> None:
-        container = Container().with_image_tag("preview")
+        container = Container().with_image_tag(get_image_tag())
         container.start()
 
         try:
@@ -49,7 +50,7 @@ class TestVerifySignature:
     async def test_returns_error_if_hash_verification_fails(
         test_data: TestData,
     ) -> None:
-        container = Container().with_image_tag("preview").with_signing_key()
+        container = Container().with_image_tag(get_image_tag()).with_signing_key()
         container.start()
 
         try:
@@ -87,7 +88,7 @@ class TestVerifySignature:
     async def test_returns_error_if_signature_verification_fails(
         test_data: TestData,
     ) -> None:
-        container = Container().with_image_tag("preview").with_signing_key()
+        container = Container().with_image_tag(get_image_tag()).with_signing_key()
         container.start()
 
         try:
@@ -125,7 +126,7 @@ class TestVerifySignature:
     async def test_verifies_the_signature(
         test_data: TestData,
     ) -> None:
-        container = Container().with_image_tag("preview").with_signing_key()
+        container = Container().with_image_tag(get_image_tag()).with_signing_key()
         container.start()
 
         try:

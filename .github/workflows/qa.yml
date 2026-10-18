@@ -8,13 +8,14 @@ concurrency:
 
 jobs:
   qa:
-    name: QA
+    name: QA (${{ matrix.image-tag }}, ${{ matrix.version }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
     strategy:
       matrix:
         version: [ '3.12', '3.13', '3.14' ]
+        image-tag: [ latest, preview ]
 
     steps:
     - name: Clone repository
@@ -30,3 +31,5 @@ jobs:
         uv sync --dev
     - name: Run QA
       run: make qa
+      env:
+        EVENTSOURCINGDB_IMAGE_TAG: ${{ matrix.image-tag }}
