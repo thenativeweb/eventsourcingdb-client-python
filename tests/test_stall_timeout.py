@@ -21,86 +21,129 @@ from eventsourcingdb import (
 from eventsourcingdb.http_client import DEFAULT_STALL_TIMEOUT_SECONDS
 from eventsourcingdb.http_client.response import MAX_LINE_BYTES
 
-from .event.fixtures import READ_EVENTS_WITH_HASH_V2, WRITTEN_EVENTS_WITH_HASH_V2
+from .event.fixtures import (
+    READ_EVENTS_FROM_V2_API,
+    READ_EVENTS_WITH_HASH_V2,
+    WRITTEN_EVENTS_FROM_V2_API,
+    WRITTEN_EVENTS_WITH_HASH_V2,
+)
 from .shared.requests import (
-    HEARTBEAT_STREAMS,
-    ONE_SHOT_REQUESTS,
-    STREAMS,
+    ALL_REQUESTS,
     Request,
     observe_events,
     observe_first_event,
     ping,
-    read_event_type,
     read_event_types,
     read_events,
-    read_subjects,
     run_eventql_query,
-    verify_api_token,
     write_events,
 )
-from .shared.stream_server import StreamServer
+from .shared.stream_server import Api, StreamServer
 
 STALL_TIMEOUT_SECONDS = 0.5
 GUARD_TIMEOUT_SECONDS = 5
 
 HEARTBEAT_LINE = b'{"type":"heartbeat","payload":{}}\n'
 ROW_LINE = b'{"type":"row","payload":{"title":"Dune"}}\n'
+V2_HEARTBEAT_LINE = b'{"type":"heartbeat","data":{}}\n'
+V2_END_LINE = b'{"type":"end","data":{}}\n'
+APIS: list[Api] = ['v1', 'v2']
 
-# Partial responses, after which the server stalls. register_event_schema does
-# not read the body of a successful response, so it has none.
-PARTIAL_RESPONSES = [
-    pytest.param(ping, b'{"specversion":', ConnectionStalledError, id='ping'),
-    pytest.param(verify_api_token, b'{"type":', ConnectionStalledError, id='verify_api_token'),
-    pytest.param(write_events, b'[', ConnectionStalledError, id='write_events'),
-    pytest.param(read_event_type, b'{"eventType":', ConnectionStalledError, id='read_event_type'),
-    pytest.param(read_events, b'{"type":"event",', ConnectionStalledError, id='read_events'),
-    pytest.param(read_subjects, b'{"type":"subject",', ConnectionStalledError, id='read_subjects'),
-    pytest.param(
-        read_event_types, b'{"type":"eventType",', ConnectionStalledError, id='read_event_types'
-    ),
-    pytest.param(observe_events, HEARTBEAT_LINE, ConnectionStalledError, id='observe_events'),
-    pytest.param(
-        run_eventql_query, HEARTBEAT_LINE, ConnectionStalledError, id='run_eventql_query'
-    ),
-]
+REQUESTS = {parameter.id: parameter.values[0] for parameter in ALL_REQUESTS}
 
-# Complete responses, which the server sends in parts.
-COMPLETE_RESPONSES = [
-    pytest.param(
-        ping,
-        b'{"specversion":"1.0","type":"io.eventsourcingdb.api.ping-received"}',
-        id='ping',
-    ),
-    pytest.param(
-        verify_api_token,
-        b'{"type":"io.eventsourcingdb.api.api-token-verified"}',
-        id='verify_api_token',
-    ),
-    pytest.param(write_events, WRITTEN_EVENTS_WITH_HASH_V2.encode('utf-8'), id='write_events'),
-    pytest.param(
-        read_event_type,
-        b'{"eventType":"io.eventsourcingdb.library.book-acquired","isPhantom":false}',
-        id='read_event_type',
-    ),
-    pytest.param(
-        read_events, READ_EVENTS_WITH_HASH_V2[0].encode('utf-8') + b'\n', id='read_events'
-    ),
-    pytest.param(
-        read_subjects, b'{"type":"subject","payload":{"subject":"/books/42"}}\n', id='read_subjects'
-    ),
-    pytest.param(
-        read_event_types,
-        b'{"type":"eventType","payload":'
-        b'{"eventType":"io.eventsourcingdb.library.book-acquired","isPhantom":false}}\n',
-        id='read_event_types',
-    ),
-    pytest.param(
-        observe_first_event,
-        READ_EVENTS_WITH_HASH_V2[0].encode('utf-8') + b'\n',
-        id='observe_events',
-    ),
-    pytest.param(run_eventql_query, ROW_LINE, id='run_eventql_query'),
-]
+# Partial responses per API, after which the server stalls. register_event_schema
+# does not read the body of a successful response of the v1 API, so it has none.
+PARTIAL_RESPONSES: dict[Api, dict[str, bytes]] = {
+    'v1': {
+        'ping': b'{"specversion":',
+        'verify_api_token': b'{"type":',
+        'write_events': b'[',
+        'read_event_type': b'{"eventType":',
+        'read_events': b'{"type":"event",',
+        'read_subjects': b'{"type":"subject",',
+        'read_event_types': b'{"type":"eventType",',
+        'observe_events': HEARTBEAT_LINE,
+        'run_eventql_query': HEARTBEAT_LINE,
+    },
+    'v2': {
+        'ping': b'{"type":"event","data":{"specversion":',
+        'verify_api_token': b'{"type":',
+        'write_events': V2_HEARTBEAT_LINE,
+        'register_event_schema': V2_HEARTBEAT_LINE + b'{"type":"event",',
+        'read_event_type': b'{"type":"eventType",',
+        'read_events': V2_HEARTBEAT_LINE + b'{"type":"event",',
+        'read_subjects': b'{"type":"subject",',
+        'read_event_types': b'{"type":"eventType",',
+        'observe_events': V2_HEARTBEAT_LINE,
+        'run_eventql_query': V2_HEARTBEAT_LINE,
+    },
+}
+
+# Complete responses per API, which the server sends in parts.
+COMPLETE_RESPONSES: dict[Api, dict[str, bytes]] = {
+    'v1': {
+        'ping': b'{"specversion":"1.0","type":"io.eventsourcingdb.api.ping-received"}',
+        'verify_api_token': b'{"type":"io.eventsourcingdb.api.api-token-verified"}',
+        'write_events': WRITTEN_EVENTS_WITH_HASH_V2.encode('utf-8'),
+        'read_event_type': (
+            b'{"eventType":"io.eventsourcingdb.library.book-acquired","isPhantom":false}'
+        ),
+        'read_events': READ_EVENTS_WITH_HASH_V2[0].encode('utf-8') + b'\n',
+        'read_subjects': b'{"type":"subject","payload":{"subject":"/books/42"}}\n',
+        'read_event_types': (
+            b'{"type":"eventType","payload":'
+            b'{"eventType":"io.eventsourcingdb.library.book-acquired","isPhantom":false}}\n'
+        ),
+        'observe_events': READ_EVENTS_WITH_HASH_V2[0].encode('utf-8') + b'\n',
+        'run_eventql_query': ROW_LINE,
+    },
+    'v2': {
+        'ping': b'{"type":"event","data":{"type":"io.eventsourcingdb.api.ping-received"}}',
+        'verify_api_token': (
+            b'{"type":"event","data":{"type":"io.eventsourcingdb.api.token-verified"}}'
+        ),
+        'write_events': WRITTEN_EVENTS_FROM_V2_API.encode('utf-8'),
+        'register_event_schema': (
+            b'{"type":"event","data":'
+            b'{"type":"io.eventsourcingdb.api.event-schema-registered"}}\n' + V2_END_LINE
+        ),
+        'read_event_type': (
+            b'{"type":"eventType","data":{"type":"io.eventsourcingdb.library.book-acquired",'
+            b'"hasEvents":true,"schema":null}}'
+        ),
+        'read_events': READ_EVENTS_FROM_V2_API[0].encode('utf-8') + b'\n' + V2_END_LINE,
+        'read_subjects': b'{"type":"subject","data":{"subject":"/books/42"}}\n' + V2_END_LINE,
+        'read_event_types': (
+            b'{"type":"eventType","data":{"type":"io.eventsourcingdb.library.book-acquired",'
+            b'"hasEvents":true,"schema":null}}\n' + V2_END_LINE
+        ),
+        'observe_events': READ_EVENTS_FROM_V2_API[0].encode('utf-8') + b'\n',
+        'run_eventql_query': b'{"type":"row","data":{"value":{"title":"Dune"}}}\n' + V2_END_LINE,
+    },
+}
+
+# Observing never ends, so a request that is complete stops at an event.
+COMPLETE_REQUESTS = {**REQUESTS, 'observe_events': observe_first_event}
+
+
+def per_api(names: list[str] | None = None) -> list[Any]:
+    return [
+        pytest.param(api, REQUESTS[name], id=f'{api}, {name}')
+        for api in APIS
+        for name in (names or REQUESTS)
+    ]
+
+
+def stream_server(write_stream: Any, api: Api, **options: Any) -> StreamServer:
+    # Only the first ping asks whether the server offers the v2 API, so that a
+    # ping of the v2 API reaches the stream as every other request does.
+    return StreamServer(
+        write_stream,
+        stall_timeout=STALL_TIMEOUT_SECONDS,
+        api=api,
+        answers_only_first_probe=True,
+        **options,
+    )
 
 
 async def stall() -> None:
@@ -170,11 +213,11 @@ class TestStallTimeout:
 
     @staticmethod
     @pytest.mark.asyncio
-    @pytest.mark.parametrize('request_', ONE_SHOT_REQUESTS + STREAMS + HEARTBEAT_STREAMS)
+    @pytest.mark.parametrize(('api', 'request_'), per_api())
     async def test_fails_if_the_server_does_not_answer_within_the_stall_timeout(
-        request_: Request,
+        api: Api, request_: Request
     ) -> None:
-        async with StreamServer(None, stall_timeout=STALL_TIMEOUT_SECONDS) as server:
+        async with stream_server(None, api) as server:
             started_at = time.monotonic()
 
             with pytest.raises(ConnectionStalledError) as error:
@@ -189,24 +232,29 @@ class TestStallTimeout:
 
     @staticmethod
     @pytest.mark.asyncio
-    @pytest.mark.parametrize(('request_', 'partial_response', 'expected_error'), PARTIAL_RESPONSES)
-    async def test_fails_if_the_server_stalls_while_answering(
-        request_: Request, partial_response: bytes, expected_error: type[Exception]
-    ) -> None:
+    @pytest.mark.parametrize(
+        ('api', 'name'),
+        [
+            pytest.param(api, name, id=f'{api}, {name}')
+            for api in APIS
+            for name in PARTIAL_RESPONSES[api]
+        ],
+    )
+    async def test_fails_if_the_server_stalls_while_answering(api: Api, name: str) -> None:
         async def write_stream(response: web.StreamResponse) -> None:
-            await response.write(partial_response)
+            await response.write(PARTIAL_RESPONSES[api][name])
             await stall()
 
-        async with StreamServer(write_stream, stall_timeout=STALL_TIMEOUT_SECONDS) as server:
+        async with stream_server(write_stream, api) as server:
             started_at = time.monotonic()
 
-            with pytest.raises(expected_error) as error:
+            with pytest.raises(ConnectionStalledError) as error:
                 async with asyncio.timeout(GUARD_TIMEOUT_SECONDS) as guard:
-                    await request_(server.get_client())
+                    await REQUESTS[name](server.get_client())
 
             elapsed_seconds = time.monotonic() - started_at
             assert not guard.expired()
-            assert type(error.value) is expected_error
+            assert type(error.value) is ConnectionStalledError
             assert elapsed_seconds >= STALL_TIMEOUT_SECONDS
             assert elapsed_seconds < STALL_TIMEOUT_SECONDS + 1
 
@@ -215,30 +263,42 @@ class TestStallTimeout:
 
     @staticmethod
     @pytest.mark.asyncio
-    @pytest.mark.parametrize(('request_', 'complete_response'), COMPLETE_RESPONSES)
+    @pytest.mark.parametrize(
+        ('api', 'name'),
+        [
+            pytest.param(api, name, id=f'{api}, {name}')
+            for api in APIS
+            for name in COMPLETE_RESPONSES[api]
+        ],
+    )
     async def test_keeps_a_request_going_while_parts_of_the_response_arrive(
-        request_: Request, complete_response: bytes
+        api: Api, name: str
     ) -> None:
         async def write_stream(response: web.StreamResponse) -> None:
-            await write_in_parts(response, complete_response)
+            await write_in_parts(response, COMPLETE_RESPONSES[api][name])
 
-        async with StreamServer(write_stream, stall_timeout=STALL_TIMEOUT_SECONDS) as server:
+        async with stream_server(write_stream, api) as server:
             started_at = time.monotonic()
 
             async with asyncio.timeout(GUARD_TIMEOUT_SECONDS):
-                await request_(server.get_client())
+                await COMPLETE_REQUESTS[name](server.get_client())
 
             assert time.monotonic() - started_at > 2 * STALL_TIMEOUT_SECONDS
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_does_not_count_the_time_the_caller_spends_between_two_items() -> None:
+    @pytest.mark.parametrize('api', APIS)
+    async def test_does_not_count_the_time_the_caller_spends_between_two_items(api: Api) -> None:
+        lines = READ_EVENTS_WITH_HASH_V2 if api == 'v1' else READ_EVENTS_FROM_V2_API
+
         async def write_stream(response: web.StreamResponse) -> None:
-            for line in READ_EVENTS_WITH_HASH_V2:
+            for line in lines:
                 await response.write(line.encode('utf-8') + b'\n')
                 await asyncio.sleep(STALL_TIMEOUT_SECONDS / 5)
+            if api == 'v2':
+                await response.write(V2_END_LINE)
 
-        async with StreamServer(write_stream, stall_timeout=STALL_TIMEOUT_SECONDS) as server:
+        async with stream_server(write_stream, api) as server:
             events = []
 
             async with asyncio.timeout(GUARD_TIMEOUT_SECONDS):
@@ -248,15 +308,13 @@ class TestStallTimeout:
                     events.append(event)
                     await asyncio.sleep(2 * STALL_TIMEOUT_SECONDS)
 
-            assert len(events) == len(READ_EVENTS_WITH_HASH_V2)
+            assert len(events) == len(lines)
 
     @staticmethod
     @pytest.mark.asyncio
-    @pytest.mark.parametrize(
-        'request_', ONE_SHOT_REQUESTS + STREAMS + HEARTBEAT_STREAMS
-    )
-    async def test_does_not_replace_a_timeout_of_the_caller(request_: Request) -> None:
-        async with StreamServer(None, stall_timeout=STALL_TIMEOUT_SECONDS) as server:
+    @pytest.mark.parametrize(('api', 'request_'), per_api())
+    async def test_does_not_replace_a_timeout_of_the_caller(api: Api, request_: Request) -> None:
+        async with stream_server(None, api) as server:
             with pytest.raises(TimeoutError) as error:
                 async with asyncio.timeout(STALL_TIMEOUT_SECONDS / 2) as deadline:
                     await request_(server.get_client())
@@ -268,22 +326,26 @@ class TestStallTimeout:
     @pytest.mark.asyncio
     @pytest.mark.usefixtures('short_session_timeout')
     @pytest.mark.parametrize(
-        ('request_', 'complete_response'),
-        [parameter for parameter in COMPLETE_RESPONSES if parameter.id in {'ping', 'write_events'}],
+        ('api', 'name'),
+        [
+            pytest.param(api, name, id=f'{api}, {name}')
+            for api in APIS
+            for name in ['ping', 'write_events']
+        ],
     )
     async def test_does_not_end_a_request_at_the_timeout_of_the_session(
-        request_: Request, complete_response: bytes
+        api: Api, name: str
     ) -> None:
         async def write_stream(response: web.StreamResponse) -> None:
             await asyncio.sleep(1.5)
-            await response.write(complete_response)
+            await response.write(COMPLETE_RESPONSES[api][name])
 
         # The client uses the default stall timeout, while aiohttp's default
         # session timeout, which the fixture shortened to one second, would
         # end the request before the response arrives.
-        async with StreamServer(write_stream) as server:
+        async with StreamServer(write_stream, api=api, answers_only_first_probe=True) as server:
             async with asyncio.timeout(GUARD_TIMEOUT_SECONDS):
-                await request_(server.get_client())
+                await REQUESTS[name](server.get_client())
 
     @staticmethod
     @pytest.mark.asyncio
@@ -320,10 +382,29 @@ class TestStallTimeout:
     @staticmethod
     @pytest.mark.asyncio
     async def test_fails_if_the_server_does_not_take_the_request() -> None:
-        async def never_read(_: asyncio.StreamReader, __: asyncio.StreamWriter) -> None:
+        connection_count = 0
+
+        async def answer_probe_then_never_read(
+            reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+        ) -> None:
+            nonlocal connection_count
+            connection_count += 1
+
+            # The first connection carries the ping that the client asks with
+            # whether the server offers the v2 API, which it does not.
+            if connection_count == 1:
+                await reader.readuntil(b'\r\n\r\n')
+                writer.write(
+                    b'HTTP/1.1 404 Not Found\r\nServer: EventSourcingDB/test\r\n'
+                    b'Content-Length: 0\r\nConnection: close\r\n\r\n'
+                )
+                await writer.drain()
+                writer.close()
+                return
+
             await stall()
 
-        server = await asyncio.start_server(never_read, '127.0.0.1', 0)
+        server = await asyncio.start_server(answer_probe_then_never_read, '127.0.0.1', 0)
         port = server.sockets[0].getsockname()[1]
 
         try:
@@ -347,30 +428,27 @@ class TestStallTimeout:
 
                 assert not guard.expired()
                 assert type(error.value) is ConnectionStalledError
+                assert connection_count == 2
         finally:
             server.close()
 
     @staticmethod
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
-        'request_',
-        [
-            pytest.param(ping, id='ping'),
-            pytest.param(write_events, id='write_events'),
-            pytest.param(read_events, id='read_events'),
-            pytest.param(observe_events, id='observe_events'),
-        ],
+        ('api', 'request_'), per_api(['ping', 'write_events', 'read_events', 'observe_events'])
     )
     async def test_fails_if_a_request_waits_for_a_free_connection_for_longer_than_the_stall_timeout(
-        single_connection: None, request_: Request
+        single_connection: None, api: Api, request_: Request
     ) -> None:
+        heartbeat_line = HEARTBEAT_LINE if api == 'v1' else V2_HEARTBEAT_LINE
+
         async def write_stream(response: web.StreamResponse) -> None:
             # The first query keeps the only connection busy for good.
             while True:
-                await response.write(HEARTBEAT_LINE)
+                await response.write(heartbeat_line)
                 await asyncio.sleep(STALL_TIMEOUT_SECONDS / 5)
 
-        async with StreamServer(write_stream, stall_timeout=STALL_TIMEOUT_SECONDS) as server:
+        async with stream_server(write_stream, api) as server:
             client = server.get_client()
             busy_query = asyncio.create_task(run_eventql_query(client))
             await asyncio.sleep(STALL_TIMEOUT_SECONDS / 5)
@@ -392,10 +470,12 @@ class TestStallTimeout:
 
     @staticmethod
     @pytest.mark.asyncio
+    @pytest.mark.parametrize('api', APIS)
     async def test_sends_a_request_that_gets_a_free_connection_within_the_stall_timeout(
-        single_connection: None,
+        single_connection: None, api: Api
     ) -> None:
         request_count = 0
+        heartbeat_line = HEARTBEAT_LINE if api == 'v1' else V2_HEARTBEAT_LINE
 
         async def write_stream(response: web.StreamResponse) -> None:
             nonlocal request_count
@@ -405,11 +485,11 @@ class TestStallTimeout:
             # second one answers with a row as soon as it gets the connection.
             if request_count == 1:
                 for _ in range(3):
-                    await response.write(HEARTBEAT_LINE)
+                    await response.write(heartbeat_line)
                     await asyncio.sleep(STALL_TIMEOUT_SECONDS / 5)
-            await response.write(ROW_LINE)
+            await response.write(COMPLETE_RESPONSES[api]['run_eventql_query'])
 
-        async with StreamServer(write_stream, stall_timeout=STALL_TIMEOUT_SECONDS) as server:
+        async with stream_server(write_stream, api) as server:
             client = server.get_client()
 
             first_query = asyncio.create_task(run_eventql_query(client))
@@ -422,11 +502,19 @@ class TestStallTimeout:
             assert request_count == 2
 
 
+def subject_line(api: Api, subject: str) -> bytes:
+    key = 'payload' if api == 'v1' else 'data'
+    return ('{"type":"subject","' + key + '":{"subject":"' + subject + '"}}\n').encode('utf-8')
+
+
 class TestLineLength:
     @staticmethod
     @pytest.mark.asyncio
-    @pytest.mark.parametrize('request_', STREAMS + HEARTBEAT_STREAMS)
-    async def test_fails_if_a_line_does_not_end_within_the_limit(request_: Request) -> None:
+    @pytest.mark.parametrize(
+        ('api', 'request_'),
+        per_api(['read_events', 'read_subjects', 'read_event_types', 'observe_events', 'run_eventql_query']),
+    )
+    async def test_fails_if_a_line_does_not_end_within_the_limit(api: Api, request_: Request) -> None:
         # The parts keep arriving, so only the limit can end the response.
         async def write_stream(response: web.StreamResponse) -> None:
             part = b'x' * 65536
@@ -434,7 +522,7 @@ class TestLineLength:
                 await response.write(part)
             await stall()
 
-        async with StreamServer(write_stream, stall_timeout=STALL_TIMEOUT_SECONDS) as server:
+        async with stream_server(write_stream, api) as server:
             with pytest.raises(ServerError, match=f'longer than {MAX_LINE_BYTES} bytes') as error:
                 async with asyncio.timeout(GUARD_TIMEOUT_SECONDS):
                     await request_(server.get_client())
@@ -443,14 +531,14 @@ class TestLineLength:
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_fails_if_a_complete_line_is_longer_than_the_limit() -> None:
-        subject = '/' + 'a' * MAX_LINE_BYTES
-        line = ('{"type":"subject","payload":{"subject":"' + subject + '"}}\n').encode('utf-8')
+    @pytest.mark.parametrize('api', APIS)
+    async def test_fails_if_a_complete_line_is_longer_than_the_limit(api: Api) -> None:
+        line = subject_line(api, '/' + 'a' * MAX_LINE_BYTES)
 
         async def write_stream(response: web.StreamResponse) -> None:
             await response.write(line)
 
-        async with StreamServer(write_stream, stall_timeout=STALL_TIMEOUT_SECONDS) as server:
+        async with stream_server(write_stream, api) as server:
             with pytest.raises(ServerError, match=f'longer than {MAX_LINE_BYTES} bytes'):
                 async with asyncio.timeout(GUARD_TIMEOUT_SECONDS):
                     async for _ in server.get_client().read_subjects(
@@ -460,14 +548,15 @@ class TestLineLength:
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_reads_a_line_within_the_limit() -> None:
+    @pytest.mark.parametrize('api', APIS)
+    async def test_reads_a_line_within_the_limit(api: Api) -> None:
         subject = '/' + 'a' * (MAX_LINE_BYTES - 100)
-        line = ('{"type":"subject","payload":{"subject":"' + subject + '"}}\n').encode('utf-8')
+        line = subject_line(api, subject)
 
         async def write_stream(response: web.StreamResponse) -> None:
-            await write_in_parts(response, line)
+            await write_in_parts(response, line + (V2_END_LINE if api == 'v2' else b''))
 
-        async with StreamServer(write_stream, stall_timeout=STALL_TIMEOUT_SECONDS) as server:
+        async with stream_server(write_stream, api) as server:
             subjects = []
             async with asyncio.timeout(GUARD_TIMEOUT_SECONDS):
                 async for read_subject in server.get_client().read_subjects(

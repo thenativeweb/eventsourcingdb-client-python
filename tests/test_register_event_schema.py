@@ -1,6 +1,6 @@
 import pytest
 
-from eventsourcingdb import EventCandidate, ServerError
+from eventsourcingdb import DbApiError, ErrorCode, EventCandidate
 
 from .conftest import TestData
 from .shared.database import Database
@@ -37,10 +37,13 @@ class TestRegisterEventSchema:
             ]
         )
 
-        with pytest.raises(ServerError, match="missing properties"):
+        with pytest.raises(DbApiError, match="additionalProperties 'oy' not allowed") as error:
             await client.register_event_schema(
-                "com.gornisht.ekht", {"type": "object", "additionalProperties": False}
+                "com.gornisht.ekht",
+                {"type": "object", "properties": {}, "additionalProperties": False},
             )
+
+        assert error.value.code == ErrorCode.EVENT_SCHEMA_VIOLATED
 
     @staticmethod
     @pytest.mark.asyncio
@@ -53,11 +56,13 @@ class TestRegisterEventSchema:
             "com.gornisht.ekht", {"type": "object", "properties": {}, "additionalProperties": False}
         )
 
-        with pytest.raises(ServerError, match="schema already exists"):
+        with pytest.raises(DbApiError) as error:
             await client.register_event_schema(
                 "com.gornisht.ekht",
                 {"type": "object", "properties": {}, "additionalProperties": False},
             )
+
+        assert error.value.code == ErrorCode.EVENT_SCHEMA_ALREADY_REGISTERED
 
     @staticmethod
     @pytest.mark.asyncio
@@ -66,7 +71,14 @@ class TestRegisterEventSchema:
     ) -> None:
         client = database.get_client()
 
-        with pytest.raises(ServerError, match='value must be "object"'):
+        with pytest.raises(DbApiError, match='value must be') as error:
             await client.register_event_schema(
                 "com.gornisht.ekht", {"type": "gurkenwasser", "properties": {}}
             )
+
+        # The v1 API rejects the request with status 400, while the v2 API
+        # reports the schema as malformed.
+        if await database.offers_v2_api():
+            assert error.value.code == ErrorCode.EVENT_SCHEMA_MALFORMED
+        else:
+            assert (error.value.status, error.value.code) == (400, None)

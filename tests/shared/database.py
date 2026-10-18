@@ -4,6 +4,8 @@ import uuid
 from types import TracebackType
 from typing import Self
 
+import aiohttp
+
 from eventsourcingdb.client import Client
 from eventsourcingdb.container import Container
 
@@ -119,6 +121,17 @@ class Database:
 
     def get_api_token(self) -> str:
         return self.__container.get_api_token()
+
+    async def offers_v2_api(self) -> bool:
+        """
+        Tells whether the server offers the v2 API, found out without the
+        client SDK, so that tests can expect what each API reports.
+        """
+        async with (
+            aiohttp.ClientSession() as session,
+            session.get(f'{self.get_base_url()}/api/v2/system/ping') as response,
+        ):
+            return response.status == 200
 
     async def stop(self) -> None:
         if self.__with_authorization_client:

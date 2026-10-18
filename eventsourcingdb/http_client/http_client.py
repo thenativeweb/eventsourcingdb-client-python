@@ -80,39 +80,48 @@ class HttpClient:
     async def post(
         self,
         path: str,
-        request_body: str,
+        request_body: str | None = None,
     ) -> Response:
-        if self.__session is None:
-            await self.__initialize()
+        return await self.__request('POST', path, request_body, with_authorization=True)
 
-        url_path = HttpClient.join_segments(self.__base_url, path)
-        headers = get_post_headers(self.__api_token)
-
-        async_response = await self.__send(
-            lambda stall_guard: self.__session.post(  # type: ignore
-                url_path,
-                data=request_body,
-                headers=headers,
-                trace_request_ctx=stall_guard,
-            ),
-        )
-
-        return Response(async_response, self.__stall_timeout)
+    async def query(
+        self,
+        path: str,
+        request_body: str | None = None,
+    ) -> Response:
+        # QUERY (RFC 10008) is the method that reads of the v2 API take: a
+        # request that is safe like GET, but has a body like POST.
+        return await self.__request('QUERY', path, request_body, with_authorization=True)
 
     async def get(
         self,
         path: str,
         with_authorization: bool = True,
     ) -> Response:
+        return await self.__request('GET', path, None, with_authorization=with_authorization)
+
+    async def __request(
+        self,
+        method: str,
+        path: str,
+        request_body: str | None,
+        *,
+        with_authorization: bool,
+    ) -> Response:
         if self.__session is None:
             await self.__initialize()
 
         url_path = HttpClient.join_segments(self.__base_url, path)
-        headers = get_get_headers(self.__api_token, with_authorization)
+        if request_body is None:
+            headers = get_get_headers(self.__api_token, with_authorization)
+        else:
+            headers = get_post_headers(self.__api_token)
 
         async_response = await self.__send(
-            lambda stall_guard: self.__session.get(  # type: ignore
+            lambda stall_guard: self.__session.request(  # type: ignore
+                method,
                 url_path,
+                data=request_body,
                 headers=headers,
                 trace_request_ctx=stall_guard,
             ),

@@ -44,6 +44,12 @@ If you want to verify the API token, call `verify_api_token`. If the token is in
 await client.verify_api_token()
 ```
 
+### Using Servers With and Without the v2 API
+
+The client SDK works with servers that offer the v2 API of EventSourcingDB, which it has since version 1.3, as well as with servers that only offer the v1 API. Creating a client does not send any request. Instead, on its first request, the client asks the server whether it offers the v2 API, and remembers the answer for as long as it exists. If the server cannot be asked, for example because it is not reachable, the first request fails with that error, and the next request asks again.
+
+With the v2 API, every function that reads, such as `read_events`, `observe_events`, `run_eventql_query`, `read_subjects`, `read_event_type`, and `read_event_types`, uses the HTTP method `QUERY` ([RFC 10008](https://www.rfc-editor.org/rfc/rfc10008)). If there is a proxy, a load balancer, or a firewall in front of EventSourcingDB, it has to let requests with this method through. The client does not fall back to `POST`.
+
 ### Configuring the Stall Timeout
 
 A request fails once nothing at all has arrived from the server for 30 seconds, measured from sending the request until its end, including connecting and waiting for the response. Everything that arrives, such as a part of a response, an event, a row, or a heartbeat, restarts the clock, so a long-running request that keeps receiving data is never cut off. The time your code spends between two items of a stream does not count. To change the limit, pass the `stall_timeout` keyword argument in seconds when creating the client:

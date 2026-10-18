@@ -4,11 +4,16 @@ import pytest
 from aiohttp import web
 
 from eventsourcingdb import (
+    Client,
     DbApiError,
     ErrorCode,
+    EventCandidate,
+    IsSubjectPristine,
     ServerError,
 )
 
+from .conftest import TestData
+from .shared.database import Database
 from .shared.requests import (
     ALL_REQUESTS,
     Request,
@@ -255,3 +260,76 @@ class TestRetryAfter:
 
         assert error.status == status
         assert error.retry_after is None
+
+
+class TestDbApiErrorOfTheServer:
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_reports_a_precondition_that_does_not_hold(
+        database: Database, test_data: TestData
+    ) -> None:
+        client = database.get_client()
+        event_candidate = EventCandidate(
+            source=test_data.TEST_SOURCE_STRING, subject='/', type='com.foo.bar', data={}
+        )
+        await client.write_events([event_candidate])
+
+        with pytest.raises(DbApiError) as error:
+            await client.write_events([event_candidate], [IsSubjectPristine('/')])
+
+        assert error.value.code == ErrorCode.PRECONDITION_VIOLATED
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_reports_an_event_that_violates_its_schema(
+        database: Database, test_data: TestData
+    ) -> None:
+        client = database.get_client()
+        await client.register_event_schema(
+            'com.foo.bar',
+            {'type': 'object', 'properties': {}, 'additionalProperties': False},
+        )
+
+        with pytest.raises(DbApiError) as error:
+            await client.write_events(
+                [
+                    EventCandidate(
+                        source=test_data.TEST_SOURCE_STRING,
+                        subject='/',
+                        type='com.foo.bar',
+                        data={'foo': 'bar'},
+                    )
+                ]
+            )
+
+        assert error.value.code == ErrorCode.EVENT_SCHEMA_VIOLATED
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_reports_a_schema_that_is_already_registered(database: Database) -> None:
+        client = database.get_client()
+        schema = {'type': 'object', 'properties': {}}
+        await client.register_event_schema('com.foo.bar', schema)
+
+        with pytest.raises(DbApiError) as error:
+            await client.register_event_schema('com.foo.bar', schema)
+
+        assert error.value.code == ErrorCode.EVENT_SCHEMA_ALREADY_REGISTERED
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_reports_an_unknown_event_type(database: Database) -> None:
+        with pytest.raises(DbApiError) as error:
+            await database.get_client().read_event_type('com.foo.bar')
+
+        assert error.value.code == ErrorCode.EVENT_TYPE_UNKNOWN
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_reports_an_invalid_api_token_with_its_status(database: Database) -> None:
+        async with Client(database.get_base_url(), f'{database.get_api_token()}-invalid') as client:
+            with pytest.raises(DbApiError) as error:
+                await client.verify_api_token()
+
+        assert error.value.status == 401
+        assert error.value.code is None
