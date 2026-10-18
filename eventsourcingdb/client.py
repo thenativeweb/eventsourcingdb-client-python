@@ -3,12 +3,13 @@ from contextlib import aclosing
 from types import TracebackType
 from typing import Any, Self, TypeAlias, TypeVar
 
-from .errors import CustomError, InternalError
+from .errors import CustomError, InternalError, ValidationError
 from .event import Event, EventCandidate
 from .http_client import DEFAULT_STALL_TIMEOUT_SECONDS, HttpClient
 from .observe_events import ObserveEventsOptions
 from .read_event_types import EventType
 from .read_events import ReadEventsOptions
+from .read_subjects import ReadSubjectsOptions
 from .transport import ChooseTransport
 from .write_events import Precondition
 
@@ -103,14 +104,29 @@ class Client:
         transport = await self.__transports.get()
         await transport.register_event_schema(event_type, json_schema)
 
-    async def read_subjects(
+    def read_subjects(
         self,
-        base_subject: str
+        subject: str,
+        options: ReadSubjectsOptions,
     ) -> SubjectStream:
+        # The options are checked right away rather than once the generator
+        # starts, so that a missing recursive option fails loudly where the
+        # call is made.
+        if not isinstance(options, ReadSubjectsOptions) or not isinstance(
+            options.recursive, bool
+        ):
+            raise ValidationError(
+                'Reading subjects requires ReadSubjectsOptions whose recursive option '
+                f'is True or False, but got {options!r}.'
+            )
+
+        return self.__read_subjects(subject, options.recursive)
+
+    async def __read_subjects(self, subject: str, recursive: bool) -> SubjectStream:
         transport = await self.__transports.get()
-        async with aclosing(transport.read_subjects(base_subject)) as subjects:
-            async for subject in subjects:
-                yield subject
+        async with aclosing(transport.read_subjects(subject, recursive)) as subjects:
+            async for read_subject in subjects:
+                yield read_subject
 
     async def read_event_type(self, event_type: str) -> EventType:
         transport = await self.__transports.get()

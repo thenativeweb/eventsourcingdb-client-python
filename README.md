@@ -550,20 +550,32 @@ await client.register_event_schema(
 
 ### Listing Subjects
 
-To list all subjects, call the `read_subjects` function with `/` as the base subject. The function returns an asynchronous generator, which you can use e.g. inside an `async for` loop:
+To list subjects, call the `read_subjects` function with a subject as the first argument and an options object as the second argument. The `recursive` option is required: set it to `True` to list the subject together with all its nested subjects, or to `False` to list the subject alone, if it exists. If the options or the `recursive` option are missing, the function raises an error right away.
+
+To list all subjects, provide `/` as the subject and set `recursive` to `True`. The function returns an asynchronous generator, which you can use e.g. inside an `async for` loop:
 
 ```python
+from eventsourcingdb import ReadSubjectsOptions
+
 async for subject in client.read_subjects(
-  base_subject = '/'
+  subject = '/',
+  options = ReadSubjectsOptions(
+    recursive = True
+  ),
 ):
   pass
 ```
 
-If you only want to list subjects within a specific branch, provide the desired base subject instead:
+If you only want to list subjects within a specific branch, provide the desired subject instead:
 
 ```python
+from eventsourcingdb import ReadSubjectsOptions
+
 async for subject in client.read_subjects(
-  base_subject = '/books'
+  subject = '/books',
+  options = ReadSubjectsOptions(
+    recursive = True
+  ),
 ):
   pass
 ```
@@ -575,8 +587,13 @@ If you need to abort listing use `break` or `return` within the `async for` loop
 To abort listing independently of that, store the generator in a variable, and close it explicitly:
 
 ```python
+from eventsourcingdb import ReadSubjectsOptions
+
 subjects = client.read_subjects(
-  base_subject = '/'
+  subject = '/',
+  options = ReadSubjectsOptions(
+    recursive = True
+  ),
 )
 
 async for subject in subjects:

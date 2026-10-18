@@ -17,6 +17,7 @@ from eventsourcingdb import (
     EventCandidate,
     ObserveEventsOptions,
     ReadEventsOptions,
+    ReadSubjectsOptions,
     ServerError,
 )
 from eventsourcingdb.http_client import DEFAULT_STALL_TIMEOUT_SECONDS
@@ -71,7 +72,7 @@ async def read_events(client: Client) -> None:
 
 
 async def read_subjects(client: Client) -> None:
-    async for _ in client.read_subjects('/'):
+    async for _ in client.read_subjects('/', ReadSubjectsOptions(recursive=True)):
         pass
 
 
@@ -514,7 +515,9 @@ class TestLineLength:
         async with StreamServer(write_stream, stall_timeout=STALL_TIMEOUT_SECONDS) as server:
             with pytest.raises(ServerError, match=f'longer than {MAX_LINE_BYTES} bytes'):
                 async with asyncio.timeout(GUARD_TIMEOUT_SECONDS):
-                    async for _ in server.get_client().read_subjects('/'):
+                    async for _ in server.get_client().read_subjects(
+                        '/', ReadSubjectsOptions(recursive=True)
+                    ):
                         pass
 
     @staticmethod
@@ -529,7 +532,9 @@ class TestLineLength:
         async with StreamServer(write_stream, stall_timeout=STALL_TIMEOUT_SECONDS) as server:
             subjects = []
             async with asyncio.timeout(GUARD_TIMEOUT_SECONDS):
-                async for read_subject in server.get_client().read_subjects('/'):
+                async for read_subject in server.get_client().read_subjects(
+                    '/', ReadSubjectsOptions(recursive=True)
+                ):
                     subjects.append(read_subject)
 
             assert subjects == [subject]

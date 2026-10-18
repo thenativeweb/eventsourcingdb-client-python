@@ -25,6 +25,7 @@ from .read_events import (
     ReadEventsOptions,
     ReadFromLatestEvent,
 )
+from .read_subjects import ReadSubjectsOptions
 from .write_events import (
     IsEventQlQueryTrue,
     IsSubjectOnEventId,
@@ -58,6 +59,7 @@ __all__ = [
     "Precondition",
     "ReadEventsOptions",
     "ReadFromLatestEvent",
+    "ReadSubjectsOptions",
     "ServerError",
     "SignatureVerificationFailedError",
     "UnsupportedHashVersionError",

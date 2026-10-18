@@ -243,7 +243,11 @@ class V1Transport(Transport):
                 error_text = bytes.decode(error_body, encoding="utf-8")
                 raise ServerError(error_text)
 
-    async def read_subjects(self, subject: str) -> AsyncGenerator[str]:
+    async def read_subjects(self, subject: str, recursive: bool) -> AsyncGenerator[str]:
+        # The v1 API always reads the subject with all its nested subjects, so
+        # reading the subject alone keeps only the subject itself, in the form
+        # the server lists it in, without a trailing slash.
+        normalized_subject = '/' + subject.strip('/')
         request_body = json.dumps({
             'baseSubject': subject
         })
@@ -262,7 +266,9 @@ class V1Transport(Transport):
                     raise ServerError(message['payload']['error'])
 
                 if is_subject(message):
-                    yield message['payload']['subject']
+                    read_subject = message['payload']['subject']
+                    if recursive or read_subject == normalized_subject:
+                        yield read_subject
                     continue
 
                 raise ServerError(

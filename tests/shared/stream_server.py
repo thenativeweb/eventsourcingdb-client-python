@@ -1,5 +1,6 @@
 import asyncio
 from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from types import TracebackType
 from typing import Self
 
@@ -8,6 +9,13 @@ from aiohttp import web
 from eventsourcingdb import Client
 
 WriteStream = Callable[[web.StreamResponse], Awaitable[None]]
+
+
+@dataclass
+class ReceivedRequest:
+    method: str
+    path: str
+    body: bytes
 
 
 class StreamServer:
@@ -28,6 +36,7 @@ class StreamServer:
         self.__runner: web.AppRunner | None = None
         self.__client: Client | None = None
         self.client_disconnected = asyncio.Event()
+        self.requests: list[ReceivedRequest] = []
 
     async def __aenter__(self) -> Self:
         application = web.Application()
@@ -71,6 +80,10 @@ class StreamServer:
 
     async def __handle(self, request: web.Request) -> web.StreamResponse:
         try:
+            self.requests.append(
+                ReceivedRequest(request.method, request.path, await request.read())
+            )
+
             if self.__write_stream is None:
                 await asyncio.Event().wait()
 
