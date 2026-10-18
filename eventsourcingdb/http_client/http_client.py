@@ -1,3 +1,4 @@
+import math
 from collections.abc import Awaitable, Callable
 from types import TracebackType
 from typing import Self
@@ -28,6 +29,14 @@ class HttpClient:
         api_token: str,
         stall_timeout: float = DEFAULT_STALL_TIMEOUT_SECONDS,
     ) -> None:
+        # There is no way to turn the stall timeout off, since a request would
+        # then wait forever for a server that stalls.
+        if not math.isfinite(stall_timeout) or stall_timeout <= 0:
+            raise ValueError(
+                'The stall timeout must be a finite number of seconds greater than zero, '
+                f'but is {stall_timeout}.'
+            )
+
         self.__base_url = base_url
         self.__api_token = api_token
         self.__stall_timeout = stall_timeout

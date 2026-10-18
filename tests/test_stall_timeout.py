@@ -1,4 +1,5 @@
 import asyncio
+import math
 import socket
 import time
 from collections.abc import Awaitable, Callable
@@ -195,6 +196,27 @@ class TestStallTimeout:
     @staticmethod
     def test_is_30_seconds_by_default() -> None:
         assert DEFAULT_STALL_TIMEOUT_SECONDS == 30
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        'stall_timeout',
+        [
+            pytest.param(0, id='zero'),
+            pytest.param(-1, id='negative'),
+            pytest.param(math.inf, id='infinite'),
+            pytest.param(-math.inf, id='negative infinite'),
+            pytest.param(math.nan, id='not a number'),
+        ],
+    )
+    def test_rejects_a_stall_timeout_that_is_not_a_finite_number_greater_than_zero(
+        stall_timeout: float,
+    ) -> None:
+        with pytest.raises(ValueError, match='The stall timeout must be a finite number'):
+            Client('http://localhost:3000', 'secret', stall_timeout=stall_timeout)
+
+    @staticmethod
+    def test_accepts_a_stall_timeout_that_is_a_finite_number_greater_than_zero() -> None:
+        Client('http://localhost:3000', 'secret', stall_timeout=0.001)
 
     @staticmethod
     @pytest.mark.asyncio

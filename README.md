@@ -56,6 +56,8 @@ client = Client(
 )
 ```
 
+The stall timeout cannot be turned off: it must be a finite number of seconds greater than zero, otherwise creating the client raises a `ValueError`.
+
 What a request raises once the server stalls depends on the request:
 
 - If connecting to the server stalls, the request raises aiohttp's `ConnectionTimeoutError`.
