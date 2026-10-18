@@ -6,7 +6,11 @@ from typing import Any, TypeVar
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
+from ..errors.hash_verification_failed_error import HashVerificationFailedError
 from ..errors.internal_error import InternalError
+from ..errors.signature_verification_failed_error import (
+    SignatureVerificationFailedError,
+)
 from ..errors.unsupported_hash_version_error import UnsupportedHashVersionError
 from ..errors.validation_error import ValidationError
 
@@ -134,7 +138,7 @@ class Event:
             expected_hash = self.__compute_hash_v1()
 
         if expected_hash != self.hash:
-            raise ValidationError("Failed to verify hash.")
+            raise HashVerificationFailedError()
 
     def __compute_hash_v1(self) -> str:
         metadata = (
@@ -210,20 +214,20 @@ class Event:
         signature_prefix = "esdb:signature:v1:"
 
         if not self.signature.startswith(signature_prefix):
-            raise ValidationError(f"Signature must start with '{signature_prefix}'.")
+            raise SignatureVerificationFailedError(f"Signature must start with '{signature_prefix}'.")
 
         signature_hex = self.signature[len(signature_prefix):]
         try:
             signature_bytes = bytes.fromhex(signature_hex)
         except ValueError as error:
-            raise ValidationError("Failed to decode signature.") from error
+            raise SignatureVerificationFailedError("Failed to decode signature.") from error
 
         hash_bytes = self.hash.encode("utf-8")
 
         try:
             verification_key.verify(signature_bytes, hash_bytes)
         except Exception as error:
-            raise ValidationError("Signature verification failed.") from error
+            raise SignatureVerificationFailedError("Signature verification failed.") from error
 
     def to_json(self) -> dict[str, Any]:
         json = {

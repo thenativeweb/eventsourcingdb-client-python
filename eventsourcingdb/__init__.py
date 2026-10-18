@@ -4,9 +4,11 @@ from .container import Container
 from .errors import (
     ClientError,
     CustomError,
+    HashVerificationFailedError,
     HeartbeatTimeoutError,
     InternalError,
     ServerError,
+    SignatureVerificationFailedError,
     UnsupportedHashVersionError,
     ValidationError,
 )
@@ -41,6 +43,7 @@ __all__ = [
     "Event",
     "EventCandidate",
     "EventType",
+    "HashVerificationFailedError",
     "HeartbeatTimeoutError",
     "IfEventIsMissingDuringObserve",
     "IfEventIsMissingDuringRead",
@@ -56,6 +59,7 @@ __all__ = [
     "ReadEventsOptions",
     "ReadFromLatestEvent",
     "ServerError",
+    "SignatureVerificationFailedError",
     "UnsupportedHashVersionError",
     "ValidationError",
 ]

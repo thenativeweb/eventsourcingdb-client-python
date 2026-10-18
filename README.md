@@ -603,7 +603,7 @@ event_type = await client.read_event_type("io.eventsourcingdb.library.book-acqui
 
 ### Verifying an Event's Hash
 
-To verify the integrity of an event, call the `verify_hash` function on the event instance. This recomputes the event's hash locally and compares it to the hash stored in the event. If the hashes differ, the function raises an error:
+To verify the integrity of an event, call the `verify_hash` function on the event instance. This recomputes the event's hash locally and compares it to the hash stored in the event. If the hashes differ, the function raises a `HashVerificationFailedError`:
 
 ```python
 event.verify_hash()
@@ -628,6 +628,10 @@ verification_key = # public key as Ed25519PublicKey
 
 event.verify_signature(verification_key)
 ```
+
+If the hash verification fails, the function raises the same errors as `verify_hash`. If the signature does not match the verification key, or if it is malformed, the function raises a `SignatureVerificationFailedError`. If the event has no signature at all, for example because the server was started without a signing key, the function raises a `ValidationError`.
+
+`HashVerificationFailedError`, `UnsupportedHashVersionError`, and `SignatureVerificationFailedError` are subclasses of `ValidationError`, so you can handle them specifically or together with other validation errors.
 
 ### Using Testcontainers
 

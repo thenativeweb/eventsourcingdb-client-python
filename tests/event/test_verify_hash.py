@@ -2,19 +2,19 @@ import json
 from hashlib import sha256
 
 import pytest
-from aiohttp import web
 
 from eventsourcingdb import (
     Event,
     EventCandidate,
+    HashVerificationFailedError,
     ReadEventsOptions,
     UnsupportedHashVersionError,
+    ValidationError,
 )
-from eventsourcingdb.errors.validation_error import ValidationError
 
 from ..conftest import TestData
 from ..shared.database import Database
-from ..shared.stream_server import StreamServer
+from ..shared.serve_events import read_events_from, write_events_to
 from .fixtures import (
     READ_EVENTS_WITH_HASH_V1,
     READ_EVENTS_WITH_HASH_V2,
@@ -30,37 +30,6 @@ WRITTEN_EVENTS = [
     pytest.param(WRITTEN_EVENTS_WITH_HASH_V1, id='v1'),
     pytest.param(WRITTEN_EVENTS_WITH_HASH_V2, id='v2'),
 ]
-
-
-async def read_events_from(lines: list[str]) -> list[Event]:
-    async def write_stream(response: web.StreamResponse) -> None:
-        for line in lines:
-            await response.write(line.encode('utf-8') + b'\n')
-
-    async with StreamServer(write_stream) as server:
-        return [
-            event
-            async for event in server.get_client().read_events(
-                '/books/42', ReadEventsOptions(recursive=False)
-            )
-        ]
-
-
-async def write_events_to(response_text: str) -> list[Event]:
-    async def write_stream(response: web.StreamResponse) -> None:
-        await response.write(response_text.encode('utf-8'))
-
-    async with StreamServer(write_stream) as server:
-        return await server.get_client().write_events(
-            [
-                EventCandidate(
-                    source='https://www.eventsourcingdb.io',
-                    subject='/books/42',
-                    type='io.eventsourcingdb.library.book-acquired',
-                    data={},
-                )
-            ]
-        )
 
 
 class TestVerifyHash:
@@ -140,8 +109,10 @@ class TestVerifyHash:
         invalid_hash = sha256(invalid_hash_data).hexdigest()
         written_event.hash = invalid_hash
 
-        with pytest.raises(ValidationError):
+        with pytest.raises(HashVerificationFailedError) as error:
             written_event.verify_hash()
+
+        assert isinstance(error.value, ValidationError)
 
 
 class TestVerifyHashOfFixedEvents:
@@ -172,7 +143,7 @@ class TestVerifyHashOfFixedEvents:
         events = await read_events_from([line.replace('/books/42', '/books/23') for line in lines])
 
         for event in events:
-            with pytest.raises(ValidationError, match='Failed to verify hash.'):
+            with pytest.raises(HashVerificationFailedError, match='Failed to verify hash.'):
                 event.verify_hash()
 
     @staticmethod
@@ -184,7 +155,7 @@ class TestVerifyHashOfFixedEvents:
         for event in events:
             event.data['title'] = 'Dune'
 
-            with pytest.raises(ValidationError, match='Failed to verify hash.'):
+            with pytest.raises(HashVerificationFailedError, match='Failed to verify hash.'):
                 event.verify_hash()
 
     @staticmethod
@@ -196,7 +167,7 @@ class TestVerifyHashOfFixedEvents:
         for event in events:
             event.hash = event.hash[:-1] + ('0' if event.hash[-1] != '0' else '1')
 
-            with pytest.raises(ValidationError, match='Failed to verify hash.'):
+            with pytest.raises(HashVerificationFailedError, match='Failed to verify hash.'):
                 event.verify_hash()
 
     @staticmethod
@@ -218,7 +189,7 @@ class TestVerifyHashOfFixedEvents:
         )
 
         events[0].verify_hash()
-        with pytest.raises(ValidationError, match='Failed to verify hash.'):
+        with pytest.raises(HashVerificationFailedError, match='Failed to verify hash.'):
             events[1].verify_hash()
 
     @staticmethod
