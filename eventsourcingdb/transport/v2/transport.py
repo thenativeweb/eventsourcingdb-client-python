@@ -152,8 +152,8 @@ class V2Transport(Transport):
 
     async def __write_events(self, request_body: str, request_state: RequestState) -> list[Event]:
         response = await self.__http_client.post(WRITE_EVENTS_PATH, request_body, request_state)
-        async with response:
-            return [parse_event(envelope) async for envelope in read_envelopes(response)]
+        async with response, aclosing(read_envelopes(response)) as envelopes:
+            return [parse_event(envelope) async for envelope in envelopes]
 
     async def register_event_schema(self, event_type: str, json_schema: dict[str, Any]) -> None:
         request = {'type': event_type, 'schema': json_schema}
@@ -169,8 +169,8 @@ class V2Transport(Transport):
         response = await self.__http_client.post(
             REGISTER_EVENT_SCHEMA_PATH, request_body, request_state
         )
-        async with response:
-            envelopes = [envelope async for envelope in read_envelopes(response)]
+        async with response, aclosing(read_envelopes(response)) as read_envelopes_:
+            envelopes = [envelope async for envelope in read_envelopes_]
 
         if len(envelopes) != 1 or not is_api_event(envelopes[0], EVENT_SCHEMA_REGISTERED_TYPE):
             raise ServerError(
