@@ -142,9 +142,10 @@ class HttpClient:
 
             # The errors are the ones that a stalling request ended with before
             # there was a stall timeout: connecting ended after 30 seconds, and
-            # any other request than a stream after five minutes. A stream used
-            # to wait forever, so it gets an error of its own.
-            if not stall_guard.is_connected:
+            # any other request than a stream after five minutes, also while it
+            # waited for a free connection of the pool. A stream used to wait
+            # forever, so it gets an error of its own.
+            if not stall_guard.is_waiting_for_connection and not stall_guard.is_connected:
                 raise aiohttp.ConnectionTimeoutError(
                     f'Connection timeout to host {url_path}'
                 ) from error

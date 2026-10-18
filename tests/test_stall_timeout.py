@@ -180,6 +180,17 @@ async def write_in_parts(response: web.StreamResponse, content: bytes) -> None:
         await asyncio.sleep(STALL_TIMEOUT_SECONDS * 0.4)
 
 
+@pytest.fixture
+def single_connection(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Lets a client open only one connection at a time, so that a second
+    # request waits for a free connection of the pool.
+    class SingleConnectionConnector(aiohttp.TCPConnector):
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            super().__init__(*args, limit=1, **kwargs)
+
+    monkeypatch.setattr(aiohttp.client, 'TCPConnector', SingleConnectionConnector)
+
+
 class HangingResolver(aiohttp.abc.AbstractResolver):
     def __init__(self, *_: Any, **__: Any) -> None:
         pass
@@ -414,25 +425,59 @@ class TestStallTimeout:
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_does_not_count_the_time_a_request_waits_for_a_free_connection(
-        monkeypatch: pytest.MonkeyPatch,
+    @pytest.mark.parametrize(
+        ('request_', 'expected_error'),
+        [
+            pytest.param(ping, TimeoutError, id='ping'),
+            pytest.param(write_events, TimeoutError, id='write_events'),
+            pytest.param(read_events, ConnectionStalledError, id='read_events'),
+            pytest.param(observe_events, ConnectionStalledError, id='observe_events'),
+        ],
+    )
+    async def test_fails_if_a_request_waits_for_a_free_connection_for_longer_than_the_stall_timeout(
+        single_connection: None, request_: Request, expected_error: type[Exception]
     ) -> None:
-        class SingleConnectionConnector(aiohttp.TCPConnector):
-            def __init__(self, *args: Any, **kwargs: Any) -> None:
-                super().__init__(*args, limit=1, **kwargs)
+        async def write_stream(response: web.StreamResponse) -> None:
+            # The first query keeps the only connection busy for good.
+            while True:
+                await response.write(HEARTBEAT_LINE)
+                await asyncio.sleep(STALL_TIMEOUT_SECONDS / 5)
 
-        monkeypatch.setattr(aiohttp.client, 'TCPConnector', SingleConnectionConnector)
+        async with StreamServer(write_stream, stall_timeout=STALL_TIMEOUT_SECONDS) as server:
+            client = server.get_client()
+            busy_query = asyncio.create_task(run_eventql_query(client))
+            await asyncio.sleep(STALL_TIMEOUT_SECONDS / 5)
 
+            try:
+                started_at = time.monotonic()
+
+                with pytest.raises(expected_error) as error:
+                    async with asyncio.timeout(GUARD_TIMEOUT_SECONDS) as guard:
+                        await request_(client)
+
+                elapsed_seconds = time.monotonic() - started_at
+                assert not guard.expired()
+                assert type(error.value) is expected_error
+                assert elapsed_seconds >= STALL_TIMEOUT_SECONDS
+                assert elapsed_seconds < STALL_TIMEOUT_SECONDS + 1
+            finally:
+                busy_query.cancel()
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_sends_a_request_that_gets_a_free_connection_within_the_stall_timeout(
+        single_connection: None,
+    ) -> None:
         request_count = 0
 
         async def write_stream(response: web.StreamResponse) -> None:
             nonlocal request_count
             request_count += 1
 
-            # The first query keeps the only connection busy, the second one
-            # answers with a row as soon as it gets the connection.
+            # The first query keeps the only connection busy for a while, the
+            # second one answers with a row as soon as it gets the connection.
             if request_count == 1:
-                while True:
+                for _ in range(3):
                     await response.write(HEARTBEAT_LINE)
                     await asyncio.sleep(STALL_TIMEOUT_SECONDS / 5)
             await response.write(ROW_LINE)
@@ -441,15 +486,11 @@ class TestStallTimeout:
             client = server.get_client()
 
             first_query = asyncio.create_task(run_eventql_query(client))
-            await asyncio.sleep(STALL_TIMEOUT_SECONDS / 5)
-            second_query = asyncio.create_task(run_eventql_query(client))
+            await asyncio.sleep(STALL_TIMEOUT_SECONDS / 10)
 
-            await asyncio.sleep(3 * STALL_TIMEOUT_SECONDS)
-            assert not second_query.done()
-
-            first_query.cancel()
             async with asyncio.timeout(GUARD_TIMEOUT_SECONDS):
-                await second_query
+                await run_eventql_query(client)
+                await first_query
 
             assert request_count == 2
 

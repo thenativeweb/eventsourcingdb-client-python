@@ -65,6 +65,8 @@ What a request raises once the server stalls depends on the request:
 - `read_events`, `read_subjects`, and `read_event_types` raise a `ConnectionStalledError`, which is a subclass of `ServerError`.
 - `observe_events` and `run_eventql_query` raise a `HeartbeatTimeoutError` once the server has answered, and a `ConnectionStalledError` before. `HeartbeatTimeoutError` is a subclass of `ConnectionStalledError`. For details, see [Detecting a Stalled Connection](#detecting-a-stalled-connection).
 
+The stall timeout also covers the time a request waits for a free connection: a client keeps at most 100 connections open at the same time, so with as many streams open, a further request waits until one of them ends. If it waits for longer than the stall timeout, it fails as if the server had stalled after the request was sent, with a `TimeoutError` or a `ConnectionStalledError` as listed above.
+
 In any case, the client closes the connection. Your own timeouts and cancellations, such as `asyncio.timeout`, still apply and can end a request earlier.
 
 ### Writing Events

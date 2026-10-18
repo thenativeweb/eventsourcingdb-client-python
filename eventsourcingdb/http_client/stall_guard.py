@@ -11,14 +11,16 @@ class StallGuard:
     """
     Ends a request once nothing has arrived from the server for the stall
     timeout, from sending the request until the response headers arrive. Its
-    clock starts with the request, stops while the request waits for a free
-    connection of the pool, and restarts once the connection is open. While
-    the body of the response arrives, Response takes over.
+    clock starts with the request, keeps running while the request waits for
+    a free connection of the pool, so that no request waits forever, and
+    restarts once the connection is open. While the body of the response
+    arrives, Response takes over.
     """
 
     def __init__(self, stall_timeout: float) -> None:
         self.__stall_timeout = stall_timeout
         self.__timeout: asyncio.Timeout | None = None
+        self.is_waiting_for_connection = False
         self.is_connected = False
 
     async def __aenter__(self) -> Self:
@@ -39,9 +41,6 @@ class StallGuard:
     def expired(self) -> bool:
         return self.__timeout is not None and self.__timeout.expired()
 
-    def pause(self) -> None:
-        self.__reschedule(None)
-
     def restart(self) -> None:
         self.__reschedule(asyncio.get_running_loop().time() + self.__stall_timeout)
 
@@ -61,8 +60,8 @@ def create_stall_trace_config() -> aiohttp.TraceConfig:
     trace_request_ctx, how the request proceeds.
     """
     trace_config = aiohttp.TraceConfig()
-    trace_config.on_connection_queued_start.append(pause)
-    trace_config.on_connection_queued_end.append(restart)
+    trace_config.on_connection_queued_start.append(mark_waiting_for_connection)
+    trace_config.on_connection_queued_end.append(mark_done_waiting_for_connection)
     trace_config.on_connection_create_end.append(mark_connected)
     trace_config.on_connection_reuseconn.append(mark_connected)
 
@@ -76,14 +75,18 @@ def get_stall_guard(trace_config_ctx: SimpleNamespace) -> StallGuard | None:
     return None
 
 
-async def pause(_: aiohttp.ClientSession, trace_config_ctx: SimpleNamespace, __: Any) -> None:
+async def mark_waiting_for_connection(
+    _: aiohttp.ClientSession, trace_config_ctx: SimpleNamespace, __: Any
+) -> None:
     if (stall_guard := get_stall_guard(trace_config_ctx)) is not None:
-        stall_guard.pause()
+        stall_guard.is_waiting_for_connection = True
 
 
-async def restart(_: aiohttp.ClientSession, trace_config_ctx: SimpleNamespace, __: Any) -> None:
+async def mark_done_waiting_for_connection(
+    _: aiohttp.ClientSession, trace_config_ctx: SimpleNamespace, __: Any
+) -> None:
     if (stall_guard := get_stall_guard(trace_config_ctx)) is not None:
-        stall_guard.restart()
+        stall_guard.is_waiting_for_connection = False
 
 
 async def mark_connected(
