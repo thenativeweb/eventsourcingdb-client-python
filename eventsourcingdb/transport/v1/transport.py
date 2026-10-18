@@ -84,6 +84,8 @@ def error_of_stream_item(message: dict) -> DbApiError:
 class V1Transport(Transport):
     """Speaks the v1 API, which every EventSourcingDB up to 1.2 offers."""
 
+    api_version = 'v1'
+
     def __init__(self, http_client: HttpClient) -> None:
         self.__http_client = http_client
 

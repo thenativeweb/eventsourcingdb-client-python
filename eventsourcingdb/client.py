@@ -55,6 +55,13 @@ class Client:
     def http_client(self) -> HttpClient:
         return self.__http_client
 
+    async def _get_api_version(self) -> str:
+        # Tells which version of the API the client speaks to the server, which
+        # it finds out on its first request. It is internal: the tests use it
+        # to prove that the client chose the API that the server offers.
+        transport = await self.__transports.get()
+        return transport.api_version
+
     async def ping(self) -> None:
         transport = await self.__transports.get()
         await transport.ping()

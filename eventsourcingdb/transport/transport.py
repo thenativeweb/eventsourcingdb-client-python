@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import AsyncGenerator
-from typing import Any
+from typing import Any, ClassVar
 
 from ..event import Event, EventCandidate
 from ..observe_events import ObserveEventsOptions
@@ -15,6 +15,9 @@ class Transport(ABC):
     the transport per server, so that every call works against every server,
     whichever version of the API it offers.
     """
+
+    # The version of the API that the transport speaks, such as v2.
+    api_version: ClassVar[str]
 
     @abstractmethod
     async def ping(self) -> None: ...

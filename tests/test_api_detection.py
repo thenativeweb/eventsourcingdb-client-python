@@ -12,6 +12,7 @@ from eventsourcingdb import (
     ServerError,
 )
 
+from .shared.database import Database
 from .shared.stream_server import (
     SERVER_HEADER,
     StreamServer,
@@ -314,3 +315,18 @@ class TestApiDetection:
             assert server.probe_count == 1
             assert [request.path for request in server.requests] == ['/api/v2/data/read-events']
 
+
+class TestApiDetectionAgainstEventSourcingDB:
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_speaks_the_api_that_the_server_offers(database: Database) -> None:
+        # Whether the server offers the v2 API is found out without the client
+        # SDK, rather than from the tag of the image, since every version from
+        # 1.3 on offers it, and still offers the v1 API as well.
+        expected_api_version = 'v2' if await database.offers_v2_api() else 'v1'
+        client = database.get_client()
+
+        async for _ in client.read_event_types():
+            pass
+
+        assert await client._get_api_version() == expected_api_version

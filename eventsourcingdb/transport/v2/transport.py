@@ -113,6 +113,8 @@ class V2Transport(Transport):
     v2 API rejects null as well as unknown fields.
     """
 
+    api_version = 'v2'
+
     def __init__(self, http_client: HttpClient) -> None:
         self.__http_client = http_client
 
