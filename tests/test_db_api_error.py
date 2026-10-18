@@ -77,6 +77,13 @@ class TestErrorsOfTheV1Api:
             pytest.param(
                 write_events,
                 409,
+                'state conflict: exceeded max store capacity',
+                ErrorCode.CAPACITY_EXCEEDED,
+                id='write_events, exceeded capacity',
+            ),
+            pytest.param(
+                write_events,
+                409,
                 "schema conflict: event candidate does not match schema: missing properties: 'n'",
                 ErrorCode.EVENT_SCHEMA_VIOLATED,
                 id='write_events, violated schema',
@@ -87,6 +94,20 @@ class TestErrorsOfTheV1Api:
                 'schema conflict: schema already exists',
                 ErrorCode.EVENT_SCHEMA_ALREADY_REGISTERED,
                 id='register_event_schema, registered schema',
+            ),
+            pytest.param(
+                register_event_schema,
+                409,
+                "schema conflict: event with ID 0: missing properties: 'n'",
+                ErrorCode.EVENT_SCHEMA_VIOLATED,
+                id='register_event_schema, schema violated by an event',
+            ),
+            pytest.param(
+                read_events,
+                409,
+                'state conflict: fromLatestEvent results in an event ID greater than upperBound ID',
+                ErrorCode.RANGE_UNSATISFIABLE,
+                id='read_events, unsatisfiable range',
             ),
             pytest.param(
                 read_event_type,
@@ -129,19 +150,24 @@ class TestErrorsOfTheV1Api:
     @pytest.mark.parametrize(
         ('request_', 'status', 'text'),
         [
-            # An exceeded capacity is a state conflict as well, but no
-            # precondition that does not hold.
+            # Only the texts of known errors match, not every state conflict.
             pytest.param(
                 write_events,
                 409,
-                'state conflict: exceeded max store capacity',
-                id='write_events, exceeded capacity',
+                'state conflict: something else',
+                id='write_events, other state conflict',
             ),
             pytest.param(
                 register_event_schema,
                 409,
-                "schema conflict: event with ID 0: missing properties: 'n'",
-                id='register_event_schema, schema conflicting with events',
+                'schema conflict: something else',
+                id='register_event_schema, other schema conflict',
+            ),
+            pytest.param(
+                read_events,
+                409,
+                'state conflict: precondition failed',
+                id='read_events, state conflict of a write',
             ),
             pytest.param(
                 read_event_type,

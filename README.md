@@ -94,7 +94,7 @@ except DbApiError as error:
   # The subject already has events.
 ```
 
-Servers without the v2 API report errors without a code. For them, the client assigns the code of the v2 API to the errors that clearly match one: a precondition that does not hold, an event that does not match the schema of its type, a schema that is already registered, an unknown event type, a store in read-only mode, and an invalid license. Every other error of such a server has no code.
+Servers without the v2 API report errors without a code. For them, the client assigns the code of the v2 API to the errors that clearly match one: a precondition that does not hold, an exceeded capacity of the store, an event that does not match the schema of its type, a schema that is already registered, a schema that existing events do not match, a range of events that cannot be read because `from_latest_event` lies above the `upper_bound`, an unknown event type, a store in read-only mode, and an invalid license. Every other error of such a server has no code.
 
 ### Writing Events
 

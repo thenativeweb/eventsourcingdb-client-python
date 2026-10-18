@@ -27,6 +27,7 @@ from ..error_of_answer import error_of_answer
 from ..transport import Transport
 from .code_of_error import (
     READ_EVENT_TYPE_PATH,
+    READ_EVENTS_PATH,
     REGISTER_EVENT_SCHEMA_PATH,
     WRITE_EVENTS_PATH,
     code_of_error,
@@ -40,7 +41,6 @@ from .parse_event_type import parse_event_type
 
 PING_PATH = '/api/v1/ping'
 VERIFY_API_TOKEN_PATH = '/api/v1/verify-api-token'
-READ_EVENTS_PATH = '/api/v1/read-events'
 RUN_EVENTQL_QUERY_PATH = '/api/v1/run-eventql-query'
 OBSERVE_EVENTS_PATH = '/api/v1/observe-events'
 READ_SUBJECTS_PATH = '/api/v1/read-subjects'
