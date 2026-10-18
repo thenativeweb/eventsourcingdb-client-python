@@ -28,6 +28,7 @@ from .shared.requests import (
     STREAMS,
     Request,
     observe_events,
+    observe_first_event,
     ping,
     read_event_type,
     read_event_types,
@@ -94,7 +95,9 @@ COMPLETE_RESPONSES = [
         id='read_event_types',
     ),
     pytest.param(
-        observe_events, READ_EVENTS_WITH_HASH_V2[0].encode('utf-8') + b'\n', id='observe_events'
+        observe_first_event,
+        READ_EVENTS_WITH_HASH_V2[0].encode('utf-8') + b'\n',
+        id='observe_events',
     ),
     pytest.param(run_eventql_query, ROW_LINE, id='run_eventql_query'),
 ]

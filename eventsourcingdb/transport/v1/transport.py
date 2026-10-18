@@ -24,6 +24,7 @@ from ...read_event_types import EventType
 from ...read_events import ReadEventsOptions
 from ...write_events import Precondition
 from ..error_of_answer import error_of_answer
+from ..stream_broke_off import stream_broke_off
 from ..transport import Transport
 from .code_of_error import (
     READ_EVENT_TYPE_PATH,
@@ -254,6 +255,10 @@ class V1Transport(Transport):
                     f'Failed to read events, an unexpected stream item was received: '
                     f'{message}.'
                 )
+
+        # Observing never ends, so a server that closes the stream without an
+        # error item failed unexpectedly.
+        raise stream_broke_off()
 
     async def register_event_schema(self, event_type: str, json_schema: dict[str, Any]) -> None:
         request_body = json.dumps({

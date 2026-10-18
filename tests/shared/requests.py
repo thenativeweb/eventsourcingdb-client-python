@@ -66,6 +66,12 @@ async def observe_events(client: Client) -> None:
         pass
 
 
+async def observe_first_event(client: Client) -> None:
+    # Observing never ends, so a request that is complete stops at an event.
+    async for _ in client.observe_events('/', ObserveEventsOptions(recursive=True)):
+        break
+
+
 async def run_eventql_query(client: Client) -> None:
     async for _ in client.run_eventql_query('FROM e IN events PROJECT INTO e'):
         pass

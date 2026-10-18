@@ -532,7 +532,7 @@ except ConnectionStalledError:
 
 #### Aborting Observing
 
-Observing has no time limit of its own and runs until you abort it.
+Observing has no time limit of its own and runs until you abort it. Since it never ends on its own, the generator raises a `ServerError` if the server closes the stream without reporting an error, which it only does after an unexpected failure. A server that shuts down gracefully reports that as a `DbApiError` first.
 
 If you need to abort observing use `break` or `return` within the `async for` loop. However, this only works if there is currently an iteration going on.
 

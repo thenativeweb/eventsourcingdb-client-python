@@ -141,6 +141,7 @@ class TestHeartbeats:
             for _ in range(item_count):
                 await response.write(item_line)
                 await asyncio.sleep(item_interval_seconds)
+            await stall()
 
         async with stream_server(write_stream) as server:
             items = []
@@ -148,6 +149,8 @@ class TestHeartbeats:
             async with asyncio.timeout(GUARD_TIMEOUT_SECONDS):
                 async for item in start_stream(server.get_client()):
                     items.append(item)
+                    if len(items) == item_count:
+                        break
 
             assert len(items) == item_count
 
