@@ -7,6 +7,7 @@ from typing import Any, Self, TypeAlias, TypeVar
 
 from .errors import CustomError, InternalError, ServerError, ValidationError
 from .event import Event, EventCandidate
+from .event.find_raw_data import find_raw_data_of_events, find_raw_data_of_stream_item
 from .http_client import HttpClient, Response
 from .is_event import is_event
 from .is_heartbeat import is_heartbeat
@@ -130,17 +131,18 @@ class Client:
 
         self._validate_response(response)
 
-        response_data = await response.body.read()
-        response_data = bytes.decode(response_data, encoding='utf-8')
-        response_data = json.loads(response_data, object_pairs_hook=OrderedDict)
+        response_text = bytes.decode(await response.body.read(), encoding='utf-8')
+        response_data = json.loads(response_text, object_pairs_hook=OrderedDict)
 
         if not isinstance(response_data, list):
             raise ServerError(
                 f'Failed to parse response \'{response_data}\' to list.')
 
         result = []
-        for unparsed_event_context in response_data:
-            result.append(Event.parse(unparsed_event_context))
+        for unparsed_event_context, data_from_server in zip(
+            response_data, find_raw_data_of_events(response_text), strict=True
+        ):
+            result.append(Event._parse_from_server(unparsed_event_context, data_from_server))
         return result
 
     async def read_events(
@@ -167,7 +169,10 @@ class Client:
                     raise ServerError(f'{message["payload"]["error"]}.')
 
                 if is_event(message):
-                    event = Event.parse(message['payload'])
+                    event = Event._parse_from_server(
+                        message['payload'],
+                        find_raw_data_of_stream_item(bytes.decode(raw_message, encoding='utf-8')),
+                    )
                     yield event
                     continue
 
@@ -236,7 +241,10 @@ class Client:
                     raise ServerError(f'{message["payload"]["error"]}.')
 
                 if is_event(message):
-                    event = Event.parse(message['payload'])
+                    event = Event._parse_from_server(
+                        message['payload'],
+                        find_raw_data_of_stream_item(bytes.decode(raw_message, encoding='utf-8')),
+                    )
                     yield event
                     continue
 

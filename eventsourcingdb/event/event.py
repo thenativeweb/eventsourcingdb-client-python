@@ -22,6 +22,8 @@ class Event:
     event_id: str
     time: datetime
     _time_from_server: str = field(init=False, repr=False)
+    # The data exactly as the server sent it, which is what the hash covers.
+    _data_from_server: bytes | None = field(default=None, init=False, repr=False, compare=False)
     data_content_type: str
     predecessor_hash: str
     hash: str
@@ -107,6 +109,13 @@ class Event:
 
         return event
 
+    @staticmethod
+    def _parse_from_server(unknown_object: dict, data_from_server: bytes | None) -> "Event":
+        event = Event.parse(unknown_object)
+        event._data_from_server = data_from_server
+
+        return event
+
     def verify_hash(self) -> None:
         metadata = (
             f"{self.spec_version}|"
@@ -120,14 +129,9 @@ class Event:
         )
 
         metadata_bytes = metadata.encode("utf-8")
-        data_bytes = json.dumps(
-                self.data,
-                separators=(',', ':'),
-                indent=None,
-            ).encode("utf-8")
 
         metadata_hash = sha256(metadata_bytes).hexdigest()
-        data_hash = sha256(data_bytes).hexdigest()
+        data_hash = sha256(self.__get_data_bytes()).hexdigest()
 
         final_hash = sha256()
         final_hash.update(metadata_hash.encode("utf-8"))
@@ -136,6 +140,28 @@ class Event:
 
         if final_hash_hex != self.hash:
             raise ValidationError("Failed to verify hash.")
+
+    def __get_data_bytes(self) -> bytes:
+        serialized_data = Event.__serialize_data(self.data)
+
+        # The data as the server sent it is only what the hash covers as long as
+        # the data of the event has not been changed since.
+        if self._data_from_server is not None and (
+            Event.__serialize_data(json.loads(self._data_from_server)) == serialized_data
+        ):
+            return self._data_from_server
+
+        # An event that was not received from the server, for example one that
+        # was parsed from a dict, does not know its data as sent by the server.
+        return serialized_data.encode("utf-8")
+
+    @staticmethod
+    def __serialize_data(data: Any) -> str:
+        return json.dumps(
+            data,
+            separators=(',', ':'),
+            indent=None,
+        )
 
     def verify_signature(self, verification_key: Ed25519PublicKey) -> None:
         if self.signature is None:
