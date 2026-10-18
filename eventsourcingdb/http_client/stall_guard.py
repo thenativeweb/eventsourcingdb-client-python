@@ -4,6 +4,8 @@ from typing import Any, Self
 
 import aiohttp
 
+from .request_state import RequestState
+
 DEFAULT_STALL_TIMEOUT_SECONDS = 30
 
 
@@ -17,9 +19,10 @@ class StallGuard:
     arrives, Response takes over.
     """
 
-    def __init__(self, stall_timeout: float) -> None:
+    def __init__(self, stall_timeout: float, request_state: RequestState | None = None) -> None:
         self.__stall_timeout = stall_timeout
         self.__timeout: asyncio.Timeout | None = None
+        self.__request_state = request_state
         self.is_waiting_for_connection = False
         self.is_connected = False
 
@@ -46,6 +49,8 @@ class StallGuard:
 
     def mark_connected(self) -> None:
         self.is_connected = True
+        if self.__request_state is not None:
+            self.__request_state.is_connected = True
         self.restart()
 
     def __reschedule(self, when: float | None) -> None:

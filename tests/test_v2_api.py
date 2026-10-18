@@ -10,6 +10,7 @@ from eventsourcingdb import (
     Bound,
     BoundType,
     Client,
+    CustomError,
     DbApiError,
     ErrorCode,
     EventCandidate,
@@ -20,6 +21,7 @@ from eventsourcingdb import (
     ObserveEventsOptions,
     ObserveFromLatestEvent,
     Order,
+    OutcomeUnknownError,
     ReadEventsOptions,
     ReadFromLatestEvent,
     ReadSubjectsOptions,
@@ -30,6 +32,7 @@ from .event.fixtures import READ_EVENTS_FROM_V2_API, WRITTEN_EVENTS_FROM_V2_API
 from .shared.requests import (
     ALL_REQUESTS,
     STREAMS,
+    WRITES,
     Request,
     observe_events,
     read_event_type,
@@ -216,10 +219,13 @@ class TestCallsOfTheV2Api:
     @pytest.mark.asyncio
     async def test_fails_to_register_an_event_schema_if_the_server_confirms_nothing() -> None:
         async with StreamServer(answer_with_lines(END), api='v2') as server:
-            with pytest.raises(ServerError, match='Failed to register the event schema'):
+            with pytest.raises(OutcomeUnknownError) as error:
                 await server.get_client().register_event_schema(
                     'io.eventsourcingdb.library.book-acquired', {'type': 'object'}
                 )
+
+        assert type(error.value.cause) is ServerError
+        assert 'Failed to register the event schema' in str(error.value.cause)
 
     @staticmethod
     @pytest.mark.asyncio
@@ -428,7 +434,7 @@ class TestCallsOfTheV2Api:
                 try:
                     async with asyncio.timeout(GUARD_TIMEOUT_SECONDS):
                         await request_(client)
-                except (ServerError, TimeoutError):
+                except (CustomError, TimeoutError):
                     pass
 
         async with StreamServer(answer_with_lines(END), api='v2') as server:
@@ -551,8 +557,15 @@ class TestErrorsOfTheV2Api:
         async with StreamServer(
             answer_with_lines(END), api='v2', headers={'Server': None}
         ) as server:
-            with pytest.raises(ServerError, match='Server must be EventSourcingDB'):
+            with pytest.raises((ServerError, OutcomeUnknownError)) as error:
                 await request_(server.get_client())
+
+        # A write may have been stored by a server behind whatever answered.
+        reported_error: BaseException = error.value
+        if isinstance(reported_error, OutcomeUnknownError):
+            assert request_ in {write.values[0] for write in WRITES}
+            reported_error = reported_error.cause
+        assert 'Server must be EventSourcingDB' in str(reported_error)
 
     @staticmethod
     @pytest.mark.asyncio

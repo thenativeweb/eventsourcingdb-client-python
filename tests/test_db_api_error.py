@@ -199,7 +199,7 @@ class TestErrorsOfTheV1Api:
                 write_events, 400, 'bad request: subject is invalid', id='write_events, bad request'
             ),
             pytest.param(verify_api_token, 401, 'unauthorized', id='verify_api_token, unauthorized'),
-            pytest.param(write_events, 500, '', id='write_events, internal server error'),
+            pytest.param(read_events, 500, '', id='read_events, internal server error'),
         ],
     )
     async def test_assigns_no_code_to_other_errors(

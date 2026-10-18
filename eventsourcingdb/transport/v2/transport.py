@@ -1,16 +1,25 @@
 import json
 from collections.abc import AsyncGenerator
 from contextlib import aclosing
+from http import HTTPStatus
 from typing import Any
 
-from ...errors import CustomError, InternalError, ServerError, ValidationError
+from ...errors import (
+    CustomError,
+    DbApiError,
+    ErrorCode,
+    InternalError,
+    ServerError,
+    ValidationError,
+)
 from ...event import Event, EventCandidate
 from ...event.find_raw_data import defer_raw_data_of_stream_item
-from ...http_client import HttpClient
+from ...http_client import HttpClient, RequestState
 from ...observe_events import ObserveEventsOptions
 from ...read_event_types import EventType
 from ...read_events import ReadEventsOptions
 from ...write_events import Precondition
+from ..guard_write import guard_write
 from ..transport import Transport
 from .envelopes import Envelope, read_envelope, read_envelopes, unexpected_envelope
 
@@ -37,6 +46,30 @@ EVENT_SCHEMA_REGISTERED_TYPE = 'io.eventsourcingdb.api.event-schema-registered'
 # The key of an envelope that holds the event, in which the data of the event
 # is found exactly as the server sent it.
 EVENT_KEY = 'data'
+
+
+# The statuses with which the v2 API refuses a request before it reads it,
+# so that a write is certainly not stored.
+REFUSING_STATUSES = {
+    HTTPStatus.BAD_REQUEST,
+    HTTPStatus.UNAUTHORIZED,
+    HTTPStatus.REQUEST_TIMEOUT,
+    HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
+    HTTPStatus.TOO_MANY_REQUESTS,
+    HTTPStatus.SERVICE_UNAVAILABLE,
+}
+
+
+def is_refusal(error: DbApiError) -> bool:
+    """
+    Tells whether the server refused a write before it stored anything, as
+    the v2 API does with every error item except store-failed, and with the
+    statuses above.
+    """
+    if error.status == HTTPStatus.OK:
+        return error.code != ErrorCode.STORE_FAILED
+
+    return error.status in REFUSING_STATUSES
 
 
 def is_api_event(envelope: Envelope, event_type: str) -> bool:
@@ -110,14 +143,30 @@ class V2Transport(Transport):
         if preconditions:
             request['preconditions'] = [precondition.to_json() for precondition in preconditions]
 
-        response = await self.__http_client.post(WRITE_EVENTS_PATH, json.dumps(request))
+        return await guard_write(
+            lambda request_state: self.__write_events(json.dumps(request), request_state),
+            is_refusal,
+        )
+
+    async def __write_events(self, request_body: str, request_state: RequestState) -> list[Event]:
+        response = await self.__http_client.post(WRITE_EVENTS_PATH, request_body, request_state)
         async with response:
             return [parse_event(envelope) async for envelope in read_envelopes(response)]
 
     async def register_event_schema(self, event_type: str, json_schema: dict[str, Any]) -> None:
         request = {'type': event_type, 'schema': json_schema}
 
-        response = await self.__http_client.post(REGISTER_EVENT_SCHEMA_PATH, json.dumps(request))
+        await guard_write(
+            lambda request_state: self.__register_event_schema(json.dumps(request), request_state),
+            is_refusal,
+        )
+
+    async def __register_event_schema(
+        self, request_body: str, request_state: RequestState
+    ) -> None:
+        response = await self.__http_client.post(
+            REGISTER_EVENT_SCHEMA_PATH, request_body, request_state
+        )
         async with response:
             envelopes = [envelope async for envelope in read_envelopes(response)]
 

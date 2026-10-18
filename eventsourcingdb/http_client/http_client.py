@@ -9,6 +9,7 @@ from aiohttp import ClientSession
 from ..errors.connection_stalled_error import ConnectionStalledError
 from .get_get_headers import get_get_headers
 from .get_post_headers import get_post_headers
+from .request_state import RequestState
 from .response import Response
 from .stall_guard import (
     DEFAULT_STALL_TIMEOUT_SECONDS,
@@ -81,8 +82,11 @@ class HttpClient:
         self,
         path: str,
         request_body: str | None = None,
+        request_state: RequestState | None = None,
     ) -> Response:
-        return await self.__request('POST', path, request_body, with_authorization=True)
+        return await self.__request(
+            'POST', path, request_body, with_authorization=True, request_state=request_state
+        )
 
     async def query(
         self,
@@ -107,6 +111,7 @@ class HttpClient:
         request_body: str | None,
         *,
         with_authorization: bool,
+        request_state: RequestState | None = None,
     ) -> Response:
         if self.__session is None:
             await self.__initialize()
@@ -125,6 +130,7 @@ class HttpClient:
                 headers=headers,
                 trace_request_ctx=stall_guard,
             ),
+            request_state,
         )
 
         return Response(async_response, self.__stall_timeout)
@@ -132,8 +138,9 @@ class HttpClient:
     async def __send(
         self,
         send: Callable[[StallGuard], Awaitable[aiohttp.ClientResponse]],
+        request_state: RequestState | None,
     ) -> aiohttp.ClientResponse:
-        stall_guard = StallGuard(self.__stall_timeout)
+        stall_guard = StallGuard(self.__stall_timeout, request_state)
 
         try:
             async with stall_guard:

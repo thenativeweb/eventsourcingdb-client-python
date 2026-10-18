@@ -64,11 +64,11 @@ client = Client(
 
 The stall timeout cannot be turned off: it must be a finite number of seconds greater than zero, otherwise creating the client raises a `ValueError`.
 
-Once the server stalls, every request raises a `ConnectionStalledError`, which is a subclass of `ServerError`, whether it stalls while connecting, while sending the request, while waiting for the response, or in the middle of a stream. Its `stall_timeout` attribute holds the stall timeout in seconds. For details on streams, see [Detecting a Stalled Connection](#detecting-a-stalled-connection).
+Once the server stalls, every request raises a `ConnectionStalledError`, which is a subclass of `ServerError`, whether it stalls while connecting, while sending the request, while waiting for the response, or in the middle of a stream. Its `stall_timeout` attribute holds the stall timeout in seconds. If writing events or registering an event schema stalls once the request has a connection, the server may have stored the write, so the `ConnectionStalledError` is the cause of an `OutcomeUnknownError` instead, see [Knowing Whether a Write Was Stored](#knowing-whether-a-write-was-stored). For details on streams, see [Detecting a Stalled Connection](#detecting-a-stalled-connection).
 
 The stall timeout also covers the time a request waits for a free connection: a client keeps at most 100 connections open at the same time, so with as many streams open, a further request waits until one of them ends. If it waits for longer than the stall timeout, it raises a `ConnectionStalledError` as well.
 
-In any case, the client closes the connection. Your own timeouts and cancellations, such as `asyncio.timeout`, still apply and can end a request earlier.
+In any case, the client closes the connection. Your own timeouts and cancellations, such as `asyncio.timeout`, still apply and can end a request earlier. A write that you end this way once it has a connection raises an `OutcomeUnknownError`, see [Knowing Whether a Write Was Stored](#knowing-whether-a-write-was-stored).
 
 ### Handling Errors
 
@@ -101,6 +101,30 @@ except DbApiError as error:
 ```
 
 Servers without the v2 API report errors without a code. For them, the client assigns the code of the v2 API to the errors that clearly match one: a precondition that does not hold, an exceeded capacity of the store, an event that does not match the schema of its type, a schema that is already registered, a schema that existing events do not match, a range of events that cannot be read because `from_latest_event` lies above the `upper_bound`, an unknown event type, a store in read-only mode, and an invalid license. Every other error of such a server has no code.
+
+### Knowing Whether a Write Was Stored
+
+EventSourcingDB never stores a write halfway: the events of a call to `write_events`, or the schema of a call to `register_event_schema`, are either stored completely or not at all. If one of these functions fails in a way that leaves open whether the server stored the write, it raises an `OutcomeUnknownError`, whose `cause` attribute holds the error that the write failed with. This happens, for example, if the server stalls or the connection breaks once the request has a connection, if the server answers with a status such as `500`, `502`, or `504`, if the answer does not come from EventSourcingDB, or if the server ends its answer before it is complete. Before you repeat such a write, find out whether it was stored, for example by reading the events of the subject, or repeat it with a precondition such as `IsSubjectOnEventId` that only holds if it was not stored.
+
+The function raises the error itself, which tells that the write was certainly not stored, only if the request could not get a connection at all, such as when the name of the server cannot be resolved, connecting or TLS fails, or the request waits for a free connection for longer than the stall timeout, or if the server refused the write: with an error that it reports within its answer, other than `ErrorCode.STORE_FAILED`, with one of the statuses `400`, `401`, `408`, `413`, `429`, and `503`, or, for servers without the v2 API, with any status `4xx`, `503`, or `507`.
+
+This includes cancelling a write: if you cancel it once it has a connection, for example with `asyncio.timeout` or by cancelling its task, it raises an `OutcomeUnknownError` whose cause is the `asyncio.CancelledError`, rather than letting the `CancelledError`, or the `TimeoutError` of `asyncio.timeout`, through. A write that you cancel before it has a connection is cancelled as usual.
+
+```python
+from eventsourcingdb import OutcomeUnknownError
+
+try:
+  written_events = await client.write_events(
+    events = [
+      # events
+    ],
+  )
+except OutcomeUnknownError as error:
+  # The events may have been stored. error.cause tells why the outcome is unknown.
+  pass
+```
+
+`OutcomeUnknownError` is a subclass of `CustomError`, the base class of every error of the client SDK, but not of `ServerError`.
 
 ### Writing Events
 

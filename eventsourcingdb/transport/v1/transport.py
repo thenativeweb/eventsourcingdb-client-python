@@ -16,7 +16,7 @@ from ...event.find_raw_data import (
     defer_raw_data_of_events,
     defer_raw_data_of_stream_item,
 )
-from ...http_client import HttpClient, Response
+from ...http_client import HttpClient, RequestState, Response
 from ...is_valid_server_header import is_valid_server_header
 from ...observe_events import ObserveEventsOptions
 from ...parse_raw_message import parse_raw_message
@@ -24,6 +24,7 @@ from ...read_event_types import EventType
 from ...read_events import ReadEventsOptions
 from ...write_events import Precondition
 from ..error_of_answer import error_of_answer
+from ..guard_write import guard_write
 from ..stream_broke_off import stream_broke_off
 from ..transport import Transport
 from .code_of_error import (
@@ -59,6 +60,17 @@ async def ensure_answer_is_ok(response: Response, path: str) -> None:
         raise await error_of_answer(
             response, lambda status, text: code_of_error(path, status, text)
         )
+
+
+def is_refusal(error: DbApiError) -> bool:
+    """
+    Tells whether the server refused a write before it stored anything, as
+    the v1 API does with a status of 4xx, 503, or 507.
+    """
+    return 400 <= error.status < 500 or error.status in {
+        HTTPStatus.SERVICE_UNAVAILABLE,
+        HTTPStatus.INSUFFICIENT_STORAGE,
+    }
 
 
 def error_of_stream_item(message: dict) -> DbApiError:
@@ -129,9 +141,16 @@ class V1Transport(Transport):
             }
         )
 
+        return await guard_write(
+            lambda request_state: self.__write_events(request_body, request_state),
+            is_refusal,
+        )
+
+    async def __write_events(self, request_body: str, request_state: RequestState) -> list[Event]:
         response = await self.__http_client.post(
             path=WRITE_EVENTS_PATH,
             request_body=request_body,
+            request_state=request_state,
         )
 
         async with response:
@@ -266,9 +285,18 @@ class V1Transport(Transport):
             'schema': json_schema,
         })
 
+        await guard_write(
+            lambda request_state: self.__register_event_schema(request_body, request_state),
+            is_refusal,
+        )
+
+    async def __register_event_schema(
+        self, request_body: str, request_state: RequestState
+    ) -> None:
         response: Response = await self.__http_client.post(
             path=REGISTER_EVENT_SCHEMA_PATH,
             request_body=request_body,
+            request_state=request_state,
         )
 
         async with response:

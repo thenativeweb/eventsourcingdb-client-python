@@ -95,6 +95,7 @@ class StreamServer:
         self.__client: Client | None = None
         self.client_disconnected = asyncio.Event()
         self.requests: list[ReceivedRequest] = []
+        self.request_received = asyncio.Event()
         self.probe_count = 0
 
     async def __aenter__(self) -> Self:
@@ -155,6 +156,7 @@ class StreamServer:
             self.requests.append(
                 ReceivedRequest(request.method, request.path, await request.read())
             )
+            self.request_received.set()
 
             if self.__write_stream is None:
                 await asyncio.Event().wait()

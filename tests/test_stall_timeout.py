@@ -14,6 +14,7 @@ from eventsourcingdb import (
     Client,
     ConnectionStalledError,
     EventCandidate,
+    OutcomeUnknownError,
     ReadEventsOptions,
     ReadSubjectsOptions,
     ServerError,
@@ -134,6 +135,23 @@ def per_api(names: list[str] | None = None) -> list[Any]:
     ]
 
 
+WRITE_NAMES = {'write_events', 'register_event_schema'}
+
+
+def assert_stalled(error: BaseException, name: str) -> None:
+    # A write that stalls once it has a connection may have been stored, so
+    # its outcome is unknown.
+    if name in WRITE_NAMES:
+        assert type(error) is OutcomeUnknownError
+        error = error.cause
+
+    assert type(error) is ConnectionStalledError
+
+
+def name_of(request_: Request) -> str:
+    return next(name for name, known_request in REQUESTS.items() if known_request is request_)
+
+
 def stream_server(write_stream: Any, api: Api, **options: Any) -> StreamServer:
     # Only the first ping asks whether the server offers the v2 API, so that a
     # ping of the v2 API reaches the stream as every other request does.
@@ -220,13 +238,13 @@ class TestStallTimeout:
         async with stream_server(None, api) as server:
             started_at = time.monotonic()
 
-            with pytest.raises(ConnectionStalledError) as error:
+            with pytest.raises((ConnectionStalledError, OutcomeUnknownError)) as error:
                 async with asyncio.timeout(GUARD_TIMEOUT_SECONDS) as guard:
                     await request_(server.get_client())
 
             elapsed_seconds = time.monotonic() - started_at
             assert not guard.expired()
-            assert type(error.value) is ConnectionStalledError
+            assert_stalled(error.value, name_of(request_))
             assert elapsed_seconds >= STALL_TIMEOUT_SECONDS
             assert elapsed_seconds < STALL_TIMEOUT_SECONDS + 1
 
@@ -248,13 +266,13 @@ class TestStallTimeout:
         async with stream_server(write_stream, api) as server:
             started_at = time.monotonic()
 
-            with pytest.raises(ConnectionStalledError) as error:
+            with pytest.raises((ConnectionStalledError, OutcomeUnknownError)) as error:
                 async with asyncio.timeout(GUARD_TIMEOUT_SECONDS) as guard:
                     await REQUESTS[name](server.get_client())
 
             elapsed_seconds = time.monotonic() - started_at
             assert not guard.expired()
-            assert type(error.value) is ConnectionStalledError
+            assert_stalled(error.value, name)
             assert elapsed_seconds >= STALL_TIMEOUT_SECONDS
             assert elapsed_seconds < STALL_TIMEOUT_SECONDS + 1
 
@@ -315,12 +333,18 @@ class TestStallTimeout:
     @pytest.mark.parametrize(('api', 'request_'), per_api())
     async def test_does_not_replace_a_timeout_of_the_caller(api: Api, request_: Request) -> None:
         async with stream_server(None, api) as server:
-            with pytest.raises(TimeoutError) as error:
+            with pytest.raises((TimeoutError, OutcomeUnknownError)) as error:
                 async with asyncio.timeout(STALL_TIMEOUT_SECONDS / 2) as deadline:
                     await request_(server.get_client())
 
             assert deadline.expired()
-            assert type(error.value) is TimeoutError
+            # A write that the caller ends once it has a connection may have
+            # been stored, so its outcome is unknown.
+            if name_of(request_) in WRITE_NAMES:
+                assert type(error.value) is OutcomeUnknownError
+                assert isinstance(error.value.cause, asyncio.CancelledError)
+            else:
+                assert type(error.value) is TimeoutError
 
     @staticmethod
     @pytest.mark.asyncio
@@ -411,7 +435,7 @@ class TestStallTimeout:
             async with Client(
                 f'http://127.0.0.1:{port}', 'secret', stall_timeout=STALL_TIMEOUT_SECONDS
             ) as client:
-                with pytest.raises(ConnectionStalledError) as error:
+                with pytest.raises(OutcomeUnknownError) as error:
                     async with asyncio.timeout(GUARD_TIMEOUT_SECONDS) as guard:
                         # Far more data than the buffers of the connection hold,
                         # so that sending stalls once they are full.
@@ -427,7 +451,7 @@ class TestStallTimeout:
                         )
 
                 assert not guard.expired()
-                assert type(error.value) is ConnectionStalledError
+                assert_stalled(error.value, 'write_events')
                 assert connection_count == 2
         finally:
             server.close()
