@@ -26,11 +26,11 @@ class TestContainer:
     async def test_leaves_containers_alone_that_it_did_not_start() -> None:
         # A container of the same image and tag, but started by someone else,
         # such as another test run or the developer.
-        image = 'thenativeweb/eventsourcingdb:latest'
+        image_tag = get_image_tag()
         docker_client = docker.from_env()
-        docker_client.images.pull('thenativeweb/eventsourcingdb', 'latest')
+        docker_client.images.pull('thenativeweb/eventsourcingdb', image_tag)
         other_container = docker_client.containers.run(
-            image,
+            f'thenativeweb/eventsourcingdb:{image_tag}',
             command=[
                 'run',
                 '--api-token',
@@ -43,7 +43,7 @@ class TestContainer:
         )
 
         try:
-            container = Container().with_image_tag('latest')
+            container = Container().with_image_tag(image_tag)
             container.start()
 
             try:
