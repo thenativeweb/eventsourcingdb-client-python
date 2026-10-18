@@ -2,7 +2,6 @@ import asyncio
 import math
 import socket
 import time
-from collections.abc import Awaitable, Callable
 from typing import Any
 
 import aiohttp
@@ -15,7 +14,6 @@ from eventsourcingdb import (
     Client,
     ConnectionStalledError,
     EventCandidate,
-    ObserveEventsOptions,
     ReadEventsOptions,
     ReadSubjectsOptions,
     ServerError,
@@ -24,6 +22,21 @@ from eventsourcingdb.http_client import DEFAULT_STALL_TIMEOUT_SECONDS
 from eventsourcingdb.http_client.response import MAX_LINE_BYTES
 
 from .event.fixtures import READ_EVENTS_WITH_HASH_V2, WRITTEN_EVENTS_WITH_HASH_V2
+from .shared.requests import (
+    HEARTBEAT_STREAMS,
+    ONE_SHOT_REQUESTS,
+    STREAMS,
+    Request,
+    observe_events,
+    ping,
+    read_event_type,
+    read_event_types,
+    read_events,
+    read_subjects,
+    run_eventql_query,
+    verify_api_token,
+    write_events,
+)
 from .shared.stream_server import StreamServer
 
 STALL_TIMEOUT_SECONDS = 0.5
@@ -31,84 +44,6 @@ GUARD_TIMEOUT_SECONDS = 5
 
 HEARTBEAT_LINE = b'{"type":"heartbeat","payload":{}}\n'
 ROW_LINE = b'{"type":"row","payload":{"title":"Dune"}}\n'
-
-Request = Callable[[Client], Awaitable[None]]
-
-
-async def ping(client: Client) -> None:
-    await client.ping()
-
-
-async def verify_api_token(client: Client) -> None:
-    await client.verify_api_token()
-
-
-async def write_events(client: Client) -> None:
-    await client.write_events(
-        [
-            EventCandidate(
-                source='https://www.eventsourcingdb.io',
-                subject='/books/42',
-                type='io.eventsourcingdb.library.book-acquired',
-                data={},
-            )
-        ]
-    )
-
-
-async def register_event_schema(client: Client) -> None:
-    await client.register_event_schema(
-        'io.eventsourcingdb.library.book-acquired', {'type': 'object'}
-    )
-
-
-async def read_event_type(client: Client) -> None:
-    await client.read_event_type('io.eventsourcingdb.library.book-acquired')
-
-
-async def read_events(client: Client) -> None:
-    async for _ in client.read_events('/', ReadEventsOptions(recursive=True)):
-        pass
-
-
-async def read_subjects(client: Client) -> None:
-    async for _ in client.read_subjects('/', ReadSubjectsOptions(recursive=True)):
-        pass
-
-
-async def read_event_types(client: Client) -> None:
-    async for _ in client.read_event_types():
-        pass
-
-
-async def observe_events(client: Client) -> None:
-    async for _ in client.observe_events('/', ObserveEventsOptions(recursive=True)):
-        pass
-
-
-async def run_eventql_query(client: Client) -> None:
-    async for _ in client.run_eventql_query('FROM e IN events PROJECT INTO e'):
-        pass
-
-
-# Every request ends with a ConnectionStalledError once the server stalls,
-# whether it is a stream or not.
-ONE_SHOT_REQUESTS = [
-    pytest.param(ping, id='ping'),
-    pytest.param(verify_api_token, id='verify_api_token'),
-    pytest.param(write_events, id='write_events'),
-    pytest.param(register_event_schema, id='register_event_schema'),
-    pytest.param(read_event_type, id='read_event_type'),
-]
-STREAMS = [
-    pytest.param(read_events, id='read_events'),
-    pytest.param(read_subjects, id='read_subjects'),
-    pytest.param(read_event_types, id='read_event_types'),
-]
-HEARTBEAT_STREAMS = [
-    pytest.param(observe_events, id='observe_events'),
-    pytest.param(run_eventql_query, id='run_eventql_query'),
-]
 
 # Partial responses, after which the server stalls. register_event_schema does
 # not read the body of a successful response, so it has none.

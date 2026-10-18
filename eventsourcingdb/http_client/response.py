@@ -47,6 +47,12 @@ class Response:
         return HTTPStatus(self.__response.status)
 
     @property
+    def status(self) -> int:
+        # Unlike status_code, this also works for a status that HTTPStatus does
+        # not know, as a proxy in front of the server may answer with.
+        return self.__response.status
+
+    @property
     def headers(self) -> Headers:
         return self.__response.headers
 
@@ -112,5 +118,4 @@ class Response:
             raise ConnectionStalledError(self.__stall_timeout) from error
 
     def __str__(self) -> str:
-        status_code_text = f"{self.status_code} {self.status_code.phrase}"
-        return f"Response(status={status_code_text}, headers={dict(self.headers)})"
+        return f"Response(status={self.status}, headers={dict(self.headers)})"

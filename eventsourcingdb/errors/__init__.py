@@ -1,6 +1,8 @@
 from .client_error import ClientError
 from .connection_stalled_error import ConnectionStalledError
 from .custom_error import CustomError
+from .db_api_error import DbApiError
+from .error_code import ErrorCode
 from .hash_verification_failed_error import HashVerificationFailedError
 from .internal_error import InternalError
 from .server_error import ServerError
@@ -12,6 +14,8 @@ __all__ = [
     "ClientError",
     "ConnectionStalledError",
     "CustomError",
+    "DbApiError",
+    "ErrorCode",
     "HashVerificationFailedError",
     "InternalError",
     "ServerError",

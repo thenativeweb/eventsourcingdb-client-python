@@ -1,5 +1,5 @@
 import asyncio
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
 from types import TracebackType
 from typing import Self
@@ -24,15 +24,30 @@ class StreamServer:
     request, whatever its method and path, with whatever the given function
     writes to the stream, so that tests can control every single line. Without
     a function, it never answers at all, not even with the response headers.
+    It answers with the given status, and with the headers of EventSourcingDB
+    unless the given headers replace them, or remove them with None.
     """
 
     def __init__(
         self,
         write_stream: WriteStream | None,
         stall_timeout: float | None = None,
+        *,
+        status: int = 200,
+        headers: Mapping[str, str | None] | None = None,
     ) -> None:
         self.__write_stream = write_stream
         self.__stall_timeout = stall_timeout
+        self.__status = status
+        self.__headers: dict[str, str] = {
+            name: value
+            for name, value in {
+                'Server': 'EventSourcingDB/test',
+                'Content-Type': 'application/x-ndjson',
+                **(headers or {}),
+            }.items()
+            if value is not None
+        }
         self.__runner: web.AppRunner | None = None
         self.__client: Client | None = None
         self.client_disconnected = asyncio.Event()
@@ -87,12 +102,7 @@ class StreamServer:
             if self.__write_stream is None:
                 await asyncio.Event().wait()
 
-            response = web.StreamResponse(
-                headers={
-                    'Server': 'EventSourcingDB/test',
-                    'Content-Type': 'application/x-ndjson',
-                },
-            )
+            response = web.StreamResponse(status=self.__status, headers=self.__headers)
             await response.prepare(request)
 
             await self.__write_stream(response)  # type: ignore

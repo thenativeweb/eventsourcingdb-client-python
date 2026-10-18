@@ -64,6 +64,38 @@ The stall timeout also covers the time a request waits for a free connection: a 
 
 In any case, the client closes the connection. Your own timeouts and cancellations, such as `asyncio.timeout`, still apply and can end a request earlier.
 
+### Handling Errors
+
+Every error that the server reports raises a `DbApiError`, which is a subclass of `ServerError`. It has the following attributes:
+
+- `code` is the URL of the page in the documentation that explains the error, exactly as the server sends it, such as `https://docs.eventsourcingdb.io/errors/precondition-violated`, or `None` if the error has no code.
+- `description` describes the error.
+- `details` is a dict that locates the error, such as the index of the precondition that does not hold, and is empty if there is nothing to locate.
+- `status` is the HTTP status of the answer, which is `200` for an error that the server reports within an answer that it began successfully.
+- `retry_after` is the number of seconds to wait before trying again, which the server only tells when it refuses a request because it received too many (with status `429`). Otherwise, it is `None`. The client never retries a request on its own.
+
+To tell errors apart, compare the `code` with the constants of `ErrorCode`, which has one for every code the server knows. Since the constants are strings, they compare equal to the code as the server sends it:
+
+```python
+from eventsourcingdb import DbApiError, ErrorCode, IsSubjectPristine
+
+try:
+  written_events = await client.write_events(
+    events = [
+      # events
+    ],
+    preconditions = [
+      IsSubjectPristine('/books/42')
+    ],
+  )
+except DbApiError as error:
+  if error.code != ErrorCode.PRECONDITION_VIOLATED:
+    raise
+  # The subject already has events.
+```
+
+Servers without the v2 API report errors without a code. For them, the client assigns the code of the v2 API to the errors that clearly match one: a precondition that does not hold, an event that does not match the schema of its type, a schema that is already registered, an unknown event type, a store in read-only mode, and an invalid license. Every other error of such a server has no code.
+
 ### Writing Events
 
 Call the `write_events` function and hand over a list with one or more events. You do not have to provide all event fields – some are automatically added by the server.
