@@ -6,6 +6,11 @@ from eventsourcingdb.errors.server_error import ServerError
 from .conftest import TestData
 from .shared.database import Database
 
+# The preview of EventSourcingDB 1.3 words these errors differently than
+# EventSourcingDB 1.2 does, so the tests accept the messages of both.
+EVENT_TYPE_NOT_FOUND = "event type .* not found|event type is unknown"
+EVENT_TYPE_MALFORMED = "invalid event type|event type is malformed"
+
 
 class TestReadEventType:
     @staticmethod
@@ -13,7 +18,7 @@ class TestReadEventType:
     async def test_fails_if_the_event_type_does_not_exist(
         database: Database,
     ) -> None:
-        with pytest.raises(ServerError, match="event type .* not found"):
+        with pytest.raises(ServerError, match=EVENT_TYPE_NOT_FOUND):
             await database.get_client().read_event_type("non.existent.event.type")
 
     @staticmethod
@@ -21,7 +26,7 @@ class TestReadEventType:
     async def test_fails_if_the_event_type_is_malformed(
         database: Database,
     ) -> None:
-        with pytest.raises(ServerError, match="invalid event type"):
+        with pytest.raises(ServerError, match=EVENT_TYPE_MALFORMED):
             await database.get_client().read_event_type("malformed.event.type.")
 
     @staticmethod
