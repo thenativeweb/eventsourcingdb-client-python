@@ -7,9 +7,16 @@ import aiohttp
 from aiohttp import StreamReader
 
 from ..errors.connection_stalled_error import ConnectionStalledError
+from ..errors.server_error import ServerError
 from .stall_guard import DEFAULT_STALL_TIMEOUT_SECONDS
 
 Headers = Mapping[str, str]
+
+# A line holds a single item of a stream, such as an event, which the server
+# limits to 64 KiB. The limit keeps a server or proxy that never sends a line
+# feed from filling the memory, since the stall timeout does not end a
+# response that keeps arriving.
+MAX_LINE_BYTES = 1024 * 1024
 
 
 class Response:
@@ -70,7 +77,8 @@ class Response:
         Reads the body line by line. Raises the given error once nothing
         arrives for the stall timeout. Every chunk restarts the clock, not
         only every line, and the time the caller spends between two lines
-        does not count.
+        does not count. Raises a ServerError if a line is longer than
+        MAX_LINE_BYTES.
         """
         pending = bytearray()
 
@@ -79,12 +87,20 @@ class Response:
 
             start = 0
             while (end := pending.find(b'\n', start)) != -1:
+                Response.__ensure_line_length(end - start)
                 yield bytes(pending[start:end + 1])
                 start = end + 1
             del pending[:start]
 
+            Response.__ensure_line_length(len(pending))
+
         if pending:
             yield bytes(pending)
+
+    @staticmethod
+    def __ensure_line_length(line_length: int) -> None:
+        if line_length > MAX_LINE_BYTES:
+            raise ServerError(f'A line of the response is longer than {MAX_LINE_BYTES} bytes.')
 
     async def __read_chunk(self, stall_error: type[ConnectionStalledError] | None) -> bytes:
         timeout = asyncio.timeout(self.__stall_timeout)

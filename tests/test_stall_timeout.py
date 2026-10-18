@@ -19,8 +19,10 @@ from eventsourcingdb import (
     InternalError,
     ObserveEventsOptions,
     ReadEventsOptions,
+    ServerError,
 )
 from eventsourcingdb.http_client import DEFAULT_STALL_TIMEOUT_SECONDS
+from eventsourcingdb.http_client.response import MAX_LINE_BYTES
 
 from .event.fixtures import READ_EVENTS_WITH_HASH_V2, WRITTEN_EVENTS_WITH_HASH_V2
 from .shared.stream_server import StreamServer
@@ -450,3 +452,55 @@ class TestStallTimeout:
                 await second_query
 
             assert request_count == 2
+
+
+class TestLineLength:
+    @staticmethod
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize('request_', STREAMS + HEARTBEAT_STREAMS)
+    async def test_fails_if_a_line_does_not_end_within_the_limit(request_: Request) -> None:
+        # The parts keep arriving, so only the limit can end the response.
+        async def write_stream(response: web.StreamResponse) -> None:
+            part = b'x' * 65536
+            for _ in range(2 * MAX_LINE_BYTES // len(part)):
+                await response.write(part)
+            await stall()
+
+        async with StreamServer(write_stream, stall_timeout=STALL_TIMEOUT_SECONDS) as server:
+            with pytest.raises(ServerError, match=f'longer than {MAX_LINE_BYTES} bytes') as error:
+                async with asyncio.timeout(GUARD_TIMEOUT_SECONDS):
+                    await request_(server.get_client())
+
+            assert type(error.value) is ServerError
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_fails_if_a_complete_line_is_longer_than_the_limit() -> None:
+        subject = '/' + 'a' * MAX_LINE_BYTES
+        line = ('{"type":"subject","payload":{"subject":"' + subject + '"}}\n').encode('utf-8')
+
+        async def write_stream(response: web.StreamResponse) -> None:
+            await response.write(line)
+
+        async with StreamServer(write_stream, stall_timeout=STALL_TIMEOUT_SECONDS) as server:
+            with pytest.raises(ServerError, match=f'longer than {MAX_LINE_BYTES} bytes'):
+                async with asyncio.timeout(GUARD_TIMEOUT_SECONDS):
+                    async for _ in server.get_client().read_subjects('/'):
+                        pass
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_reads_a_line_within_the_limit() -> None:
+        subject = '/' + 'a' * (MAX_LINE_BYTES - 100)
+        line = ('{"type":"subject","payload":{"subject":"' + subject + '"}}\n').encode('utf-8')
+
+        async def write_stream(response: web.StreamResponse) -> None:
+            await write_in_parts(response, line)
+
+        async with StreamServer(write_stream, stall_timeout=STALL_TIMEOUT_SECONDS) as server:
+            subjects = []
+            async with asyncio.timeout(GUARD_TIMEOUT_SECONDS):
+                async for read_subject in server.get_client().read_subjects('/'):
+                    subjects.append(read_subject)
+
+            assert subjects == [subject]
