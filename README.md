@@ -814,6 +814,7 @@ Version 2 of the client SDK speaks the v2 API of EventSourcingDB, and keeps spea
 - **Event types:** an `EventType` names its type `type` instead of `event_type`, and tells whether events of the type exist with `has_events`, the opposite of the former `is_phantom`.
   - Before: `event_type.event_type`, `event_type.is_phantom`, `EventType(event_type = '…', is_phantom = True)`
   - After: `event_type.type`, `not event_type.has_events`, `EventType(type = '…', has_events = False)`
+  - Positional arguments keep their places but change their meaning without an error: `EventType('…', True)` used to create an event type without events, and now creates one with events. Pass them by name, or negate the second one.
 - **Reading subjects:** `read_subjects` takes a subject and `ReadSubjectsOptions` with a `recursive` option that is required. To keep the previous behavior, set it to `True`.
   - Before: `client.read_subjects(base_subject = '/books')`
   - After: `client.read_subjects(subject = '/books', options = ReadSubjectsOptions(recursive = True))`
