@@ -60,7 +60,7 @@ The stall timeout cannot be turned off: it must be a finite number of seconds gr
 
 What a request raises once the server stalls depends on the request:
 
-- If connecting to the server stalls, the request raises aiohttp's `ConnectionTimeoutError`.
+- If connecting to the server stalls, the request raises aiohttp's `ConnectionTimeoutError`. `read_event_types` wraps it in an `InternalError`, as it does with every error of the connection.
 - `ping`, `verify_api_token`, `write_events`, `register_event_schema`, and `read_event_type` raise a `TimeoutError`.
 - `read_events`, `read_subjects`, and `read_event_types` raise a `ConnectionStalledError`, which is a subclass of `ServerError`.
 - `observe_events` and `run_eventql_query` raise a `HeartbeatTimeoutError` once the server has answered, and a `ConnectionStalledError` before. `HeartbeatTimeoutError` is a subclass of `ConnectionStalledError`. For details, see [Detecting a Stalled Connection](#detecting-a-stalled-connection).
