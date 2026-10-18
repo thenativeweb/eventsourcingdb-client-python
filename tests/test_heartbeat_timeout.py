@@ -7,11 +7,13 @@ from typing import Any
 import pytest
 from aiohttp import web
 
-import eventsourcingdb.read_lines_with_heartbeat_timeout as heartbeat_timeout_module
-from eventsourcingdb import Client, HeartbeatTimeoutError, ObserveEventsOptions
-from eventsourcingdb.read_lines_with_heartbeat_timeout import (
-    read_lines_with_heartbeat_timeout,
+from eventsourcingdb import (
+    Client,
+    ConnectionStalledError,
+    HeartbeatTimeoutError,
+    ObserveEventsOptions,
 )
+from eventsourcingdb.http_client import Response
 
 from .shared.stream_server import StreamServer
 
@@ -64,16 +66,11 @@ async def stall() -> None:
     await asyncio.Event().wait()
 
 
-@pytest.fixture
-def short_heartbeat_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        heartbeat_timeout_module,
-        'HEARTBEAT_TIMEOUT_SECONDS',
-        SHORT_HEARTBEAT_TIMEOUT_SECONDS,
-    )
+def stream_server(write_stream: Callable[[web.StreamResponse], Any]) -> StreamServer:
+    # The heartbeat timeout is the stall timeout of the client.
+    return StreamServer(write_stream, stall_timeout=SHORT_HEARTBEAT_TIMEOUT_SECONDS)
 
 
-@pytest.mark.usefixtures('short_heartbeat_timeout')
 class TestHeartbeatTimeout:
     @staticmethod
     @pytest.mark.asyncio
@@ -85,13 +82,13 @@ class TestHeartbeatTimeout:
             await response.write(HEARTBEAT_LINE)
             await stall()
 
-        async with StreamServer(write_stream) as server:
+        async with stream_server(write_stream) as server:
             started_at = time.monotonic()
 
             with pytest.raises(
                 HeartbeatTimeoutError,
-                match='No event and no heartbeat arrived for 30 seconds',
-            ):
+                match='No event and no heartbeat arrived for 0.5 seconds',
+            ) as error:
                 async with asyncio.timeout(GUARD_TIMEOUT_SECONDS):
                     async for _ in start_stream(server.get_client()):
                         pass
@@ -99,6 +96,7 @@ class TestHeartbeatTimeout:
             elapsed_seconds = time.monotonic() - started_at
             assert elapsed_seconds >= SHORT_HEARTBEAT_TIMEOUT_SECONDS
             assert elapsed_seconds < SHORT_HEARTBEAT_TIMEOUT_SECONDS + 1
+            assert isinstance(error.value, ConnectionStalledError)
 
             async with asyncio.timeout(GUARD_TIMEOUT_SECONDS):
                 await server.client_disconnected.wait()
@@ -119,7 +117,7 @@ class TestHeartbeatTimeout:
             await response.write(item_line)
             await stall()
 
-        async with StreamServer(write_stream) as server:
+        async with stream_server(write_stream) as server:
             started_at = time.monotonic()
             items = []
 
@@ -146,7 +144,7 @@ class TestHeartbeatTimeout:
                 await response.write(item_line)
                 await asyncio.sleep(item_interval_seconds)
 
-        async with StreamServer(write_stream) as server:
+        async with stream_server(write_stream) as server:
             items = []
 
             async with asyncio.timeout(GUARD_TIMEOUT_SECONDS):
@@ -165,7 +163,7 @@ class TestHeartbeatTimeout:
             await response.write(HEARTBEAT_LINE)
             await stall()
 
-        async with StreamServer(write_stream) as server:
+        async with stream_server(write_stream) as server:
             async def consume_stream() -> None:
                 async for _ in start_stream(server.get_client()):
                     pass
@@ -189,7 +187,7 @@ class TestHeartbeatTimeout:
             await response.write(HEARTBEAT_LINE)
             await stall()
 
-        async with StreamServer(write_stream) as server:
+        async with stream_server(write_stream) as server:
             with pytest.raises(TimeoutError):
                 async with asyncio.timeout(SHORT_HEARTBEAT_TIMEOUT_SECONDS / 2):
                     async for _ in start_stream(server.get_client()):
@@ -200,9 +198,24 @@ class TestHeartbeatTimeout:
     async def test_passes_on_timeouts_that_are_not_heartbeat_timeouts() -> None:
         class TimingOutStream:
             @staticmethod
-            async def readline() -> bytes:
+            async def readany() -> bytes:
                 raise TimeoutError('Session timed out')
 
-        with pytest.raises(TimeoutError, match='Session timed out'):
-            async for _ in read_lines_with_heartbeat_timeout(TimingOutStream()):  # type: ignore
+        class TimingOutResponse:
+            content = TimingOutStream()
+
+            @staticmethod
+            def close() -> None:
                 pass
+
+        response = Response(TimingOutResponse(), SHORT_HEARTBEAT_TIMEOUT_SECONDS)  # type: ignore
+
+        with pytest.raises(TimeoutError, match='Session timed out'):
+            async for _ in response.read_lines(HeartbeatTimeoutError):
+                pass
+
+    @staticmethod
+    def test_keeps_the_message_of_the_default_heartbeat_timeout() -> None:
+        assert str(HeartbeatTimeoutError()) == (
+            'Server error occurred: No event and no heartbeat arrived for 30 seconds'
+        )

@@ -1,12 +1,13 @@
 import asyncio
 import logging
-import os
 import uuid
 from types import TracebackType
 from typing import Self
 
 from eventsourcingdb.client import Client
 from eventsourcingdb.container import Container
+
+from .image_tag import get_image_tag
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +49,7 @@ class Database:
     @classmethod
     async def create(cls, max_retries=3, retry_delay=2.0) -> 'Database':
         api_token = str(uuid.uuid4())
-        image_tag = cls._get_image_tag_from_dockerfile()
+        image_tag = get_image_tag()
         container = cls._create_container(api_token, image_tag)
         error = None
 
@@ -75,7 +76,7 @@ class Database:
                 )
                 await asyncio.sleep(retry_delay)
                 container.stop()
-                container = cls._create_container(api_token, "latest")
+                container = cls._create_container(api_token, image_tag)
                 continue
 
             try:
@@ -93,15 +94,6 @@ class Database:
             return cls(Database.__create_key, with_authorization_client, with_invalid_url_client)
 
         raise RuntimeError('Failed to create database: Unexpected error during retry loop')
-
-    @staticmethod
-    def _get_image_tag_from_dockerfile() -> str:
-        dockerfile_path = os.path.join(
-            os.path.dirname(__file__),
-            'docker/eventsourcingdb/Dockerfile')
-        with open(dockerfile_path, 'r', encoding='utf-8') as dockerfile:
-            content = dockerfile.read().strip()
-            return content.split(':')[-1]
 
     def get_client(self, client_type: str = CLIENT_TYPE_WITH_AUTH) -> Client:
         if client_type == self.CLIENT_TYPE_WITH_AUTH:

@@ -13,19 +13,25 @@ WriteStream = Callable[[web.StreamResponse], Awaitable[None]]
 class StreamServer:
     """
     A local HTTP server that stands in for EventSourcingDB. It answers every
-    POST request, whatever its path, with whatever the given function writes
-    to the stream, so that tests can control every single line.
+    request, whatever its method and path, with whatever the given function
+    writes to the stream, so that tests can control every single line. Without
+    a function, it never answers at all, not even with the response headers.
     """
 
-    def __init__(self, write_stream: WriteStream) -> None:
+    def __init__(
+        self,
+        write_stream: WriteStream | None,
+        stall_timeout: float | None = None,
+    ) -> None:
         self.__write_stream = write_stream
+        self.__stall_timeout = stall_timeout
         self.__runner: web.AppRunner | None = None
         self.__client: Client | None = None
         self.client_disconnected = asyncio.Event()
 
     async def __aenter__(self) -> Self:
         application = web.Application()
-        application.router.add_post('/{path:.*}', self.__handle)
+        application.router.add_route('*', '/{path:.*}', self.__handle)
 
         # Cancelling the handler when the client disconnects is what lets
         # tests notice that the client closed the connection.
@@ -34,7 +40,14 @@ class StreamServer:
         await web.TCPSite(self.__runner, '127.0.0.1', 0).start()
         host, port = self.__runner.addresses[0][:2]
 
-        self.__client = Client(base_url=f'http://{host}:{port}', api_token='secret')
+        if self.__stall_timeout is None:
+            self.__client = Client(base_url=f'http://{host}:{port}', api_token='secret')
+        else:
+            self.__client = Client(
+                base_url=f'http://{host}:{port}',
+                api_token='secret',
+                stall_timeout=self.__stall_timeout,
+            )
         await self.__client.__aenter__()
 
         return self
@@ -57,16 +70,19 @@ class StreamServer:
         return self.__client
 
     async def __handle(self, request: web.Request) -> web.StreamResponse:
-        response = web.StreamResponse(
-            headers={
-                'Server': 'EventSourcingDB/test',
-                'Content-Type': 'application/x-ndjson',
-            },
-        )
-        await response.prepare(request)
-
         try:
-            await self.__write_stream(response)
+            if self.__write_stream is None:
+                await asyncio.Event().wait()
+
+            response = web.StreamResponse(
+                headers={
+                    'Server': 'EventSourcingDB/test',
+                    'Content-Type': 'application/x-ndjson',
+                },
+            )
+            await response.prepare(request)
+
+            await self.__write_stream(response)  # type: ignore
         except asyncio.CancelledError:
             self.client_disconnected.set()
             raise

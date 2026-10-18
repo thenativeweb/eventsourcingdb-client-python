@@ -44,6 +44,31 @@ If you want to verify the API token, call `verify_api_token`. If the token is in
 await client.verify_api_token()
 ```
 
+### Configuring the Stall Timeout
+
+A request fails once nothing at all has arrived from the server for 30 seconds, measured from sending the request until its end, including connecting and waiting for the response. Everything that arrives, such as a part of a response, an event, a row, or a heartbeat, restarts the clock, so a long-running request that keeps receiving data is never cut off. The time your code spends between two items of a stream does not count. To change the limit, pass the `stall_timeout` keyword argument in seconds when creating the client:
+
+```python
+client = Client(
+  base_url = url,
+  api_token = api_token,
+  stall_timeout = 10,
+)
+```
+
+The stall timeout cannot be turned off: it must be a finite number of seconds greater than zero, otherwise creating the client raises a `ValueError`.
+
+What a request raises once the server stalls depends on the request:
+
+- If connecting to the server stalls, the request raises aiohttp's `ConnectionTimeoutError`. `read_event_types` wraps it in an `InternalError`, as it does with every error of the connection.
+- `ping`, `verify_api_token`, `write_events`, `register_event_schema`, and `read_event_type` raise a `TimeoutError`.
+- `read_events`, `read_subjects`, and `read_event_types` raise a `ConnectionStalledError`, which is a subclass of `ServerError`.
+- `observe_events` and `run_eventql_query` raise a `HeartbeatTimeoutError` once the server has answered, and a `ConnectionStalledError` before. `HeartbeatTimeoutError` is a subclass of `ConnectionStalledError`. For details, see [Detecting a Stalled Connection](#detecting-a-stalled-connection).
+
+The stall timeout also covers the time a request waits for a free connection: a client keeps at most 100 connections open at the same time, so with as many streams open, a further request waits until one of them ends. If it waits for longer than the stall timeout, it fails as if the server had stalled after the request was sent, with a `TimeoutError` or a `ConnectionStalledError` as listed above.
+
+In any case, the client closes the connection. Your own timeouts and cancellations, such as `asyncio.timeout`, still apply and can end a request earlier.
+
 ### Writing Events
 
 Call the `write_events` function and hand over a list with one or more events. You do not have to provide all event fields – some are automatically added by the server.
@@ -292,7 +317,7 @@ async for row in client.run_eventql_query(
 
 *Note that each row returned by the generator matches the projection specified in your query.*
 
-While the query runs, the server sends a heartbeat every second whenever there is no row to send. If neither a row nor a heartbeat arrives for 30 seconds, the generator closes the connection and raises a `HeartbeatTimeoutError`, which is a subclass of `ServerError`. For details, see [Detecting a Stalled Connection](#detecting-a-stalled-connection).
+While the query runs, the server sends a heartbeat every second whenever there is no row to send. If neither a row nor a heartbeat arrives for the [stall timeout](#configuring-the-stall-timeout), 30 seconds by default, the generator closes the connection and raises a `HeartbeatTimeoutError`, which is a subclass of `ConnectionStalledError` and of `ServerError`. For details, see [Detecting a Stalled Connection](#detecting-a-stalled-connection).
 
 #### Aborting a Query
 
@@ -460,7 +485,7 @@ async for event in client.observe_events(
 
 #### Detecting a Stalled Connection
 
-While observing, the server sends a heartbeat every second whenever there is no new event. If neither an event nor a heartbeat arrives for 30 seconds, for example because a proxy keeps the connection open but no longer passes anything on, the generator closes the connection and raises a `HeartbeatTimeoutError`. Since `HeartbeatTimeoutError` is a subclass of `ServerError`, you can handle it specifically or together with other server errors:
+While observing, the server sends a heartbeat every second whenever there is no new event. If neither an event nor a heartbeat arrives for the [stall timeout](#configuring-the-stall-timeout), 30 seconds by default, for example because a proxy keeps the connection open but no longer passes anything on, the generator closes the connection and raises a `HeartbeatTimeoutError`. Since `HeartbeatTimeoutError` is a subclass of `ConnectionStalledError`, which in turn is a subclass of `ServerError`, you can handle it specifically, together with other stalled connections, or together with other server errors:
 
 ```python
 from eventsourcingdb import HeartbeatTimeoutError, ObserveEventsOptions
@@ -474,7 +499,7 @@ try:
   ):
     pass
 except HeartbeatTimeoutError:
-  # Neither an event nor a heartbeat arrived for 30 seconds.
+  # Neither an event nor a heartbeat arrived for the stall timeout.
   pass
 ```
 
@@ -603,11 +628,13 @@ event_type = await client.read_event_type("io.eventsourcingdb.library.book-acqui
 
 ### Verifying an Event's Hash
 
-To verify the integrity of an event, call the `verify_hash` function on the event instance. This recomputes the event's hash locally and compares it to the hash stored in the event. If the hashes differ, the function raises an error:
+To verify the integrity of an event, call the `verify_hash` function on the event instance. This recomputes the event's hash locally and compares it to the hash stored in the event. If the hashes differ, the function raises a `HashVerificationFailedError`:
 
 ```python
 event.verify_hash()
 ```
+
+The hash of an event has a version. EventSourcingDB writes hashes of version 2, which start with `esdb:hash:v2:`, since version 1.3, while events written before keep their hashes of version 1, which have no prefix. The `verify_hash` function supports both versions and computes the hash over the event's data exactly as the server sent it. If the hash is of a version the client SDK does not support, the function raises an `UnsupportedHashVersionError`, whose `version` attribute names the version.
 
 *Note that this only verifies the hash. If you also want to verify the signature, you can skip this step and call `verify_signature` directly, which performs a hash verification internally.*
 
@@ -626,6 +653,10 @@ verification_key = # public key as Ed25519PublicKey
 
 event.verify_signature(verification_key)
 ```
+
+If the hash verification fails, the function raises the same errors as `verify_hash`. If the signature does not match the verification key, or if it is malformed, the function raises a `SignatureVerificationFailedError`. If the event has no signature at all, for example because the server was started without a signing key, the function raises a `ValidationError`.
+
+`HashVerificationFailedError`, `UnsupportedHashVersionError`, and `SignatureVerificationFailedError` are subclasses of `ValidationError`, so you can handle them specifically or together with other validation errors.
 
 ### Using Testcontainers
 

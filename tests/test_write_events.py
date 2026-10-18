@@ -12,7 +12,7 @@ from eventsourcingdb import (
     ServerError,
 )
 
-from .conftest import TEST_DEADLINE_SECONDS, TestData
+from .conftest import STALL_TIMEOUT_SECONDS, TEST_DEADLINE_SECONDS, TestData
 from .shared.database import Database
 from .shared.stream_server import StreamServer
 
@@ -328,14 +328,13 @@ class TestWriteSubjects:
 
     @staticmethod
     @pytest.mark.asyncio
-    @pytest.mark.usefixtures("short_session_timeout")
-    async def test_throws_an_error_if_server_answers_slower_than_the_session_timeout(
+    async def test_throws_an_error_if_server_stalls_for_longer_than_the_stall_timeout(
         test_data: TestData,
     ) -> None:
         async def write_stream(_: web.StreamResponse) -> None:
             await asyncio.Event().wait()
 
-        async with StreamServer(write_stream) as server:
+        async with StreamServer(write_stream, stall_timeout=STALL_TIMEOUT_SECONDS) as server:
             client = server.get_client()
 
             with pytest.raises(TimeoutError):
@@ -352,5 +351,5 @@ class TestWriteSubjects:
                     )
 
         assert not deadline.expired(), (
-            "The session timeout must end the request before the deadline of the test does."
+            "The stall timeout must end the request before the deadline of the test does."
         )

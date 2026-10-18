@@ -3,10 +3,14 @@ from .client import Client
 from .container import Container
 from .errors import (
     ClientError,
+    ConnectionStalledError,
     CustomError,
+    HashVerificationFailedError,
     HeartbeatTimeoutError,
     InternalError,
     ServerError,
+    SignatureVerificationFailedError,
+    UnsupportedHashVersionError,
     ValidationError,
 )
 from .event import Event, EventCandidate
@@ -35,11 +39,13 @@ __all__ = [
     "BoundType",
     "Client",
     "ClientError",
+    "ConnectionStalledError",
     "Container",
     "CustomError",
     "Event",
     "EventCandidate",
     "EventType",
+    "HashVerificationFailedError",
     "HeartbeatTimeoutError",
     "IfEventIsMissingDuringObserve",
     "IfEventIsMissingDuringRead",
@@ -55,5 +61,7 @@ __all__ = [
     "ReadEventsOptions",
     "ReadFromLatestEvent",
     "ServerError",
+    "SignatureVerificationFailedError",
+    "UnsupportedHashVersionError",
     "ValidationError",
 ]

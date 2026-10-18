@@ -3,10 +3,28 @@ from hashlib import sha256
 import pytest
 from cryptography.hazmat.primitives.asymmetric import ed25519
 
-from eventsourcingdb import Container, EventCandidate
-from eventsourcingdb.errors.validation_error import ValidationError
+from eventsourcingdb import (
+    Container,
+    EventCandidate,
+    HashVerificationFailedError,
+    SignatureVerificationFailedError,
+    ValidationError,
+)
 
 from ..conftest import TestData
+from ..shared.image_tag import get_image_tag
+from ..shared.serve_events import read_events_from
+from .fixtures import (
+    READ_EVENTS_WITH_HASH_V1,
+    READ_EVENTS_WITH_HASH_V2,
+    VERIFICATION_KEY_V1,
+    VERIFICATION_KEY_V2,
+)
+
+SIGNED_EVENTS = [
+    pytest.param(READ_EVENTS_WITH_HASH_V1, VERIFICATION_KEY_V1, id='v1'),
+    pytest.param(READ_EVENTS_WITH_HASH_V2, VERIFICATION_KEY_V2, id='v2'),
+]
 
 
 class TestVerifySignature:
@@ -15,7 +33,7 @@ class TestVerifySignature:
     async def test_returns_error_if_signature_is_none(
         test_data: TestData,
     ) -> None:
-        container = Container().with_image_tag("preview")
+        container = Container().with_image_tag(get_image_tag())
         container.start()
 
         try:
@@ -39,7 +57,7 @@ class TestVerifySignature:
 
             public_key = ed25519.Ed25519PrivateKey.generate().public_key()
 
-            with pytest.raises(ValidationError):
+            with pytest.raises(ValidationError, match='Signature must not be none.'):
                 written_event.verify_signature(public_key)
         finally:
             container.stop()
@@ -49,7 +67,7 @@ class TestVerifySignature:
     async def test_returns_error_if_hash_verification_fails(
         test_data: TestData,
     ) -> None:
-        container = Container().with_image_tag("preview").with_signing_key()
+        container = Container().with_image_tag(get_image_tag()).with_signing_key()
         container.start()
 
         try:
@@ -77,7 +95,7 @@ class TestVerifySignature:
 
             verification_key = container.get_verification_key()
 
-            with pytest.raises(ValidationError):
+            with pytest.raises(HashVerificationFailedError):
                 written_event.verify_signature(verification_key)
         finally:
             container.stop()
@@ -87,7 +105,7 @@ class TestVerifySignature:
     async def test_returns_error_if_signature_verification_fails(
         test_data: TestData,
     ) -> None:
-        container = Container().with_image_tag("preview").with_signing_key()
+        container = Container().with_image_tag(get_image_tag()).with_signing_key()
         container.start()
 
         try:
@@ -115,8 +133,10 @@ class TestVerifySignature:
 
             verification_key = container.get_verification_key()
 
-            with pytest.raises(ValidationError):
+            with pytest.raises(SignatureVerificationFailedError) as error:
                 written_event.verify_signature(verification_key)
+
+            assert isinstance(error.value, ValidationError)
         finally:
             container.stop()
 
@@ -125,7 +145,7 @@ class TestVerifySignature:
     async def test_verifies_the_signature(
         test_data: TestData,
     ) -> None:
-        container = Container().with_image_tag("preview").with_signing_key()
+        container = Container().with_image_tag(get_image_tag()).with_signing_key()
         container.start()
 
         try:
@@ -152,3 +172,67 @@ class TestVerifySignature:
             written_event.verify_signature(verification_key)
         finally:
             container.stop()
+
+
+class TestVerifySignatureOfFixedEvents:
+    @staticmethod
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(('lines', 'verification_key'), SIGNED_EVENTS)
+    async def test_verifies_the_signature(lines: list[str], verification_key: bytes) -> None:
+        events = await read_events_from(lines)
+
+        assert len(events) == len(lines)
+        for event in events:
+            event.verify_signature(ed25519.Ed25519PublicKey.from_public_bytes(verification_key))
+
+    @staticmethod
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(('lines', 'verification_key'), SIGNED_EVENTS)
+    async def test_fails_if_the_signature_does_not_match_the_verification_key(
+        lines: list[str], verification_key: bytes
+    ) -> None:
+        events = await read_events_from(lines)
+        other_verification_key = ed25519.Ed25519PrivateKey.generate().public_key()
+
+        for event in events:
+            with pytest.raises(SignatureVerificationFailedError, match='Signature verification failed.'):
+                event.verify_signature(other_verification_key)
+
+    @staticmethod
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(('lines', 'verification_key'), SIGNED_EVENTS)
+    async def test_fails_if_the_signature_was_changed(
+        lines: list[str], verification_key: bytes
+    ) -> None:
+        events = await read_events_from(lines)
+
+        for event in events:
+            assert event.signature is not None
+            event.signature = event.signature[:-2] + ('00' if event.signature[-2:] != '00' else '11')
+
+            with pytest.raises(SignatureVerificationFailedError, match='Signature verification failed.'):
+                event.verify_signature(ed25519.Ed25519PublicKey.from_public_bytes(verification_key))
+
+    @staticmethod
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(('lines', 'verification_key'), SIGNED_EVENTS)
+    async def test_fails_if_the_signature_is_malformed(
+        lines: list[str], verification_key: bytes
+    ) -> None:
+        events = await read_events_from(lines)
+
+        for event in events:
+            event.signature = 'esdb:signature:v1:not-hexadecimal'
+
+            with pytest.raises(SignatureVerificationFailedError, match='Failed to decode signature.'):
+                event.verify_signature(ed25519.Ed25519PublicKey.from_public_bytes(verification_key))
+
+    @staticmethod
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(('lines', 'verification_key'), SIGNED_EVENTS)
+    async def test_fails_if_the_hash_is_invalid(lines: list[str], verification_key: bytes) -> None:
+        events = await read_events_from([line.replace('/books/42', '/books/23') for line in lines])
+
+        for event in events:
+            with pytest.raises(HashVerificationFailedError):
+                event.verify_signature(ed25519.Ed25519PublicKey.from_public_bytes(verification_key))
