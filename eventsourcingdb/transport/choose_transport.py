@@ -70,10 +70,13 @@ class ChooseTransport:
     async def __detect(self) -> Transport:
         response = await self.__http_client.get(PROBE_PATH)
         async with response:
-            if not is_valid_server_header(response):
-                raise ServerError('Server must be EventSourcingDB')
+            # A proxy that only forwards the v1 API answers the ping itself,
+            # so this answer does not need to come from EventSourcingDB. The
+            # requests of the v1 API that follow make sure that they do.
             if response.status in STATUSES_WITHOUT_V2_API:
                 return self.__v1_transport
+            if not is_valid_server_header(response):
+                raise ServerError('Server must be EventSourcingDB')
             if response.status != HTTPStatus.OK:
                 raise await error_of_answer(response)
 

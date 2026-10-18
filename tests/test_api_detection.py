@@ -9,6 +9,7 @@ from eventsourcingdb import (
     ConnectionStalledError,
     DbApiError,
     ReadEventsOptions,
+    ReadSubjectsOptions,
     ServerError,
 )
 
@@ -162,8 +163,34 @@ class TestApiDetection:
 
     @staticmethod
     @pytest.mark.asyncio
-    @pytest.mark.parametrize('status', [200, 404])
-    async def test_fails_if_the_ping_is_not_answered_by_eventsourcingdb(status: int) -> None:
+    @pytest.mark.parametrize('status', [404, 405])
+    async def test_speaks_the_v1_api_if_a_proxy_that_only_forwards_it_answers_the_ping(
+        status: int,
+    ) -> None:
+        async def answer_probe_as_proxy(_: web.Request) -> web.StreamResponse:
+            return web.Response(status=status, text='not found', headers={'Server': 'nginx'})
+
+        async def write_stream(response: web.StreamResponse) -> None:
+            await response.write(b'{"type":"subject","payload":{"subject":"/"}}\n')
+
+        async with StreamServer(write_stream, answer_probe=answer_probe_as_proxy) as server:
+            subjects = [
+                subject
+                async for subject in server.get_client().read_subjects(
+                    '/', ReadSubjectsOptions(recursive=True)
+                )
+            ]
+
+            assert subjects == ['/']
+            assert server.probe_count == 1
+            assert [request.path for request in server.requests] == ['/api/v1/read-subjects']
+
+    @staticmethod
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize('status', [200, 500])
+    async def test_fails_if_another_answer_to_the_ping_is_not_from_eventsourcingdb(
+        status: int,
+    ) -> None:
         async def answer_probe(request: web.Request) -> web.StreamResponse:
             response = await answer_probe_with_v2_api(request)
             response.set_status(status)
