@@ -596,6 +596,8 @@ async for event_type in client.read_event_types():
   pass
 ```
 
+Each event type is an `EventType` with the name of the type in `type`, whether events of this type exist in `has_events`, and the registered schema in `schema`, which is `None` if no schema is registered. An event type that has a schema but no events yet has `has_events` set to `False`.
+
 #### Aborting Listing
 
 If you need to abort listing use `break` or `return` within the `async for` loop. However, this only works if there is currently an iteration going on.
@@ -615,7 +617,7 @@ await event_types.aclose()
 
 ### Listing a Specific Event Type
 
-To list a specific event type, call the `read_event_type` function with the event type as an argument. The function returns the detailed event type, which includes the schema:
+To list a specific event type, call the `read_event_type` function with the event type as an argument. The function returns the detailed event type as an `EventType`, with the same fields as above:
 
 ```python
 event_type = await client.read_event_type("io.eventsourcingdb.library.book-acquired")

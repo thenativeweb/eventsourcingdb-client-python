@@ -23,6 +23,7 @@ from .is_event_type import is_event_type
 from .is_heartbeat import is_heartbeat
 from .is_stream_error import is_stream_error
 from .is_subject import is_subject
+from .parse_event_type import parse_event_type
 
 
 def validate_response(response: Response, error_message: str | None = None) -> None:
@@ -296,7 +297,7 @@ class V1Transport(Transport):
                     f'Failed to parse response \'{response_json}\' to dict.')
 
             try:
-                return EventType.parse(response_json)
+                return parse_event_type(response_json)
             except ValidationError as validation_error:
                 raise ServerError(str(validation_error)) from validation_error
             except Exception as other_error:
@@ -324,7 +325,7 @@ class V1Transport(Transport):
                 if is_event_type(message):
                     event_type: EventType
                     try:
-                        event_type = EventType.parse(message['payload'])
+                        event_type = parse_event_type(message['payload'])
                     except ValidationError as validation_error:
                         raise ServerError(str(validation_error)) from validation_error
                     except Exception as other_error:

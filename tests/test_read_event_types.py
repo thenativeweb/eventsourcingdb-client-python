@@ -55,33 +55,33 @@ class TestReadEventTypes:
 
         expected_event_types = {
             EventType(
-                event_type="com.foo.bar",
-                is_phantom=False,
+                type="com.foo.bar",
+                has_events=True,
                 schema=None,
             ),
             EventType(
-                event_type="com.bar.baz",
-                is_phantom=False,
+                type="com.bar.baz",
+                has_events=True,
                 schema=None,
             ),
             EventType(
-                event_type="com.baz.leml",
-                is_phantom=False,
+                type="com.baz.leml",
+                has_events=True,
                 schema=None,
             ),
             EventType(
-                event_type="com.quux.knax",
-                is_phantom=False,
+                type="com.quux.knax",
+                has_events=True,
                 schema=None,
             ),
             EventType(
-                event_type="org.ban.ban",
-                is_phantom=True,
+                type="org.ban.ban",
+                has_events=False,
                 schema={"type": "object", "properties": {}},
             ),
             EventType(
-                event_type="org.bing.chilling",
-                is_phantom=True,
+                type="org.bing.chilling",
+                has_events=False,
                 schema={"type": "object", "properties": {}},
             ),
         }
