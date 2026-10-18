@@ -34,26 +34,6 @@ class Container:
         self._host = "localhost"
         self._signing_key: ed25519.Ed25519PrivateKey | None = None
 
-    def _cleanup_existing_containers(self) -> None:
-        try:
-            containers = self._docker_client.containers.list(
-                filters={"ancestor": f"{self._image_name}:{self._image_tag}"}
-            )
-        except errors.APIError as e:
-            logger.warning("Warning: Error listing existing containers: %s", e)
-            return
-
-        for container in containers:
-            try:
-                container.stop()
-            except errors.APIError as e:
-                logger.warning("Warning: Error stopping container: %s", e)
-
-            try:
-                container.remove()
-            except errors.APIError as e:
-                logger.warning("Warning: Error removing container: %s", e)
-
     def _create_container(self) -> None:
         port_bindings = {f"{self._internal_port}/tcp": None}
 
@@ -190,7 +170,6 @@ class Container:
             return self
 
         self._pull_or_get_image()
-        self._cleanup_existing_containers()
         self._create_container()
         self._fetch_mapped_port()
         self._wait_for_http("/api/v1/ping", timeout=20)
