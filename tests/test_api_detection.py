@@ -166,11 +166,29 @@ class TestApiDetection:
     @staticmethod
     @pytest.mark.asyncio
     @pytest.mark.parametrize('status', [404, 405])
+    @pytest.mark.parametrize(
+        ('content_type', 'body'),
+        [
+            pytest.param('text/plain', 'not found', id='text'),
+            pytest.param(
+                'text/html',
+                '<html><head><title>404 Not Found</title></head><body><center>'
+                '<h1>404 Not Found</h1></center><hr><center>nginx</center></body></html>',
+                id='html',
+            ),
+            pytest.param(None, '', id='empty'),
+        ],
+    )
     async def test_speaks_the_v1_api_if_a_proxy_that_only_forwards_it_answers_the_ping(
-        status: int,
+        status: int, content_type: str | None, body: str
     ) -> None:
         async def answer_probe_as_proxy(_: web.Request) -> web.StreamResponse:
-            return web.Response(status=status, text='not found', headers={'Server': 'nginx'})
+            return web.Response(
+                status=status,
+                text=body if content_type else None,
+                content_type=content_type,
+                headers={'Server': 'nginx'},
+            )
 
         async def write_stream(response: web.StreamResponse) -> None:
             await response.write(b'{"type":"subject","payload":{"subject":"/"}}\n')
