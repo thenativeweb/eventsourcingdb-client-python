@@ -160,10 +160,12 @@ class TestReadSubjectsOnTheV1Api:
 
     @staticmethod
     async def read_subjects_from_v1_server(
-        subject: str, options: ReadSubjectsOptions
+        subject: str,
+        options: ReadSubjectsOptions,
+        listed_subjects: list[str] | None = None,
     ) -> tuple[list[str], StreamServer]:
         async def write_stream(response: web.StreamResponse) -> None:
-            for listed_subject in TestReadSubjectsOnTheV1Api.SUBJECTS:
+            for listed_subject in listed_subjects or TestReadSubjectsOnTheV1Api.SUBJECTS:
                 line = json.dumps({"type": "subject", "payload": {"subject": listed_subject}})
                 await response.write(line.encode("utf-8") + b"\n")
 
@@ -201,12 +203,25 @@ class TestReadSubjectsOnTheV1Api:
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_keeps_the_subject_given_with_a_trailing_slash() -> None:
-        subjects, _ = await TestReadSubjectsOnTheV1Api.read_subjects_from_v1_server(
-            "/books/42/", NOT_RECURSIVE
+    @pytest.mark.parametrize(
+        ("subject", "listed_subjects", "expected_subjects"),
+        [
+            pytest.param("/a/b/", ["/a/b", "/a/b/c"], ["/a/b"], id="trailing slash"),
+            pytest.param("//a/b//", ["/a/b", "/a/b/c"], ["/a/b"], id="several slashes"),
+            pytest.param("/", ["/", "/a", "/a/b"], ["/"], id="root"),
+        ],
+    )
+    async def test_keeps_the_subject_as_the_server_normalizes_it(
+        subject: str, listed_subjects: list[str], expected_subjects: list[str]
+    ) -> None:
+        # The server lists a subject as a slash followed by the subject without
+        # its leading and trailing slashes, as the v2 API reads it.
+        subjects, server = await TestReadSubjectsOnTheV1Api.read_subjects_from_v1_server(
+            subject, NOT_RECURSIVE, listed_subjects
         )
 
-        assert subjects == ["/books/42"]
+        assert subjects == expected_subjects
+        assert json.loads(server.requests[-1].body) == {"baseSubject": subject}
 
     @staticmethod
     @pytest.mark.asyncio
