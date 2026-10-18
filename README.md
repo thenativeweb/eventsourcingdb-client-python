@@ -72,7 +72,7 @@ In any case, the client closes the connection. Your own timeouts and cancellatio
 
 ### Handling Errors
 
-Every error that the server reports raises a `DbApiError`, which is a subclass of `ServerError`. It has the following attributes:
+Every error that the server reports raises a `DbApiError`, which is a subclass of `ServerError`, or, for a write that the server may have stored nonetheless, becomes the cause of an `OutcomeUnknownError`, see [Knowing Whether a Write Was Stored](#knowing-whether-a-write-was-stored). A `DbApiError` has the following attributes:
 
 - `code` is the URL of the page in the documentation that explains the error, exactly as the server sends it, such as `https://docs.eventsourcingdb.io/errors/precondition-violated`, or `None` if the error has no code.
 - `description` describes the error.
@@ -806,3 +806,27 @@ In case you need to set up the client yourself, use the following functions to g
 - `get_mapped_port()` returns the port
 - `get_base_url()` returns the full URL of the container
 - `get_api_token()` returns the API token
+
+## Upgrading From Version 1
+
+Version 2 of the client SDK speaks the v2 API of EventSourcingDB, and keeps speaking the v1 API to servers without it, see [Using Servers With and Without the v2 API](#using-servers-with-and-without-the-v2-api). If there is a proxy in front of EventSourcingDB, make sure it lets requests with the HTTP method `QUERY` through. Besides, it changes the following:
+
+- **Event types:** an `EventType` names its type `type` instead of `event_type`, and tells whether events of the type exist with `has_events`, the opposite of the former `is_phantom`.
+  - Before: `event_type.event_type`, `event_type.is_phantom`, `EventType(event_type = '…', is_phantom = True)`
+  - After: `event_type.type`, `not event_type.has_events`, `EventType(type = '…', has_events = False)`
+- **Reading subjects:** `read_subjects` takes a subject and `ReadSubjectsOptions` with a `recursive` option that is required. To keep the previous behavior, set it to `True`.
+  - Before: `client.read_subjects(base_subject = '/books')`
+  - After: `client.read_subjects(subject = '/books', options = ReadSubjectsOptions(recursive = True))`
+- **Errors that the server reports:** they raise a `DbApiError`, which is a subclass of `ServerError`, so `except ServerError` still catches them. Its message is the text of the server rather than one of the client SDK, such as `Failed to verify API token`, so tell errors apart by their code, see [Handling Errors](#handling-errors).
+  - Before: `except ServerError as error:` and `if 'state conflict' in str(error):`
+  - After: `except DbApiError as error:` and `if error.code == ErrorCode.PRECONDITION_VIOLATED:`
+- **Stalled connections:** every request that stalls raises a `ConnectionStalledError`. `HeartbeatTimeoutError` no longer exists, and a stall no longer raises aiohttp's `ConnectionTimeoutError` while connecting, which `read_event_types` wrapped in an `InternalError`, or a `TimeoutError` for requests that are not streams.
+  - Before: `except HeartbeatTimeoutError:`, `except aiohttp.ConnectionTimeoutError:`, `except TimeoutError:`
+  - After: `except ConnectionStalledError:`
+- **Writes whose outcome is unknown:** `write_events` and `register_event_schema` raise an `OutcomeUnknownError` whose `cause` is the error they failed with, whenever the server may have stored the write, see [Knowing Whether a Write Was Stored](#knowing-whether-a-write-was-stored). This includes a write that you cancel, or that `asyncio.timeout` ends, once it has a connection.
+  - Before: `except ServerError:` for a status such as `500`, `except aiohttp.ClientError:` for a broken connection, `except TimeoutError:` for a timeout of your own
+  - After: `except OutcomeUnknownError as error:`, with the former error in `error.cause`
+- **Observing events:** if the server closes the stream without reporting an error, `observe_events` raises a `ServerError` instead of ending quietly.
+  - Before: `async for event in client.observe_events(…):` ends
+  - After: it raises a `ServerError`
+- **Internals:** the helpers `eventsourcingdb.is_event`, `eventsourcingdb.is_heartbeat`, `eventsourcingdb.is_stream_error`, `eventsourcingdb.read_event_types.is_event_type`, and `eventsourcingdb.read_subjects.is_subject` moved into the transport of the v1 API. `HttpClient.post` no longer takes `is_stream`, and `Response.read_lines` no longer takes the error to raise on a stall.
