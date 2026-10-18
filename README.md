@@ -44,6 +44,27 @@ If you want to verify the API token, call `verify_api_token`. If the token is in
 await client.verify_api_token()
 ```
 
+### Configuring the Stall Timeout
+
+A request fails once nothing at all has arrived from the server for 30 seconds, measured from sending the request until its end, including connecting and waiting for the response. Everything that arrives, such as a part of a response, an event, a row, or a heartbeat, restarts the clock, so a long-running request that keeps receiving data is never cut off. The time your code spends between two items of a stream does not count. To change the limit, pass the `stall_timeout` keyword argument in seconds when creating the client:
+
+```python
+client = Client(
+  base_url = url,
+  api_token = api_token,
+  stall_timeout = 10,
+)
+```
+
+What a request raises once the server stalls depends on the request:
+
+- If connecting to the server stalls, the request raises aiohttp's `ConnectionTimeoutError`.
+- `ping`, `verify_api_token`, `write_events`, `register_event_schema`, and `read_event_type` raise a `TimeoutError`.
+- `read_events`, `read_subjects`, and `read_event_types` raise a `ConnectionStalledError`, which is a subclass of `ServerError`.
+- `observe_events` and `run_eventql_query` raise a `HeartbeatTimeoutError` once the server has answered, and a `ConnectionStalledError` before. `HeartbeatTimeoutError` is a subclass of `ConnectionStalledError`. For details, see [Detecting a Stalled Connection](#detecting-a-stalled-connection).
+
+In any case, the client closes the connection. Your own timeouts and cancellations, such as `asyncio.timeout`, still apply and can end a request earlier.
+
 ### Writing Events
 
 Call the `write_events` function and hand over a list with one or more events. You do not have to provide all event fields – some are automatically added by the server.
@@ -292,7 +313,7 @@ async for row in client.run_eventql_query(
 
 *Note that each row returned by the generator matches the projection specified in your query.*
 
-While the query runs, the server sends a heartbeat every second whenever there is no row to send. If neither a row nor a heartbeat arrives for 30 seconds, the generator closes the connection and raises a `HeartbeatTimeoutError`, which is a subclass of `ServerError`. For details, see [Detecting a Stalled Connection](#detecting-a-stalled-connection).
+While the query runs, the server sends a heartbeat every second whenever there is no row to send. If neither a row nor a heartbeat arrives for the [stall timeout](#configuring-the-stall-timeout), 30 seconds by default, the generator closes the connection and raises a `HeartbeatTimeoutError`, which is a subclass of `ConnectionStalledError` and of `ServerError`. For details, see [Detecting a Stalled Connection](#detecting-a-stalled-connection).
 
 #### Aborting a Query
 
@@ -460,7 +481,7 @@ async for event in client.observe_events(
 
 #### Detecting a Stalled Connection
 
-While observing, the server sends a heartbeat every second whenever there is no new event. If neither an event nor a heartbeat arrives for 30 seconds, for example because a proxy keeps the connection open but no longer passes anything on, the generator closes the connection and raises a `HeartbeatTimeoutError`. Since `HeartbeatTimeoutError` is a subclass of `ServerError`, you can handle it specifically or together with other server errors:
+While observing, the server sends a heartbeat every second whenever there is no new event. If neither an event nor a heartbeat arrives for the [stall timeout](#configuring-the-stall-timeout), 30 seconds by default, for example because a proxy keeps the connection open but no longer passes anything on, the generator closes the connection and raises a `HeartbeatTimeoutError`. Since `HeartbeatTimeoutError` is a subclass of `ConnectionStalledError`, which in turn is a subclass of `ServerError`, you can handle it specifically, together with other stalled connections, or together with other server errors:
 
 ```python
 from eventsourcingdb import HeartbeatTimeoutError, ObserveEventsOptions
@@ -474,7 +495,7 @@ try:
   ):
     pass
 except HeartbeatTimeoutError:
-  # Neither an event nor a heartbeat arrived for 30 seconds.
+  # Neither an event nor a heartbeat arrived for the stall timeout.
   pass
 ```
 

@@ -9,6 +9,7 @@ from eventsourcingdb import EventCandidate
 from .shared.database import Database
 
 SESSION_TIMEOUT_SECONDS = 1
+STALL_TIMEOUT_SECONDS = 1
 TEST_DEADLINE_SECONDS = 3
 
 
@@ -108,8 +109,9 @@ async def events_for_mocked_server(
 @pytest.fixture
 def short_session_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
     # By default, aiohttp limits every request of a session to five minutes.
-    # Shortening that limit shows within seconds which requests it applies to.
-    # Only sessions created after this fixture has run pick up the new limit.
+    # Shortening that limit shows within seconds that it does not apply, since
+    # the stall timeout alone limits a request. Only sessions created after
+    # this fixture has run would pick up the new limit.
     monkeypatch.setattr(
         aiohttp.client,
         "DEFAULT_TIMEOUT",

@@ -3,6 +3,7 @@ from .client import Client
 from .container import Container
 from .errors import (
     ClientError,
+    ConnectionStalledError,
     CustomError,
     HashVerificationFailedError,
     HeartbeatTimeoutError,
@@ -38,6 +39,7 @@ __all__ = [
     "BoundType",
     "Client",
     "ClientError",
+    "ConnectionStalledError",
     "Container",
     "CustomError",
     "Event",

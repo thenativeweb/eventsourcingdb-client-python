@@ -1,17 +1,24 @@
+from collections.abc import Awaitable, Callable
 from types import TracebackType
 from typing import Self
 
 import aiohttp
 from aiohttp import ClientSession
 
+from ..errors.connection_stalled_error import ConnectionStalledError
 from .get_get_headers import get_get_headers
 from .get_post_headers import get_post_headers
 from .response import Response
+from .stall_guard import (
+    DEFAULT_STALL_TIMEOUT_SECONDS,
+    StallGuard,
+    create_stall_trace_config,
+)
 
-# A stream, such as observing events, runs for as long as the caller keeps
-# reading it, so only connecting is limited, not the request as a whole. Every
-# other request keeps the limit of the session.
-STREAM_TIMEOUT = aiohttp.ClientTimeout(total=None, sock_connect=30)
+# The stall timeout alone limits a request, so none of the limits of aiohttp
+# applies: neither its total of five minutes, which would end a long stream,
+# nor its 30 seconds for connecting.
+NO_TIMEOUT = aiohttp.ClientTimeout(total=None, sock_connect=None)
 
 
 class HttpClient:
@@ -19,9 +26,11 @@ class HttpClient:
         self,
         base_url: str,
         api_token: str,
+        stall_timeout: float = DEFAULT_STALL_TIMEOUT_SECONDS,
     ) -> None:
         self.__base_url = base_url
         self.__api_token = api_token
+        self.__stall_timeout = stall_timeout
         self.__session: ClientSession | None = None
 
     async def __aenter__(self) -> Self:
@@ -41,7 +50,11 @@ class HttpClient:
         if self.__session is not None:
             await self.__session.close()
 
-        self.__session = aiohttp.ClientSession(connector_owner=True)
+        self.__session = aiohttp.ClientSession(
+            connector_owner=True,
+            timeout=NO_TIMEOUT,
+            trace_configs=[create_stall_trace_config()],
+        )
 
     async def __close(self) -> None:
         if self.__session is not None:
@@ -66,18 +79,19 @@ class HttpClient:
 
         url_path = HttpClient.join_segments(self.__base_url, path)
         headers = get_post_headers(self.__api_token)
-        timeout = STREAM_TIMEOUT if is_stream else self.__session.timeout  # type: ignore
 
-        async_response = await self.__session.post(  # type: ignore
+        async_response = await self.__send(
             url_path,
-            data=request_body,
-            headers=headers,
-            timeout=timeout,
+            is_stream,
+            lambda stall_guard: self.__session.post(  # type: ignore
+                url_path,
+                data=request_body,
+                headers=headers,
+                trace_request_ctx=stall_guard,
+            ),
         )
 
-        response = Response(async_response)
-
-        return response
+        return Response(async_response, self.__stall_timeout)
 
     async def get(
         self,
@@ -90,9 +104,41 @@ class HttpClient:
         url_path = HttpClient.join_segments(self.__base_url, path)
         headers = get_get_headers(self.__api_token, with_authorization)
 
-        async_response = await self.__session.get(  # type: ignore
+        async_response = await self.__send(
             url_path,
-            headers=headers,
+            False,
+            lambda stall_guard: self.__session.get(  # type: ignore
+                url_path,
+                headers=headers,
+                trace_request_ctx=stall_guard,
+            ),
         )
 
-        return Response(async_response)
+        return Response(async_response, self.__stall_timeout)
+
+    async def __send(
+        self,
+        url_path: str,
+        is_stream: bool,
+        send: Callable[[StallGuard], Awaitable[aiohttp.ClientResponse]],
+    ) -> aiohttp.ClientResponse:
+        stall_guard = StallGuard(self.__stall_timeout)
+
+        try:
+            async with stall_guard:
+                return await send(stall_guard)
+        except TimeoutError as error:
+            if not stall_guard.expired():
+                raise
+
+            # The errors are the ones that a stalling request ended with before
+            # there was a stall timeout: connecting ended after 30 seconds, and
+            # any other request than a stream after five minutes. A stream used
+            # to wait forever, so it gets an error of its own.
+            if not stall_guard.is_connected:
+                raise aiohttp.ConnectionTimeoutError(
+                    f'Connection timeout to host {url_path}'
+                ) from error
+            if is_stream:
+                raise ConnectionStalledError(self.__stall_timeout) from error
+            raise

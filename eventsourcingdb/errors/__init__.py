@@ -1,4 +1,5 @@
 from .client_error import ClientError
+from .connection_stalled_error import ConnectionStalledError
 from .custom_error import CustomError
 from .hash_verification_failed_error import HashVerificationFailedError
 from .heartbeat_timeout_error import HeartbeatTimeoutError
@@ -10,6 +11,7 @@ from .validation_error import ValidationError
 
 __all__ = [
     "ClientError",
+    "ConnectionStalledError",
     "CustomError",
     "HashVerificationFailedError",
     "HeartbeatTimeoutError",
