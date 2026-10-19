@@ -1,5 +1,5 @@
-from .is_subject import is_subject
+from .read_subjects_options import ReadSubjectsOptions
 
 __all__ = [
-    "is_subject",
+    "ReadSubjectsOptions",
 ]

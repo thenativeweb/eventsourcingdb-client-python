@@ -1,12 +1,14 @@
 import asyncio
 
 import pytest
-from aiohttp import ClientConnectorDNSError
+from aiohttp import ClientConnectorDNSError, web
 
 from eventsourcingdb import (
     Bound,
     BoundType,
     Client,
+    DbApiError,
+    ErrorCode,
     EventCandidate,
     IfEventIsMissingDuringObserve,
     ObserveEventsOptions,
@@ -15,8 +17,10 @@ from eventsourcingdb import (
 )
 
 from .conftest import TEST_DEADLINE_SECONDS, TestData
+from .event.fixtures import READ_EVENTS_FROM_V2_API, READ_EVENTS_WITH_HASH_V2
 from .shared.database import Database
 from .shared.event.assert_event import assert_event_equals
+from .shared.stream_server import Api, StreamServer
 
 
 class TestObserveEvents:
@@ -428,3 +432,63 @@ class TestObserveEvents:
                         pass
 
         assert deadline.expired(), "Observing must only end at the deadline of the test."
+
+
+CLOSING_LINES = {
+    'v1': [
+        READ_EVENTS_WITH_HASH_V2[0],
+        '{"type":"heartbeat","payload":{}}',
+    ],
+    'v2': [
+        READ_EVENTS_FROM_V2_API[0],
+        '{"type":"heartbeat","data":{}}',
+    ],
+}
+SHUTDOWN_LINES = {
+    'v1': '{"type":"error","payload":{"error":"server shutting down"}}',
+    'v2': (
+        '{"type":"error","data":{"code":"https://docs.eventsourcingdb.io/errors/'
+        'server-shutting-down","description":"server shutting down","details":{}}}'
+    ),
+}
+
+
+class TestObserveEventsThatTheServerCloses:
+    @staticmethod
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize('api', ['v1', 'v2'])
+    async def test_fails_once_the_server_closes_the_stream_without_an_error(api: Api) -> None:
+        async def write_stream(response: web.StreamResponse) -> None:
+            for line in CLOSING_LINES[api]:
+                await response.write(line.encode('utf-8') + b'\n')
+
+        async with StreamServer(write_stream, api=api) as server:
+            events = []
+
+            with pytest.raises(ServerError, match='closed the stream before it ended') as error:
+                async for event in server.get_client().observe_events(
+                    '/', ObserveEventsOptions(recursive=True)
+                ):
+                    events.append(event)
+
+            assert type(error.value) is ServerError
+            assert len(events) == 1
+
+    @staticmethod
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize('api', ['v1', 'v2'])
+    async def test_fails_with_the_error_the_server_reports_before_closing_the_stream(
+        api: Api,
+    ) -> None:
+        async def write_stream(response: web.StreamResponse) -> None:
+            await response.write(SHUTDOWN_LINES[api].encode('utf-8') + b'\n')
+
+        async with StreamServer(write_stream, api=api) as server:
+            with pytest.raises(DbApiError, match='server shutting down') as error:
+                async for _ in server.get_client().observe_events(
+                    '/', ObserveEventsOptions(recursive=True)
+                ):
+                    pass
+
+        expected_code = None if api == 'v1' else ErrorCode.SERVER_SHUTTING_DOWN
+        assert error.value.code == expected_code

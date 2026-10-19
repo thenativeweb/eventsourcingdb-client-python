@@ -9,6 +9,7 @@ from aiohttp import ClientSession
 from ..errors.connection_stalled_error import ConnectionStalledError
 from .get_get_headers import get_get_headers
 from .get_post_headers import get_post_headers
+from .request_state import RequestState
 from .response import Response
 from .stall_guard import (
     DEFAULT_STALL_TIMEOUT_SECONDS,
@@ -80,75 +81,76 @@ class HttpClient:
     async def post(
         self,
         path: str,
-        request_body: str,
-        is_stream: bool = False,
+        request_body: str | None = None,
+        request_state: RequestState | None = None,
     ) -> Response:
-        if self.__session is None:
-            await self.__initialize()
-
-        url_path = HttpClient.join_segments(self.__base_url, path)
-        headers = get_post_headers(self.__api_token)
-
-        async_response = await self.__send(
-            url_path,
-            is_stream,
-            lambda stall_guard: self.__session.post(  # type: ignore
-                url_path,
-                data=request_body,
-                headers=headers,
-                trace_request_ctx=stall_guard,
-            ),
+        return await self.__request(
+            'POST', path, request_body, with_authorization=True, request_state=request_state
         )
 
-        return Response(async_response, self.__stall_timeout)
+    async def query(
+        self,
+        path: str,
+        request_body: str | None = None,
+    ) -> Response:
+        # QUERY (RFC 10008) is the method that reads of the v2 API take: a
+        # request that is safe like GET, but has a body like POST.
+        return await self.__request('QUERY', path, request_body, with_authorization=True)
 
     async def get(
         self,
         path: str,
         with_authorization: bool = True,
     ) -> Response:
+        return await self.__request('GET', path, None, with_authorization=with_authorization)
+
+    async def __request(
+        self,
+        method: str,
+        path: str,
+        request_body: str | None,
+        *,
+        with_authorization: bool,
+        request_state: RequestState | None = None,
+    ) -> Response:
         if self.__session is None:
             await self.__initialize()
 
         url_path = HttpClient.join_segments(self.__base_url, path)
-        headers = get_get_headers(self.__api_token, with_authorization)
+        if request_body is None:
+            headers = get_get_headers(self.__api_token, with_authorization)
+        else:
+            headers = get_post_headers(self.__api_token)
 
         async_response = await self.__send(
-            url_path,
-            False,
-            lambda stall_guard: self.__session.get(  # type: ignore
+            lambda stall_guard: self.__session.request(  # type: ignore
+                method,
                 url_path,
+                data=request_body,
                 headers=headers,
                 trace_request_ctx=stall_guard,
             ),
+            request_state,
         )
 
         return Response(async_response, self.__stall_timeout)
 
     async def __send(
         self,
-        url_path: str,
-        is_stream: bool,
         send: Callable[[StallGuard], Awaitable[aiohttp.ClientResponse]],
+        request_state: RequestState | None,
     ) -> aiohttp.ClientResponse:
-        stall_guard = StallGuard(self.__stall_timeout)
+        stall_guard = StallGuard(self.__stall_timeout, request_state)
 
         try:
             async with stall_guard:
                 return await send(stall_guard)
         except TimeoutError as error:
+            # Only the stall guard means that the server stalled, any other
+            # timeout, such as one of the caller, is passed on. A stall is a
+            # stall wherever it happens: while waiting for a free connection
+            # of the pool, while connecting, while sending the request, and
+            # while waiting for the response.
             if not stall_guard.expired():
                 raise
-
-            # The errors are the ones that a stalling request ended with before
-            # there was a stall timeout: connecting ended after 30 seconds, and
-            # any other request than a stream after five minutes, also while it
-            # waited for a free connection of the pool. A stream used to wait
-            # forever, so it gets an error of its own.
-            if not stall_guard.is_waiting_for_connection and not stall_guard.is_connected:
-                raise aiohttp.ConnectionTimeoutError(
-                    f'Connection timeout to host {url_path}'
-                ) from error
-            if is_stream:
-                raise ConnectionStalledError(self.__stall_timeout) from error
-            raise
+            raise ConnectionStalledError(self.__stall_timeout) from error

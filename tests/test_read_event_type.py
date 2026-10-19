@@ -68,6 +68,19 @@ class TestReadEventType:
         event_type = await client.read_event_type("com.foo.bar")
 
         assert isinstance(event_type, EventType)
-        assert event_type.event_type == "com.foo.bar"
-        assert event_type.is_phantom is False
+        assert event_type.type == "com.foo.bar"
+        assert event_type.has_events is True
         assert event_type.schema is None
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_reads_an_event_type_that_has_a_schema_but_no_events(
+        database: Database,
+    ) -> None:
+        client = database.get_client()
+        schema = {"type": "object", "properties": {}}
+        await client.register_event_schema("com.foo.bar", schema)
+
+        event_type = await client.read_event_type("com.foo.bar")
+
+        assert event_type == EventType(type="com.foo.bar", has_events=False, schema=schema)

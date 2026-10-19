@@ -47,6 +47,12 @@ class Response:
         return HTTPStatus(self.__response.status)
 
     @property
+    def status(self) -> int:
+        # Unlike status_code, this also works for a status that HTTPStatus does
+        # not know, as a proxy in front of the server may answer with.
+        return self.__response.status
+
+    @property
     def headers(self) -> Headers:
         return self.__response.headers
 
@@ -56,12 +62,12 @@ class Response:
 
     async def read(self) -> bytes:
         """
-        Reads the whole body. Raises a TimeoutError once nothing arrives for
-        the stall timeout, as the total timeout of aiohttp did before.
+        Reads the whole body. Raises a ConnectionStalledError once nothing
+        arrives for the stall timeout.
         """
         chunks = []
         try:
-            while chunk := await self.__read_chunk(None):
+            while chunk := await self.__read_chunk():
                 chunks.append(chunk)
         except BaseException:
             self.__response.close()
@@ -69,20 +75,17 @@ class Response:
 
         return b''.join(chunks)
 
-    async def read_lines(
-        self,
-        stall_error: type[ConnectionStalledError] = ConnectionStalledError,
-    ) -> AsyncGenerator[bytes]:
+    async def read_lines(self) -> AsyncGenerator[bytes]:
         """
-        Reads the body line by line. Raises the given error once nothing
-        arrives for the stall timeout. Every chunk restarts the clock, not
+        Reads the body line by line. Raises a ConnectionStalledError once
+        nothing arrives for the stall timeout. Every chunk restarts the clock, not
         only every line, and the time the caller spends between two lines
         does not count. Raises a ServerError if a line is longer than
         MAX_LINE_BYTES.
         """
         pending = bytearray()
 
-        while chunk := await self.__read_chunk(stall_error):
+        while chunk := await self.__read_chunk():
             pending += chunk
 
             start = 0
@@ -102,7 +105,7 @@ class Response:
         if line_length > MAX_LINE_BYTES:
             raise ServerError(f'A line of the response is longer than {MAX_LINE_BYTES} bytes.')
 
-    async def __read_chunk(self, stall_error: type[ConnectionStalledError] | None) -> bytes:
+    async def __read_chunk(self) -> bytes:
         timeout = asyncio.timeout(self.__stall_timeout)
         try:
             async with timeout:
@@ -110,10 +113,9 @@ class Response:
         except TimeoutError as error:
             # Only this timeout means that the server stalled, any other one,
             # such as one of the caller, is passed on.
-            if not timeout.expired() or stall_error is None:
+            if not timeout.expired():
                 raise
-            raise stall_error(self.__stall_timeout) from error
+            raise ConnectionStalledError(self.__stall_timeout) from error
 
     def __str__(self) -> str:
-        status_code_text = f"{self.status_code} {self.status_code.phrase}"
-        return f"Response(status={status_code_text}, headers={dict(self.headers)})"
+        return f"Response(status={self.status}, headers={dict(self.headers)})"

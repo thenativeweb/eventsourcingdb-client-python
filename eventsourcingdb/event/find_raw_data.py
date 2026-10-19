@@ -18,12 +18,13 @@ WHITESPACE = re.compile(r'[ \t\n\r]*')
 FindRawData = Callable[[], bytes | None]
 
 
-def defer_raw_data_of_stream_item(raw_message: bytes) -> FindRawData:
+def defer_raw_data_of_stream_item(raw_message: bytes, key: str = 'payload') -> FindRawData:
     """
     Returns a function that finds the data of the event in the given stream
-    item once it is called.
+    item once it is called. The key names the member of the item that holds
+    the event, which is payload in the v1 API and data in the v2 API.
     """
-    return functools.partial(find_raw_data_of_raw_stream_item, raw_message)
+    return functools.partial(find_raw_data_of_raw_stream_item, raw_message, key)
 
 
 def defer_raw_data_of_events(text: str, count: int) -> list[FindRawData]:
@@ -36,8 +37,8 @@ def defer_raw_data_of_events(text: str, count: int) -> list[FindRawData]:
     return [functools.partial(find_raw_data_at, find_all, index) for index in range(count)]
 
 
-def find_raw_data_of_raw_stream_item(raw_message: bytes) -> bytes | None:
-    return find_raw_data_of_stream_item(raw_message.decode('utf-8'))
+def find_raw_data_of_raw_stream_item(raw_message: bytes, key: str = 'payload') -> bytes | None:
+    return find_raw_data_of_stream_item(raw_message.decode('utf-8'), key)
 
 
 def find_raw_data_at(find_all: Callable[[], list[bytes | None]], index: int) -> bytes | None:
@@ -65,12 +66,13 @@ def find_raw_data_of_events(text: str) -> list[bytes | None]:
     return [find_raw_data_of_event(text, start) for start, _ in iterate_elements(text, 0)]
 
 
-def find_raw_data_of_stream_item(text: str) -> bytes | None:
+def find_raw_data_of_stream_item(text: str, key: str = 'payload') -> bytes | None:
     """
-    Returns the data of the event in the payload of a stream item, as reading
-    and observing events return it.
+    Returns the data of the event in the member of a stream item that the key
+    names, as reading and observing events return it, and as writing events
+    does in the v2 API.
     """
-    span = find_member(text, 0, 'payload')
+    span = find_member(text, 0, key)
     if span is None:
         return None
 

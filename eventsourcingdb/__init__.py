@@ -5,13 +5,16 @@ from .errors import (
     ClientError,
     ConnectionStalledError,
     CustomError,
+    DbApiError,
+    ErrorCode,
     HashVerificationFailedError,
-    HeartbeatTimeoutError,
     InternalError,
+    OutcomeUnknownError,
     ServerError,
     SignatureVerificationFailedError,
     UnsupportedHashVersionError,
     ValidationError,
+    is_outcome_unknown,
 )
 from .event import Event, EventCandidate
 from .observe_events import (
@@ -26,6 +29,7 @@ from .read_events import (
     ReadEventsOptions,
     ReadFromLatestEvent,
 )
+from .read_subjects import ReadSubjectsOptions
 from .write_events import (
     IsEventQlQueryTrue,
     IsSubjectOnEventId,
@@ -42,11 +46,12 @@ __all__ = [
     "ConnectionStalledError",
     "Container",
     "CustomError",
+    "DbApiError",
+    "ErrorCode",
     "Event",
     "EventCandidate",
     "EventType",
     "HashVerificationFailedError",
-    "HeartbeatTimeoutError",
     "IfEventIsMissingDuringObserve",
     "IfEventIsMissingDuringRead",
     "InternalError",
@@ -57,11 +62,14 @@ __all__ = [
     "ObserveEventsOptions",
     "ObserveFromLatestEvent",
     "Order",
+    "OutcomeUnknownError",
     "Precondition",
     "ReadEventsOptions",
     "ReadFromLatestEvent",
+    "ReadSubjectsOptions",
     "ServerError",
     "SignatureVerificationFailedError",
     "UnsupportedHashVersionError",
     "ValidationError",
+    "is_outcome_unknown",
 ]

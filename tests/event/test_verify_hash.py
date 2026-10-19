@@ -15,21 +15,39 @@ from eventsourcingdb import (
 from ..conftest import TestData
 from ..shared.database import Database
 from ..shared.serve_events import read_events_from, write_events_to
+from ..shared.stream_server import Api
 from .fixtures import (
+    READ_EVENTS_FROM_V2_API,
     READ_EVENTS_WITH_HASH_V1,
     READ_EVENTS_WITH_HASH_V2,
+    WRITTEN_EVENTS_FROM_V2_API,
     WRITTEN_EVENTS_WITH_HASH_V1,
     WRITTEN_EVENTS_WITH_HASH_V2,
 )
 
+# The events with hashes of either version as the v1 API sends them, and
+# with hashes of version 2 as the v2 API sends them.
 READ_EVENTS = [
-    pytest.param(READ_EVENTS_WITH_HASH_V1, id='v1'),
-    pytest.param(READ_EVENTS_WITH_HASH_V2, id='v2'),
+    pytest.param(READ_EVENTS_WITH_HASH_V1, 'v1', id='v1'),
+    pytest.param(READ_EVENTS_WITH_HASH_V2, 'v1', id='v2'),
+    pytest.param(READ_EVENTS_FROM_V2_API, 'v2', id='v2 from the v2 API'),
 ]
 WRITTEN_EVENTS = [
-    pytest.param(WRITTEN_EVENTS_WITH_HASH_V1, id='v1'),
-    pytest.param(WRITTEN_EVENTS_WITH_HASH_V2, id='v2'),
+    pytest.param(WRITTEN_EVENTS_WITH_HASH_V1, 'v1', id='v1'),
+    pytest.param(WRITTEN_EVENTS_WITH_HASH_V2, 'v1', id='v2'),
+    pytest.param(WRITTEN_EVENTS_FROM_V2_API, 'v2', id='v2 from the v2 API'),
 ]
+EVENTS_WITH_HASH_V2 = [
+    pytest.param(READ_EVENTS_WITH_HASH_V2, 'v1', id='v1 API'),
+    pytest.param(READ_EVENTS_FROM_V2_API, 'v2', id='v2 API'),
+]
+
+
+def count_written_events(response_text: str, api: Api) -> int:
+    if api == 'v1':
+        return len(json.loads(response_text))
+
+    return sum(json.loads(line)['type'] == 'event' for line in response_text.splitlines())
 
 
 class TestVerifyHash:
@@ -118,9 +136,9 @@ class TestVerifyHash:
 class TestVerifyHashOfFixedEvents:
     @staticmethod
     @pytest.mark.asyncio
-    @pytest.mark.parametrize('lines', READ_EVENTS)
-    async def test_verifies_the_hash_of_read_events(lines: list[str]) -> None:
-        events = await read_events_from(lines)
+    @pytest.mark.parametrize(('lines', 'api'), READ_EVENTS)
+    async def test_verifies_the_hash_of_read_events(lines: list[str], api: Api) -> None:
+        events = await read_events_from(lines, api)
 
         assert len(events) == len(lines)
         for event in events:
@@ -128,19 +146,21 @@ class TestVerifyHashOfFixedEvents:
 
     @staticmethod
     @pytest.mark.asyncio
-    @pytest.mark.parametrize('response_text', WRITTEN_EVENTS)
-    async def test_verifies_the_hash_of_written_events(response_text: str) -> None:
-        events = await write_events_to(response_text)
+    @pytest.mark.parametrize(('response_text', 'api'), WRITTEN_EVENTS)
+    async def test_verifies_the_hash_of_written_events(response_text: str, api: Api) -> None:
+        events = await write_events_to(response_text, api)
 
-        assert len(events) == len(json.loads(response_text))
+        assert len(events) == count_written_events(response_text, api)
         for event in events:
             event.verify_hash()
 
     @staticmethod
     @pytest.mark.asyncio
-    @pytest.mark.parametrize('lines', READ_EVENTS)
-    async def test_fails_if_a_field_was_changed(lines: list[str]) -> None:
-        events = await read_events_from([line.replace('/books/42', '/books/23') for line in lines])
+    @pytest.mark.parametrize(('lines', 'api'), READ_EVENTS)
+    async def test_fails_if_a_field_was_changed(lines: list[str], api: Api) -> None:
+        events = await read_events_from(
+            [line.replace('/books/42', '/books/23') for line in lines], api
+        )
 
         for event in events:
             with pytest.raises(HashVerificationFailedError, match='Failed to verify hash.'):
@@ -148,9 +168,9 @@ class TestVerifyHashOfFixedEvents:
 
     @staticmethod
     @pytest.mark.asyncio
-    @pytest.mark.parametrize('lines', READ_EVENTS)
-    async def test_fails_if_the_data_was_changed_after_it_was_received(lines: list[str]) -> None:
-        events = await read_events_from(lines)
+    @pytest.mark.parametrize(('lines', 'api'), READ_EVENTS)
+    async def test_fails_if_the_data_was_changed_after_it_was_received(lines: list[str], api: Api) -> None:
+        events = await read_events_from(lines, api)
 
         for event in events:
             event.data['title'] = 'Dune'
@@ -160,9 +180,9 @@ class TestVerifyHashOfFixedEvents:
 
     @staticmethod
     @pytest.mark.asyncio
-    @pytest.mark.parametrize('lines', READ_EVENTS)
-    async def test_fails_if_the_hash_was_changed(lines: list[str]) -> None:
-        events = await read_events_from(lines)
+    @pytest.mark.parametrize(('lines', 'api'), READ_EVENTS)
+    async def test_fails_if_the_hash_was_changed(lines: list[str], api: Api) -> None:
+        events = await read_events_from(lines, api)
 
         for event in events:
             event.hash = event.hash[:-1] + ('0' if event.hash[-1] != '0' else '1')
@@ -171,22 +191,23 @@ class TestVerifyHashOfFixedEvents:
                 event.verify_hash()
 
     @staticmethod
-    @pytest.mark.parametrize('lines', READ_EVENTS)
-    def test_verifies_the_hash_of_an_event_parsed_from_a_dict(lines: list[str]) -> None:
+    @pytest.mark.parametrize(('lines', 'api'), READ_EVENTS)
+    def test_verifies_the_hash_of_an_event_parsed_from_a_dict(lines: list[str], api: Api) -> None:
         # Without the data as the server sent it, the hash is computed over the
         # data serialized again, which only matches for data that Python writes
         # like the server does, such as that of the second event.
-        event = Event.parse(json.loads(lines[1])['payload'])
+        event = Event.parse(json.loads(lines[1])['payload' if api == 'v1' else 'data'])
 
         event.verify_hash()
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_fails_if_a_trace_field_of_an_event_with_a_hash_of_version_2_was_changed() -> None:
+    @pytest.mark.parametrize(('lines', 'api'), EVENTS_WITH_HASH_V2)
+    async def test_fails_if_a_trace_field_of_an_event_with_a_hash_of_version_2_was_changed(
+        lines: list[str], api: Api
+    ) -> None:
         # Unlike version 1, version 2 also covers traceparent and tracestate.
-        events = await read_events_from(
-            [line.replace('foo=bar', 'foo=baz') for line in READ_EVENTS_WITH_HASH_V2]
-        )
+        events = await read_events_from([line.replace('foo=bar', 'foo=baz') for line in lines], api)
 
         events[0].verify_hash()
         with pytest.raises(HashVerificationFailedError, match='Failed to verify hash.'):
@@ -194,9 +215,12 @@ class TestVerifyHashOfFixedEvents:
 
     @staticmethod
     @pytest.mark.asyncio
-    async def test_fails_with_the_version_if_the_hash_is_of_an_unknown_version() -> None:
+    @pytest.mark.parametrize(('lines', 'api'), EVENTS_WITH_HASH_V2)
+    async def test_fails_with_the_version_if_the_hash_is_of_an_unknown_version(
+        lines: list[str], api: Api
+    ) -> None:
         events = await read_events_from(
-            [line.replace('esdb:hash:v2:', 'esdb:hash:v3:') for line in READ_EVENTS_WITH_HASH_V2]
+            [line.replace('esdb:hash:v2:', 'esdb:hash:v3:') for line in lines], api
         )
 
         for event in events:

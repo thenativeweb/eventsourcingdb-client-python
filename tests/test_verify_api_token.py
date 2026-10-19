@@ -1,6 +1,6 @@
 import pytest
 
-from eventsourcingdb import Client, ServerError
+from eventsourcingdb import Client, DbApiError
 
 from .shared.database import Database
 
@@ -20,7 +20,8 @@ class TestVerifyApiToken:
         valid_token = database.get_api_token()
         invalid_token = f"{valid_token}-invalid"
 
-        client = Client(base_url=base_url, api_token=invalid_token)
+        async with Client(base_url=base_url, api_token=invalid_token) as client:
+            with pytest.raises(DbApiError) as error:
+                await client.verify_api_token()
 
-        with pytest.raises(ServerError, match="Failed to verify API token"):
-            await client.verify_api_token()
+        assert error.value.status == 401

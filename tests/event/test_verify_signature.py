@@ -14,16 +14,22 @@ from eventsourcingdb import (
 from ..conftest import TestData
 from ..shared.image_tag import get_image_tag
 from ..shared.serve_events import read_events_from
+from ..shared.stream_server import Api
 from .fixtures import (
+    READ_EVENTS_FROM_V2_API,
     READ_EVENTS_WITH_HASH_V1,
     READ_EVENTS_WITH_HASH_V2,
     VERIFICATION_KEY_V1,
     VERIFICATION_KEY_V2,
+    VERIFICATION_KEY_V2_API,
 )
 
 SIGNED_EVENTS = [
-    pytest.param(READ_EVENTS_WITH_HASH_V1, VERIFICATION_KEY_V1, id='v1'),
-    pytest.param(READ_EVENTS_WITH_HASH_V2, VERIFICATION_KEY_V2, id='v2'),
+    pytest.param(READ_EVENTS_WITH_HASH_V1, VERIFICATION_KEY_V1, 'v1', id='v1'),
+    pytest.param(READ_EVENTS_WITH_HASH_V2, VERIFICATION_KEY_V2, 'v1', id='v2'),
+    pytest.param(
+        READ_EVENTS_FROM_V2_API, VERIFICATION_KEY_V2_API, 'v2', id='v2 from the v2 API'
+    ),
 ]
 
 
@@ -177,9 +183,9 @@ class TestVerifySignature:
 class TestVerifySignatureOfFixedEvents:
     @staticmethod
     @pytest.mark.asyncio
-    @pytest.mark.parametrize(('lines', 'verification_key'), SIGNED_EVENTS)
-    async def test_verifies_the_signature(lines: list[str], verification_key: bytes) -> None:
-        events = await read_events_from(lines)
+    @pytest.mark.parametrize(('lines', 'verification_key', 'api'), SIGNED_EVENTS)
+    async def test_verifies_the_signature(lines: list[str], verification_key: bytes, api: Api) -> None:
+        events = await read_events_from(lines, api)
 
         assert len(events) == len(lines)
         for event in events:
@@ -187,11 +193,11 @@ class TestVerifySignatureOfFixedEvents:
 
     @staticmethod
     @pytest.mark.asyncio
-    @pytest.mark.parametrize(('lines', 'verification_key'), SIGNED_EVENTS)
+    @pytest.mark.parametrize(('lines', 'verification_key', 'api'), SIGNED_EVENTS)
     async def test_fails_if_the_signature_does_not_match_the_verification_key(
-        lines: list[str], verification_key: bytes
+        lines: list[str], verification_key: bytes, api: Api
     ) -> None:
-        events = await read_events_from(lines)
+        events = await read_events_from(lines, api)
         other_verification_key = ed25519.Ed25519PrivateKey.generate().public_key()
 
         for event in events:
@@ -200,11 +206,11 @@ class TestVerifySignatureOfFixedEvents:
 
     @staticmethod
     @pytest.mark.asyncio
-    @pytest.mark.parametrize(('lines', 'verification_key'), SIGNED_EVENTS)
+    @pytest.mark.parametrize(('lines', 'verification_key', 'api'), SIGNED_EVENTS)
     async def test_fails_if_the_signature_was_changed(
-        lines: list[str], verification_key: bytes
+        lines: list[str], verification_key: bytes, api: Api
     ) -> None:
-        events = await read_events_from(lines)
+        events = await read_events_from(lines, api)
 
         for event in events:
             assert event.signature is not None
@@ -215,11 +221,11 @@ class TestVerifySignatureOfFixedEvents:
 
     @staticmethod
     @pytest.mark.asyncio
-    @pytest.mark.parametrize(('lines', 'verification_key'), SIGNED_EVENTS)
+    @pytest.mark.parametrize(('lines', 'verification_key', 'api'), SIGNED_EVENTS)
     async def test_fails_if_the_signature_is_malformed(
-        lines: list[str], verification_key: bytes
+        lines: list[str], verification_key: bytes, api: Api
     ) -> None:
-        events = await read_events_from(lines)
+        events = await read_events_from(lines, api)
 
         for event in events:
             event.signature = 'esdb:signature:v1:not-hexadecimal'
@@ -229,9 +235,11 @@ class TestVerifySignatureOfFixedEvents:
 
     @staticmethod
     @pytest.mark.asyncio
-    @pytest.mark.parametrize(('lines', 'verification_key'), SIGNED_EVENTS)
-    async def test_fails_if_the_hash_is_invalid(lines: list[str], verification_key: bytes) -> None:
-        events = await read_events_from([line.replace('/books/42', '/books/23') for line in lines])
+    @pytest.mark.parametrize(('lines', 'verification_key', 'api'), SIGNED_EVENTS)
+    async def test_fails_if_the_hash_is_invalid(lines: list[str], verification_key: bytes, api: Api) -> None:
+        events = await read_events_from(
+            [line.replace('/books/42', '/books/23') for line in lines], api
+        )
 
         for event in events:
             with pytest.raises(HashVerificationFailedError):

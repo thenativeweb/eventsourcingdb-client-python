@@ -4,11 +4,13 @@ import pytest
 from aiohttp import ClientConnectorDNSError, web
 
 from eventsourcingdb import (
+    ConnectionStalledError,
     EventCandidate,
     IsEventQlQueryTrue,
     IsSubjectOnEventId,
     IsSubjectPopulated,
     IsSubjectPristine,
+    OutcomeUnknownError,
     ServerError,
 )
 
@@ -337,7 +339,7 @@ class TestWriteSubjects:
         async with StreamServer(write_stream, stall_timeout=STALL_TIMEOUT_SECONDS) as server:
             client = server.get_client()
 
-            with pytest.raises(TimeoutError):
+            with pytest.raises(OutcomeUnknownError) as error:
                 async with asyncio.timeout(TEST_DEADLINE_SECONDS) as deadline:
                     await client.write_events(
                         [
@@ -353,3 +355,5 @@ class TestWriteSubjects:
         assert not deadline.expired(), (
             "The stall timeout must end the request before the deadline of the test does."
         )
+        # Since the server may have stored the events, their outcome is unknown.
+        assert isinstance(error.value.cause, ConnectionStalledError)
