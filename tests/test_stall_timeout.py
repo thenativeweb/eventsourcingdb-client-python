@@ -18,7 +18,7 @@ from eventsourcingdb import (
     ReadEventsOptions,
     ReadSubjectsOptions,
     ServerError,
-    outcome_is_unknown,
+    is_outcome_unknown,
 )
 from eventsourcingdb.http_client import DEFAULT_STALL_TIMEOUT_SECONDS
 from eventsourcingdb.http_client.response import MAX_LINE_BYTES
@@ -342,7 +342,7 @@ class TestStallTimeout:
             assert type(error.value) is TimeoutError
             # A write that the caller ends once it has a connection may have
             # been stored, so its outcome is unknown.
-            assert outcome_is_unknown(error.value) == (name_of(request_) in WRITE_NAMES)
+            assert is_outcome_unknown(error.value) == (name_of(request_) in WRITE_NAMES)
 
     @staticmethod
     @pytest.mark.asyncio

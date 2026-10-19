@@ -18,9 +18,9 @@ from eventsourcingdb import (
     EventCandidate,
     OutcomeUnknownError,
     ServerError,
-    outcome_is_unknown,
+    is_outcome_unknown,
 )
-from eventsourcingdb.errors.outcome_is_unknown import (
+from eventsourcingdb.errors.is_outcome_unknown import (
     OUTCOME_UNKNOWN_ATTRIBUTE,
     OUTCOME_UNKNOWN_NOTE,
 )
@@ -127,7 +127,7 @@ async def outcome_of(request_: Request, server: StreamServer) -> BaseException |
     return None
 
 
-def assert_outcome_is_unknown(error: BaseException | None, cause: type[BaseException]) -> None:
+def assert_is_outcome_unknown(error: BaseException | None, cause: type[BaseException]) -> None:
     assert type(error) is OutcomeUnknownError
     assert isinstance(error.cause, cause)
     assert error.__cause__ is error.cause
@@ -226,7 +226,7 @@ class TestWritesThatWereCertainlyNotStored:
                     await task
 
         assert task.cancelled()
-        assert not outcome_is_unknown(error.value)
+        assert not is_outcome_unknown(error.value)
         assert not hasattr(error.value, OUTCOME_UNKNOWN_ATTRIBUTE)
         assert OUTCOME_UNKNOWN_NOTE not in getattr(error.value, '__notes__', [])
 
@@ -333,7 +333,7 @@ class TestWritesWhoseOutcomeIsUnknown:
             StreamServer(answer_with(error_item('store-failed') + V2_END), api='v2'),
         )
 
-        assert_outcome_is_unknown(error, DbApiError)
+        assert_is_outcome_unknown(error, DbApiError)
         assert error.cause.code == 'https://docs.eventsourcingdb.io/errors/store-failed'  # type: ignore[union-attr]
 
     @staticmethod
@@ -348,7 +348,7 @@ class TestWritesWhoseOutcomeIsUnknown:
             StreamServer(answer_with(b'failed'), status=status, headers=TEXT_PLAIN, api=api),
         )
 
-        assert_outcome_is_unknown(error, DbApiError)
+        assert_is_outcome_unknown(error, DbApiError)
         assert error.cause.status == status  # type: ignore[union-attr]
 
     @staticmethod
@@ -363,7 +363,7 @@ class TestWritesWhoseOutcomeIsUnknown:
             StreamServer(answer_with(b'failed'), status=status, headers=TEXT_PLAIN, api='v2'),
         )
 
-        assert_outcome_is_unknown(error, DbApiError)
+        assert_is_outcome_unknown(error, DbApiError)
 
     @staticmethod
     @pytest.mark.asyncio
@@ -383,7 +383,7 @@ class TestWritesWhoseOutcomeIsUnknown:
             ),
         )
 
-        assert_outcome_is_unknown(error, ServerError)
+        assert_is_outcome_unknown(error, ServerError)
         assert 'Server must be EventSourcingDB' in str(error.cause)  # type: ignore[union-attr]
 
     @staticmethod
@@ -396,7 +396,7 @@ class TestWritesWhoseOutcomeIsUnknown:
             request_, StreamServer(None, stall_timeout=STALL_TIMEOUT_SECONDS, api=api)
         )
 
-        assert_outcome_is_unknown(error, ConnectionStalledError)
+        assert_is_outcome_unknown(error, ConnectionStalledError)
 
     @staticmethod
     @pytest.mark.asyncio
@@ -413,7 +413,7 @@ class TestWritesWhoseOutcomeIsUnknown:
             ),
         )
 
-        assert_outcome_is_unknown(error, ConnectionStalledError)
+        assert_is_outcome_unknown(error, ConnectionStalledError)
 
     @staticmethod
     @pytest.mark.asyncio
@@ -426,7 +426,7 @@ class TestWritesWhoseOutcomeIsUnknown:
 
         error = await outcome_of(request_, StreamServer(answer_with(V2_HEARTBEAT + answer), api='v2'))
 
-        assert_outcome_is_unknown(error, ServerError)
+        assert_is_outcome_unknown(error, ServerError)
         assert 'closed the stream before it ended' in str(error.cause)  # type: ignore[union-attr]
 
     @staticmethod
@@ -506,7 +506,7 @@ def assert_marked(cancellation: BaseException) -> None:
 
 class TestWritesThatAreCancelledOnceTheyHaveAConnection:
     # A cancelled write is marked rather than wrapped, so that it cancels as
-    # asyncio expects, while outcome_is_unknown tells that it may have been
+    # asyncio expects, while is_outcome_unknown tells that it may have been
     # stored.
     @staticmethod
     @pytest.mark.asyncio
@@ -525,12 +525,12 @@ class TestWritesThatAreCancelledOnceTheyHaveAConnection:
 
         assert task.cancelled()
         assert_marked(error.value)
-        assert outcome_is_unknown(error.value)
+        assert is_outcome_unknown(error.value)
 
     @staticmethod
     @pytest.mark.asyncio
     @pytest.mark.parametrize(('api', 'request_'), WRITES_PER_API)
-    async def test_raises_the_timeout_error_of_asyncio_timeout_whose_outcome_is_unknown(
+    async def test_raises_the_timeout_error_of_asyncio_timeout_whose_is_outcome_unknown(
         api: Api, request_: Request
     ) -> None:
         async with StreamServer(None, api=api) as server:
@@ -550,12 +550,12 @@ class TestWritesThatAreCancelledOnceTheyHaveAConnection:
         assert deadline.expired()
         assert type(error.value) is TimeoutError
         assert_marked(error.value.__cause__)  # type: ignore[arg-type]
-        assert outcome_is_unknown(error.value)
+        assert is_outcome_unknown(error.value)
 
     @staticmethod
     @pytest.mark.asyncio
     @pytest.mark.parametrize(('api', 'request_'), WRITES_PER_API)
-    async def test_raises_the_timeout_error_of_wait_for_whose_outcome_is_unknown(
+    async def test_raises_the_timeout_error_of_wait_for_whose_is_outcome_unknown(
         api: Api, request_: Request
     ) -> None:
         async with StreamServer(None, api=api) as server:
@@ -567,7 +567,7 @@ class TestWritesThatAreCancelledOnceTheyHaveAConnection:
             assert server.request_received.is_set()
 
         assert type(error.value) is TimeoutError
-        assert outcome_is_unknown(error.value)
+        assert is_outcome_unknown(error.value)
 
     @staticmethod
     @pytest.mark.asyncio
@@ -595,7 +595,7 @@ class TestWritesThatAreCancelledOnceTheyHaveAConnection:
     @staticmethod
     @pytest.mark.asyncio
     @pytest.mark.parametrize(('api', 'request_'), WRITES_PER_API)
-    async def test_cancels_a_loop_that_retries_writes_whose_outcome_is_unknown(
+    async def test_cancels_a_loop_that_retries_writes_whose_is_outcome_unknown(
         api: Api, request_: Request
     ) -> None:
         attempts = 0
@@ -626,7 +626,7 @@ class TestWritesThatAreCancelledOnceTheyHaveAConnection:
         assert attempts == 1
 
 
-class TestOutcomeIsUnknown:
+class TestIsOutcomeUnknown:
     @staticmethod
     def test_is_true_for_an_outcome_unknown_error_and_errors_caused_by_one() -> None:
         outcome_unknown_error = OutcomeUnknownError(ConnectionStalledError(30))
@@ -635,9 +635,9 @@ class TestOutcomeIsUnknown:
         within = RuntimeError('Failed to save.')
         within.__context__ = outcome_unknown_error
 
-        assert outcome_is_unknown(outcome_unknown_error)
-        assert outcome_is_unknown(caused)
-        assert outcome_is_unknown(within)
+        assert is_outcome_unknown(outcome_unknown_error)
+        assert is_outcome_unknown(caused)
+        assert is_outcome_unknown(within)
 
     @staticmethod
     def test_is_false_for_other_errors_and_unmarked_cancellations() -> None:
@@ -646,10 +646,10 @@ class TestOutcomeIsUnknown:
         circular.__context__ = other
         other.__context__ = circular
 
-        assert not outcome_is_unknown(asyncio.CancelledError())
-        assert not outcome_is_unknown(TimeoutError())
-        assert not outcome_is_unknown(ConnectionStalledError(30))
-        assert not outcome_is_unknown(circular)
+        assert not is_outcome_unknown(asyncio.CancelledError())
+        assert not is_outcome_unknown(TimeoutError())
+        assert not is_outcome_unknown(ConnectionStalledError(30))
+        assert not is_outcome_unknown(circular)
 
 
 class TestOutcomeUnknownError:

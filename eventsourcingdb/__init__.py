@@ -14,7 +14,7 @@ from .errors import (
     SignatureVerificationFailedError,
     UnsupportedHashVersionError,
     ValidationError,
-    outcome_is_unknown,
+    is_outcome_unknown,
 )
 from .event import Event, EventCandidate
 from .observe_events import (
@@ -71,5 +71,5 @@ __all__ = [
     "SignatureVerificationFailedError",
     "UnsupportedHashVersionError",
     "ValidationError",
-    "outcome_is_unknown",
+    "is_outcome_unknown",
 ]

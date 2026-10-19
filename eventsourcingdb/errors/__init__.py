@@ -5,7 +5,7 @@ from .db_api_error import DbApiError
 from .error_code import ErrorCode
 from .hash_verification_failed_error import HashVerificationFailedError
 from .internal_error import InternalError
-from .outcome_is_unknown import outcome_is_unknown
+from .is_outcome_unknown import is_outcome_unknown
 from .outcome_unknown_error import OutcomeUnknownError
 from .server_error import ServerError
 from .signature_verification_failed_error import SignatureVerificationFailedError
@@ -25,5 +25,5 @@ __all__ = [
     "SignatureVerificationFailedError",
     "UnsupportedHashVersionError",
     "ValidationError",
-    "outcome_is_unknown",
+    "is_outcome_unknown",
 ]

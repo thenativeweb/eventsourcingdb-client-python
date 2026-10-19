@@ -3,7 +3,7 @@ from collections.abc import Awaitable, Callable
 from typing import TypeVar
 
 from ..errors import DbApiError, OutcomeUnknownError
-from ..errors.outcome_is_unknown import mark_outcome_unknown
+from ..errors.is_outcome_unknown import mark_outcome_unknown
 from ..http_client import RequestState
 
 T = TypeVar('T')
@@ -29,7 +29,7 @@ async def guard_write(
     This includes the caller cancelling the request once it has a
     connection, since the request may have been sent by then. A cancellation
     is not wrapped, though, so that it still cancels as asyncio expects: it is
-    marked instead, which outcome_is_unknown tells.
+    marked instead, which is_outcome_unknown tells.
     """
     request_state = RequestState()
 
