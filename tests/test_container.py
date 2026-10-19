@@ -9,6 +9,7 @@ import docker
 import pytest
 import requests
 from docker.models.containers import ContainerCollection
+from docker.models.images import ImageCollection
 
 from eventsourcingdb import Container
 from eventsourcingdb.container import DEFAULT_STARTUP_TIMEOUT_SECONDS, START_LABEL
@@ -319,16 +320,39 @@ class TestStartupTimeout:
         assert created_containers.find_leftovers() == []
 
     @staticmethod
-    def test_fails_at_once_with_the_error_of_docker_if_the_image_does_not_exist(
+    def test_fails_at_once_with_the_error_of_docker_if_docker_rejects_the_image(
         created_containers: CreatedContainers,
     ) -> None:
-        container = Container().with_image_tag('this-tag-does-not-exist')
+        # Docker rejects the reference on its own, without asking a registry.
+        container = Container().with_image_tag('not a valid tag')
 
         with pytest.raises(RuntimeError) as error:
             container.start()
 
         assert isinstance(error.value.__cause__, docker.errors.APIError)
+        assert error.value.__cause__.status_code == 400
         assert str(error.value) == f'Failed to start the container: {error.value.__cause__}'
+        assert created_containers.container_ids == []
+
+    @staticmethod
+    def test_fails_at_once_with_the_error_of_the_pull_if_the_image_is_neither_in_the_registry_nor_local(
+        created_containers: CreatedContainers, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # The registry's answer is made up, so that the test does not depend
+        # on the registry or the network. Docker looks for the image locally.
+        pull_error = docker.errors.NotFound('manifest unknown')
+
+        def pull(*_: Any, **__: Any) -> None:
+            raise pull_error
+
+        monkeypatch.setattr(ImageCollection, 'pull', pull)
+        container = Container().with_image_tag('this-tag-does-not-exist')
+
+        with pytest.raises(RuntimeError) as error:
+            container.start()
+
+        assert error.value.__cause__ is pull_error
+        assert str(error.value) == f'Failed to start the container: {pull_error}'
         assert created_containers.container_ids == []
 
     @staticmethod
