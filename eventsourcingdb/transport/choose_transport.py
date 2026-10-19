@@ -6,15 +6,12 @@ from ..errors import ServerError
 from ..http_client import HttpClient
 from ..is_valid_server_header import is_valid_server_header
 from .error_of_answer import error_of_answer
+from .statuses_without_v2_api import STATUSES_WITHOUT_V2_API
 from .transport import Transport
 from .v1 import V1Transport
 from .v2 import V2Transport
 
 PROBE_PATH = '/api/v2/system/ping'
-
-# How a server without the v2 API, such as EventSourcingDB 1.2, answers a
-# request to a path of the v2 API, with or without its management UI.
-STATUSES_WITHOUT_V2_API = {HTTPStatus.NOT_FOUND, HTTPStatus.METHOD_NOT_ALLOWED}
 
 
 class ChooseTransport:
@@ -24,13 +21,15 @@ class ChooseTransport:
     API whether it offers that API, and remembers the answer. Only a definite
     answer is remembered: if the ping fails in any other way, the request that
     needed it fails with that error, and the next request asks again. Requests
-    that need the answer at the same time share a single ping.
+    that need the answer at the same time share a single ping. Once the server
+    answers a path of the v2 API with 404 or 405, for example after it was
+    rolled back to a version without it, the answer is forgotten, and the
+    next request asks again.
     """
 
     def __init__(self, http_client: HttpClient) -> None:
         self.__http_client = http_client
         self.__v1_transport = V1Transport(http_client)
-        self.__v2_transport = V2Transport(http_client)
         self.__transport: Transport | None = None
         self.__probe: asyncio.Task[Transport] | None = None
 
@@ -63,6 +62,14 @@ class ChooseTransport:
 
         if ChooseTransport.__succeeded(probe):
             self.__transport = probe.result()
+
+    def __forget(self, transport: Transport) -> None:
+        # Only the remembered transport is forgotten, and a ping that runs is
+        # left alone. So a late answer to a request through a transport that
+        # is forgotten already neither disturbs the ping that asks again, nor
+        # discards the answer that it found.
+        if self.__transport is transport:
+            self.__transport = None
 
     @staticmethod
     def __succeeded(probe: asyncio.Task[Transport]) -> bool:
@@ -102,4 +109,7 @@ class ChooseTransport:
                 f'with {response_body.decode("utf-8", errors="replace")}.'
             )
 
-        return self.__v2_transport
+        # Every ping that finds the v2 API gets a transport of its own, so that
+        # a request that makes the client forget the answer of one ping never
+        # forgets the answer of a later one.
+        return V2Transport(self.__http_client, self.__forget)

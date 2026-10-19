@@ -1,5 +1,5 @@
 import json
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Callable
 from contextlib import aclosing
 from http import HTTPStatus
 from typing import Any
@@ -14,12 +14,13 @@ from ...errors import (
 )
 from ...event import Event, EventCandidate
 from ...event.find_raw_data import defer_raw_data_of_stream_item
-from ...http_client import HttpClient, RequestState
+from ...http_client import HttpClient, RequestState, Response
 from ...observe_events import ObserveEventsOptions
 from ...read_event_types import EventType
 from ...read_events import ReadEventsOptions
 from ...write_events import Precondition
 from ..guard_write import guard_write
+from ..statuses_without_v2_api import STATUSES_WITHOUT_V2_API
 from ..transport import Transport
 from .envelopes import Envelope, read_envelope, read_envelopes, unexpected_envelope
 
@@ -111,16 +112,23 @@ class V2Transport(Transport):
     HTTP method QUERY, everything else POST, except for the ping, which uses
     GET. It leaves out every optional field instead of sending null, since the
     v2 API rejects null as well as unknown fields.
+
+    A server that answers a path of the v2 API with 404 or 405 no longer
+    offers it, for example because it was rolled back to a version without
+    it, so the transport then calls the given function with itself, which
+    makes the client forget that the server offers the v2 API. The request
+    itself fails as it would otherwise.
     """
 
     api_version = 'v2'
 
-    def __init__(self, http_client: HttpClient) -> None:
+    def __init__(self, http_client: HttpClient, forget: Callable[[Transport], None]) -> None:
         self.__http_client = http_client
+        self.__forget = forget
 
     async def ping(self) -> None:
         # The ping needs no API token, so it gets none.
-        response = await self.__http_client.get(PING_PATH, with_authorization=False)
+        response = await self.__get(PING_PATH, with_authorization=False)
         async with response:
             envelope = await read_envelope(response)
 
@@ -128,7 +136,7 @@ class V2Transport(Transport):
             raise unexpected_envelope(envelope)
 
     async def verify_api_token(self) -> None:
-        response = await self.__http_client.post(VERIFY_PATH)
+        response = await self.__post(VERIFY_PATH)
         async with response:
             envelope = await read_envelope(response)
 
@@ -152,7 +160,7 @@ class V2Transport(Transport):
         )
 
     async def __write_events(self, request_body: str, request_state: RequestState) -> list[Event]:
-        response = await self.__http_client.post(WRITE_EVENTS_PATH, request_body, request_state)
+        response = await self.__post(WRITE_EVENTS_PATH, request_body, request_state)
         async with response, aclosing(read_envelopes(response)) as envelopes:
             return [parse_event(envelope) async for envelope in envelopes]
 
@@ -167,9 +175,7 @@ class V2Transport(Transport):
     async def __register_event_schema(
         self, request_body: str, request_state: RequestState
     ) -> None:
-        response = await self.__http_client.post(
-            REGISTER_EVENT_SCHEMA_PATH, request_body, request_state
-        )
+        response = await self.__post(REGISTER_EVENT_SCHEMA_PATH, request_body, request_state)
         async with response, aclosing(read_envelopes(response)) as read_envelopes_:
             envelopes = [envelope async for envelope in read_envelopes_]
 
@@ -182,7 +188,7 @@ class V2Transport(Transport):
     async def read_event_type(self, event_type: str) -> EventType:
         request = {'type': event_type}
 
-        response = await self.__http_client.query(READ_EVENT_TYPE_PATH, json.dumps(request))
+        response = await self.__query(READ_EVENT_TYPE_PATH, json.dumps(request))
         async with response:
             envelope = await read_envelope(response)
 
@@ -195,7 +201,7 @@ class V2Transport(Transport):
     ) -> AsyncGenerator[Event]:
         request = {'subject': subject, 'options': options.to_json()}
 
-        response = await self.__http_client.query(READ_EVENTS_PATH, json.dumps(request))
+        response = await self.__query(READ_EVENTS_PATH, json.dumps(request))
         async with response, aclosing(read_envelopes(response)) as envelopes:
             async for envelope in envelopes:
                 yield parse_event(envelope)
@@ -207,7 +213,7 @@ class V2Transport(Transport):
     ) -> AsyncGenerator[Event]:
         request = {'subject': subject, 'options': options.to_json()}
 
-        response = await self.__http_client.query(OBSERVE_EVENTS_PATH, json.dumps(request))
+        response = await self.__query(OBSERVE_EVENTS_PATH, json.dumps(request))
         async with response, aclosing(read_envelopes(response, ends=False)) as envelopes:
             async for envelope in envelopes:
                 yield parse_event(envelope)
@@ -215,7 +221,7 @@ class V2Transport(Transport):
     async def run_eventql_query(self, query: str) -> AsyncGenerator[Any]:
         request = {'query': query}
 
-        response = await self.__http_client.query(RUN_EVENTQL_QUERY_PATH, json.dumps(request))
+        response = await self.__query(RUN_EVENTQL_QUERY_PATH, json.dumps(request))
         async with response, aclosing(read_envelopes(response)) as envelopes:
             async for envelope in envelopes:
                 if (
@@ -230,7 +236,7 @@ class V2Transport(Transport):
     async def read_subjects(self, subject: str, recursive: bool) -> AsyncGenerator[str]:
         request = {'subject': subject, 'options': {'recursive': recursive}}
 
-        response = await self.__http_client.query(READ_SUBJECTS_PATH, json.dumps(request))
+        response = await self.__query(READ_SUBJECTS_PATH, json.dumps(request))
         async with response, aclosing(read_envelopes(response)) as envelopes:
             async for envelope in envelopes:
                 if (
@@ -246,7 +252,7 @@ class V2Transport(Transport):
         # Reading event types wraps every error of the request that is not one
         # of the client SDK in an InternalError, as for the v1 API.
         try:
-            response = await self.__http_client.query(READ_EVENT_TYPES_PATH)
+            response = await self.__query(READ_EVENT_TYPES_PATH)
         except CustomError:
             raise
         except Exception as error:
@@ -255,3 +261,33 @@ class V2Transport(Transport):
         async with response, aclosing(read_envelopes(response)) as envelopes:
             async for envelope in envelopes:
                 yield parse_event_type(envelope)
+
+    # Every request goes through one of these, so that every answer tells
+    # whether the server still offers the v2 API.
+    async def __get(self, path: str, *, with_authorization: bool) -> Response:
+        response = await self.__http_client.get(path, with_authorization=with_authorization)
+        self.__forget_if_without_v2_api(response)
+        return response
+
+    async def __post(
+        self,
+        path: str,
+        request_body: str | None = None,
+        request_state: RequestState | None = None,
+    ) -> Response:
+        response = await self.__http_client.post(path, request_body, request_state)
+        self.__forget_if_without_v2_api(response)
+        return response
+
+    async def __query(self, path: str, request_body: str | None = None) -> Response:
+        response = await self.__http_client.query(path, request_body)
+        self.__forget_if_without_v2_api(response)
+        return response
+
+    def __forget_if_without_v2_api(self, response: Response) -> None:
+        # Only the status counts, not the Server header, as for the ping that
+        # asks whether the server offers the v2 API, since a proxy that only
+        # forwards the v1 API answers on its own. Should the server still
+        # offer it, the next request merely finds that out again.
+        if response.status in STATUSES_WITHOUT_V2_API:
+            self.__forget(self)
