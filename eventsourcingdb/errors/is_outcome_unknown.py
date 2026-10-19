@@ -23,15 +23,14 @@ def is_outcome_unknown(error: BaseException) -> bool:
     Tells whether the error leaves open whether a write was stored: it is an
     OutcomeUnknownError, a cancellation of a write after it had a connection,
     or an error caused by one of them, such as the TimeoutError that
-    asyncio.timeout raises once it cancels such a write.
+    asyncio.timeout raises once it cancels such a write. Only causes count,
+    not errors that were merely raised while handling one, since those do not
+    tell anything about the write.
     """
     seen: set[int] = set()
-    pending: list[BaseException] = [error]
+    current: BaseException | None = error
 
-    while pending:
-        current = pending.pop()
-        if id(current) in seen:
-            continue
+    while current is not None and id(current) not in seen:
         seen.add(id(current))
 
         if isinstance(current, OutcomeUnknownError):
@@ -39,8 +38,6 @@ def is_outcome_unknown(error: BaseException) -> bool:
         if getattr(current, OUTCOME_UNKNOWN_ATTRIBUTE, False) is True:
             return True
 
-        pending.extend(
-            linked for linked in (current.__cause__, current.__context__) if linked is not None
-        )
+        current = current.__cause__
 
     return False

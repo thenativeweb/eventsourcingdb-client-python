@@ -630,21 +630,47 @@ class TestIsOutcomeUnknown:
     @staticmethod
     def test_is_true_for_an_outcome_unknown_error_and_errors_caused_by_one() -> None:
         outcome_unknown_error = OutcomeUnknownError(ConnectionStalledError(30))
-        caused = RuntimeError('Failed to save.')
-        caused.__cause__ = outcome_unknown_error
-        within = RuntimeError('Failed to save.')
-        within.__context__ = outcome_unknown_error
+
+        try:
+            try:
+                raise outcome_unknown_error
+            except OutcomeUnknownError as error:
+                raise RuntimeError('Failed to save.') from error
+        except RuntimeError as error:
+            caused = error
 
         assert is_outcome_unknown(outcome_unknown_error)
         assert is_outcome_unknown(caused)
-        assert is_outcome_unknown(within)
+
+    @staticmethod
+    def test_is_false_for_an_error_raised_while_handling_one_without_being_caused_by_it() -> None:
+        # Such an error tells nothing about whether the write was stored,
+        # whether its context is suppressed or not.
+        def raise_while_handling(suppress_context: bool) -> BaseException:
+            try:
+                try:
+                    raise OutcomeUnknownError(ConnectionStalledError(30))
+                except OutcomeUnknownError:
+                    if suppress_context:
+                        raise ValueError('The input is invalid.') from None
+                    raise ValueError('The input is invalid.')
+            except ValueError as error:
+                return error
+
+        unrelated = raise_while_handling(suppress_context=False)
+        suppressed = raise_while_handling(suppress_context=True)
+
+        assert isinstance(unrelated.__context__, OutcomeUnknownError)
+        assert isinstance(suppressed.__context__, OutcomeUnknownError)
+        assert not is_outcome_unknown(unrelated)
+        assert not is_outcome_unknown(suppressed)
 
     @staticmethod
     def test_is_false_for_other_errors_and_unmarked_cancellations() -> None:
         circular = RuntimeError('One.')
         other = RuntimeError('Two.')
-        circular.__context__ = other
-        other.__context__ = circular
+        circular.__cause__ = other
+        other.__cause__ = circular
 
         assert not is_outcome_unknown(asyncio.CancelledError())
         assert not is_outcome_unknown(TimeoutError())
