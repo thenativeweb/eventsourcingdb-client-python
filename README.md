@@ -44,7 +44,7 @@ If you want to verify the API token, call `verify_api_token`. If the token is in
 await client.verify_api_token()
 ```
 
-### Using Servers With and Without the v2 API
+### Talking to Servers With and Without the v2 API
 
 The client SDK works with servers that offer the v2 API of EventSourcingDB, which it has since version 1.3, as well as with servers that only offer the v1 API. Creating a client does not send any request. Instead, on its first request, the client asks the server whether it offers the v2 API, and remembers the answer for as long as it exists. If the server cannot be asked, for example because it is not reachable, the first request fails with that error, and the next request asks again.
 
@@ -102,7 +102,7 @@ except DbApiError as error:
 
 Servers without the v2 API report errors without a code. For them, the client assigns the code of the v2 API to the errors that clearly match one: a precondition that does not hold, an exceeded capacity of the store, an event that does not match the schema of its type, a schema that is already registered, a schema that existing events do not match, a range of events that cannot be read because `from_latest_event` lies above the `upper_bound`, an unknown event type, a store in read-only mode, and an invalid license. Every other error of such a server has no code.
 
-### Knowing Whether a Write Was Stored
+#### Knowing Whether a Write Was Stored
 
 EventSourcingDB never stores a write halfway: the events of a call to `write_events`, or the schema of a call to `register_event_schema`, are either stored completely or not at all. If one of these functions fails in a way that leaves open whether the server stored the write, it raises an `OutcomeUnknownError`, whose `cause` attribute holds the error that the write failed with. This happens, for example, if the server stalls or the connection breaks once the request has a connection, if the server answers with a status such as `500`, `502`, or `504`, if the answer does not come from EventSourcingDB, or if the server ends its answer before it is complete. Before you repeat such a write, find out whether it was stored, for example by reading the events of the subject, or repeat it with a precondition such as `IsSubjectOnEventId` that only holds if it was not stored.
 
@@ -829,7 +829,7 @@ In case you need to set up the client yourself, use the following functions to g
 
 ## Upgrading From Version 1
 
-Version 2 of the client SDK speaks the v2 API of EventSourcingDB, and keeps speaking the v1 API to servers without it, see [Using Servers With and Without the v2 API](#using-servers-with-and-without-the-v2-api). If there is a proxy in front of EventSourcingDB, make sure it lets requests with the HTTP method `QUERY` through. Besides, it changes the following:
+Version 2 of the client SDK speaks the v2 API of EventSourcingDB, and keeps speaking the v1 API to servers without it, see [Talking to Servers With and Without the v2 API](#talking-to-servers-with-and-without-the-v2-api). If there is a proxy in front of EventSourcingDB, make sure it lets requests with the HTTP method `QUERY` through. Besides, it changes the following:
 
 - **Event types:** an `EventType` names its type `type` instead of `event_type`, and tells whether events of the type exist with `has_events`, the opposite of the former `is_phantom`.
   - Before: `event_type.event_type`, `event_type.is_phantom`, `EventType(event_type = '…', is_phantom = True)`
