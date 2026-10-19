@@ -18,6 +18,7 @@ from eventsourcingdb import (
     ReadEventsOptions,
     ReadSubjectsOptions,
     ServerError,
+    outcome_is_unknown,
 )
 from eventsourcingdb.http_client import DEFAULT_STALL_TIMEOUT_SECONDS
 from eventsourcingdb.http_client.response import MAX_LINE_BYTES
@@ -333,18 +334,15 @@ class TestStallTimeout:
     @pytest.mark.parametrize(('api', 'request_'), per_api())
     async def test_does_not_replace_a_timeout_of_the_caller(api: Api, request_: Request) -> None:
         async with stream_server(None, api) as server:
-            with pytest.raises((TimeoutError, OutcomeUnknownError)) as error:
+            with pytest.raises(TimeoutError) as error:
                 async with asyncio.timeout(STALL_TIMEOUT_SECONDS / 2) as deadline:
                     await request_(server.get_client())
 
             assert deadline.expired()
+            assert type(error.value) is TimeoutError
             # A write that the caller ends once it has a connection may have
             # been stored, so its outcome is unknown.
-            if name_of(request_) in WRITE_NAMES:
-                assert type(error.value) is OutcomeUnknownError
-                assert isinstance(error.value.cause, asyncio.CancelledError)
-            else:
-                assert type(error.value) is TimeoutError
+            assert outcome_is_unknown(error.value) == (name_of(request_) in WRITE_NAMES)
 
     @staticmethod
     @pytest.mark.asyncio

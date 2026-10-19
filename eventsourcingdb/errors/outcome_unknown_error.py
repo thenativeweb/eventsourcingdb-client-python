@@ -7,7 +7,8 @@ class OutcomeUnknownError(CustomError):
     open whether the server stored the write, such as a connection that broke
     after the request was sent. Since EventSourcingDB never stores a write
     halfway, the write was either stored completely or not at all. The cause
-    is the error that the write failed with.
+    is the error that the write failed with. A cancellation is marked rather
+    than wrapped in this error, which outcome_is_unknown tells.
     """
 
     def __init__(self, cause: BaseException) -> None:

@@ -68,7 +68,7 @@ Once the server stalls, every request raises a `ConnectionStalledError`, which i
 
 The stall timeout also covers the time a request waits for a free connection: a client keeps at most 100 connections open at the same time, so with as many streams open, a further request waits until one of them ends. If it waits for longer than the stall timeout, it raises a `ConnectionStalledError` as well.
 
-In any case, the client closes the connection. Your own timeouts and cancellations, such as `asyncio.timeout`, still apply and can end a request earlier. A write that you end this way once it has a connection raises an `OutcomeUnknownError`, see [Knowing Whether a Write Was Stored](#knowing-whether-a-write-was-stored).
+In any case, the client closes the connection. Your own timeouts and cancellations, such as `asyncio.timeout`, still apply and can end a request earlier. For a write that you end this way once it has a connection, `outcome_is_unknown` tells that it may have been stored, see [Knowing Whether a Write Was Stored](#knowing-whether-a-write-was-stored).
 
 ### Handling Errors
 
@@ -108,7 +108,27 @@ EventSourcingDB never stores a write halfway: the events of a call to `write_eve
 
 The function raises the error itself, which tells that the write was certainly not stored, only if the request could not get a connection at all, such as when the name of the server cannot be resolved, connecting or TLS fails, or the request waits for a free connection for longer than the stall timeout, or if the server refused the write: with an error that it reports within its answer, other than `ErrorCode.STORE_FAILED`, with one of the statuses `400`, `401`, `408`, `413`, `429`, and `503`, or, for servers without the v2 API, with any status `4xx`, `503`, or `507`.
 
-This includes cancelling a write: if you cancel it once it has a connection, for example with `asyncio.timeout` or by cancelling its task, it raises an `OutcomeUnknownError` whose cause is the `asyncio.CancelledError`, rather than letting the `CancelledError`, or the `TimeoutError` of `asyncio.timeout`, through. A write that you cancel before it has a connection is cancelled as usual.
+Cancelling a write once it has a connection, for example with `asyncio.timeout` or by cancelling its task, leaves its outcome open as well. It is cancelled as usual nonetheless, so that `asyncio.timeout`, `asyncio.wait_for`, and task groups work as always: the `asyncio.CancelledError` is not wrapped, but marked, and carries a note that says so. To tell whether the outcome of a write is unknown, call `outcome_is_unknown` with the error. It returns `True` for an `OutcomeUnknownError`, for a marked `CancelledError`, and for an error caused by one of them, such as the `TimeoutError` of `asyncio.timeout`:
+
+```python
+import asyncio
+
+from eventsourcingdb import outcome_is_unknown
+
+try:
+  async with asyncio.timeout(5):
+    written_events = await client.write_events(
+      event_candidates = [
+        # event candidates
+      ],
+    )
+except TimeoutError as error:
+  if outcome_is_unknown(error):
+    # The events may have been stored.
+    pass
+```
+
+A write that you cancel before it has a connection is not marked, and `outcome_is_unknown` returns `False` for it.
 
 ```python
 from eventsourcingdb import OutcomeUnknownError
@@ -824,8 +844,8 @@ Version 2 of the client SDK speaks the v2 API of EventSourcingDB, and keeps spea
 - **Stalled connections:** every request that stalls raises a `ConnectionStalledError`. `HeartbeatTimeoutError` no longer exists, and a stall no longer raises aiohttp's `ConnectionTimeoutError` while connecting, which `read_event_types` wrapped in an `InternalError`, or a `TimeoutError` for requests that are not streams.
   - Before: `except HeartbeatTimeoutError:`, `except aiohttp.ConnectionTimeoutError:`, `except TimeoutError:`
   - After: `except ConnectionStalledError:`
-- **Writes whose outcome is unknown:** `write_events` and `register_event_schema` raise an `OutcomeUnknownError` whose `cause` is the error they failed with, whenever the server may have stored the write, see [Knowing Whether a Write Was Stored](#knowing-whether-a-write-was-stored). This includes a write that you cancel, or that `asyncio.timeout` ends, once it has a connection.
-  - Before: `except ServerError:` for a status such as `500`, `except aiohttp.ClientError:` for a broken connection, `except TimeoutError:` for a timeout of your own
+- **Writes whose outcome is unknown:** `write_events` and `register_event_schema` raise an `OutcomeUnknownError` whose `cause` is the error they failed with, whenever the server may have stored the write, see [Knowing Whether a Write Was Stored](#knowing-whether-a-write-was-stored). A write that you cancel, or that `asyncio.timeout` ends, is cancelled as before, and `outcome_is_unknown` tells whether it may have been stored.
+  - Before: `except ServerError:` for a status such as `500`, `except aiohttp.ClientError:` for a broken connection
   - After: `except OutcomeUnknownError as error:`, with the former error in `error.cause`
 - **Observing events:** if the server closes the stream without reporting an error, `observe_events` raises a `ServerError` instead of ending quietly.
   - Before: `async for event in client.observe_events(…):` ends

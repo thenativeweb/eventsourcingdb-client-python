@@ -18,6 +18,11 @@ from eventsourcingdb import (
     EventCandidate,
     OutcomeUnknownError,
     ServerError,
+    outcome_is_unknown,
+)
+from eventsourcingdb.errors.outcome_is_unknown import (
+    OUTCOME_UNKNOWN_ATTRIBUTE,
+    OUTCOME_UNKNOWN_NOTE,
 )
 from eventsourcingdb.http_client import HttpClient
 from eventsourcingdb.transport import Transport
@@ -217,10 +222,13 @@ class TestWritesThatWereCertainlyNotStored:
             async with asyncio.timeout(GUARD_TIMEOUT_SECONDS):
                 await resolving.wait()
                 task.cancel()
-                with pytest.raises(asyncio.CancelledError):
+                with pytest.raises(asyncio.CancelledError) as error:
                     await task
 
         assert task.cancelled()
+        assert not outcome_is_unknown(error.value)
+        assert not hasattr(error.value, OUTCOME_UNKNOWN_ATTRIBUTE)
+        assert OUTCOME_UNKNOWN_NOTE not in getattr(error.value, '__notes__', [])
 
     @staticmethod
     @pytest.mark.asyncio
@@ -480,7 +488,30 @@ class TestWritesWhoseOutcomeIsUnknown:
     @staticmethod
     @pytest.mark.asyncio
     @pytest.mark.parametrize(('api', 'request_'), WRITES_PER_API)
-    async def test_reports_an_unknown_outcome_if_the_caller_cancels_after_sending(
+    async def test_returns_normally_if_the_write_succeeds(api: Api, request_: Request) -> None:
+        name = 'write_events' if request_.__name__ == 'write_events' else 'register_event_schema'
+
+        error = await outcome_of(
+            request_, StreamServer(answer_with(SUCCESSFUL_WRITES[api][name]), api=api)
+        )
+
+        assert error is None
+
+
+def assert_marked(cancellation: BaseException) -> None:
+    assert type(cancellation) is asyncio.CancelledError
+    assert getattr(cancellation, OUTCOME_UNKNOWN_ATTRIBUTE) is True
+    assert OUTCOME_UNKNOWN_NOTE in cancellation.__notes__
+
+
+class TestWritesThatAreCancelledOnceTheyHaveAConnection:
+    # A cancelled write is marked rather than wrapped, so that it cancels as
+    # asyncio expects, while outcome_is_unknown tells that it may have been
+    # stored.
+    @staticmethod
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(('api', 'request_'), WRITES_PER_API)
+    async def test_cancels_the_task_and_marks_the_cancellation(
         api: Api, request_: Request
     ) -> None:
         async with StreamServer(None, api=api) as server:
@@ -489,20 +520,21 @@ class TestWritesWhoseOutcomeIsUnknown:
             async with asyncio.timeout(GUARD_TIMEOUT_SECONDS):
                 await server.request_received.wait()
                 task.cancel()
-                with pytest.raises(OutcomeUnknownError) as error:
+                with pytest.raises(asyncio.CancelledError) as error:
                     await task
 
-        assert isinstance(error.value.cause, asyncio.CancelledError)
-        assert not task.cancelled()
+        assert task.cancelled()
+        assert_marked(error.value)
+        assert outcome_is_unknown(error.value)
 
     @staticmethod
     @pytest.mark.asyncio
     @pytest.mark.parametrize(('api', 'request_'), WRITES_PER_API)
-    async def test_reports_an_unknown_outcome_if_a_timeout_of_the_caller_ends_it_after_sending(
+    async def test_raises_the_timeout_error_of_asyncio_timeout_whose_outcome_is_unknown(
         api: Api, request_: Request
     ) -> None:
         async with StreamServer(None, api=api) as server:
-            with pytest.raises(OutcomeUnknownError) as error:
+            with pytest.raises(TimeoutError) as error:
                 async with asyncio.timeout(GUARD_TIMEOUT_SECONDS) as deadline:
                     # The deadline of the caller passes once the server has
                     # the request.
@@ -516,19 +548,108 @@ class TestWritesWhoseOutcomeIsUnknown:
             await ending_deadline
 
         assert deadline.expired()
-        assert isinstance(error.value.cause, asyncio.CancelledError)
+        assert type(error.value) is TimeoutError
+        assert_marked(error.value.__cause__)  # type: ignore[arg-type]
+        assert outcome_is_unknown(error.value)
 
     @staticmethod
     @pytest.mark.asyncio
     @pytest.mark.parametrize(('api', 'request_'), WRITES_PER_API)
-    async def test_returns_normally_if_the_write_succeeds(api: Api, request_: Request) -> None:
-        name = 'write_events' if request_.__name__ == 'write_events' else 'register_event_schema'
+    async def test_raises_the_timeout_error_of_wait_for_whose_outcome_is_unknown(
+        api: Api, request_: Request
+    ) -> None:
+        async with StreamServer(None, api=api) as server:
+            with pytest.raises(TimeoutError) as error:
+                await asyncio.wait_for(request_(server.get_client()), STALL_TIMEOUT_SECONDS)
 
-        error = await outcome_of(
-            request_, StreamServer(answer_with(SUCCESSFUL_WRITES[api][name]), api=api)
-        )
+            # The server never answers, so the deadline passed after the
+            # request reached it.
+            assert server.request_received.is_set()
 
-        assert error is None
+        assert type(error.value) is TimeoutError
+        assert outcome_is_unknown(error.value)
+
+    @staticmethod
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(('api', 'request_'), WRITES_PER_API)
+    async def test_is_cancelled_like_any_task_of_a_task_group_whose_sibling_fails(
+        api: Api, request_: Request
+    ) -> None:
+        async with StreamServer(None, api=api) as server:
+
+            async def fail_once_the_write_was_sent() -> None:
+                await server.request_received.wait()
+                raise ValueError('The sibling failed.')
+
+            handled: list[BaseException] = []
+            async with asyncio.timeout(GUARD_TIMEOUT_SECONDS):
+                try:
+                    async with asyncio.TaskGroup() as task_group:
+                        task_group.create_task(request_(server.get_client()))
+                        task_group.create_task(fail_once_the_write_was_sent())
+                except* ValueError as group:
+                    handled.extend(group.exceptions)
+
+        assert [str(error) for error in handled] == ['The sibling failed.']
+
+    @staticmethod
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(('api', 'request_'), WRITES_PER_API)
+    async def test_cancels_a_loop_that_retries_writes_whose_outcome_is_unknown(
+        api: Api, request_: Request
+    ) -> None:
+        attempts = 0
+
+        async with StreamServer(None, stall_timeout=STALL_TIMEOUT_SECONDS, api=api) as server:
+
+            async def retry_until_known() -> None:
+                # A few attempts, so that a cancellation that this loop
+                # swallowed lets the task end rather than hang.
+                nonlocal attempts
+                for _ in range(3):
+                    attempts += 1
+                    try:
+                        await request_(server.get_client())
+                        return
+                    except OutcomeUnknownError:
+                        continue
+
+            task = asyncio.create_task(retry_until_known())
+
+            async with asyncio.timeout(GUARD_TIMEOUT_SECONDS):
+                await server.request_received.wait()
+                task.cancel()
+                with pytest.raises(asyncio.CancelledError):
+                    await task
+
+        assert task.cancelled()
+        assert attempts == 1
+
+
+class TestOutcomeIsUnknown:
+    @staticmethod
+    def test_is_true_for_an_outcome_unknown_error_and_errors_caused_by_one() -> None:
+        outcome_unknown_error = OutcomeUnknownError(ConnectionStalledError(30))
+        caused = RuntimeError('Failed to save.')
+        caused.__cause__ = outcome_unknown_error
+        within = RuntimeError('Failed to save.')
+        within.__context__ = outcome_unknown_error
+
+        assert outcome_is_unknown(outcome_unknown_error)
+        assert outcome_is_unknown(caused)
+        assert outcome_is_unknown(within)
+
+    @staticmethod
+    def test_is_false_for_other_errors_and_unmarked_cancellations() -> None:
+        circular = RuntimeError('One.')
+        other = RuntimeError('Two.')
+        circular.__context__ = other
+        other.__context__ = circular
+
+        assert not outcome_is_unknown(asyncio.CancelledError())
+        assert not outcome_is_unknown(TimeoutError())
+        assert not outcome_is_unknown(ConnectionStalledError(30))
+        assert not outcome_is_unknown(circular)
 
 
 class TestOutcomeUnknownError:
