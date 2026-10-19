@@ -130,6 +130,8 @@ except TimeoutError as error:
 
 A write that you cancel before it has a connection is not marked, and `is_outcome_unknown` returns `False` for it.
 
+There are two cases that `is_outcome_unknown` cannot see: a timeout around a task group of writes that have a connection re-raises the cancellation of the task that awaits the group, which is not marked, and an `ExceptionGroup` that holds an `OutcomeUnknownError` needs `except*` or a check of its members.
+
 ```python
 from eventsourcingdb import OutcomeUnknownError
 
