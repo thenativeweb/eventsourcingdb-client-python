@@ -2,6 +2,7 @@ import math
 import re
 import time
 from collections.abc import Callable
+from types import SimpleNamespace
 from typing import Any
 
 import docker
@@ -15,6 +16,8 @@ from eventsourcingdb.container import DEFAULT_STARTUP_TIMEOUT_SECONDS, START_LAB
 from .shared.image_tag import get_image_tag
 
 CLEANUP_GUARD_SECONDS = 10
+FAKE_PORT = 49153
+POLL_GUARD_SECONDS = 2
 
 
 class CreatedContainers:
@@ -87,6 +90,41 @@ def created_containers(monkeypatch: pytest.MonkeyPatch) -> CreatedContainers:
     monkeypatch.setattr(ContainerCollection, 'create', spy)
     yield created
     created.remove_leftovers()
+
+
+class FakeContainer:
+    """
+    Stands in for a running container, whose port Docker publishes only from
+    the given poll on.
+    """
+
+    def __init__(self, published_from_poll: int) -> None:
+        self.attrs: dict[str, Any] = {}
+        self.polls = 0
+        self.published_from_poll = published_from_poll
+        self.status = 'running'
+
+    def reload(self) -> None:
+        self.polls += 1
+        ports = {}
+        if self.polls >= self.published_from_poll:
+            ports = {'3000/tcp': [{'HostIp': '0.0.0.0', 'HostPort': str(FAKE_PORT)}]}
+        self.attrs = {'NetworkSettings': {'Ports': ports}}
+
+
+class FakePing:
+    """
+    Answers the pings with the given statuses in turn, and with the last one
+    from then on.
+    """
+
+    def __init__(self, statuses: list[int]) -> None:
+        self.statuses = statuses
+        self.urls: list[str] = []
+
+    def __call__(self, url: str, timeout: float) -> SimpleNamespace:
+        self.urls.append(url)
+        return SimpleNamespace(status_code=self.statuses[min(len(self.urls), len(self.statuses)) - 1])
 
 
 def listen_on_another_port(command: list[str]) -> list[str]:
@@ -189,10 +227,38 @@ class TestStartupTimeout:
             Container().with_startup_timeout(startup_timeout)
 
     @staticmethod
+    def test_reads_the_port_again_on_every_poll(monkeypatch: pytest.MonkeyPatch) -> None:
+        ping = FakePing([200])
+        monkeypatch.setattr(requests, 'get', ping)
+        fake_container = FakeContainer(published_from_poll=3)
+
+        mapped_port = Container()._wait_until_reachable(
+            fake_container, time.monotonic() + POLL_GUARD_SECONDS
+        )
+
+        assert mapped_port == FAKE_PORT
+        assert fake_container.polls == 3
+        assert ping.urls == [f'http://localhost:{FAKE_PORT}/api/v1/ping']
+
+    @staticmethod
+    def test_accepts_only_status_200_from_the_ping(monkeypatch: pytest.MonkeyPatch) -> None:
+        ping = FakePing([204, 500, 200])
+        monkeypatch.setattr(requests, 'get', ping)
+        fake_container = FakeContainer(published_from_poll=1)
+
+        mapped_port = Container()._wait_until_reachable(
+            fake_container, time.monotonic() + POLL_GUARD_SECONDS
+        )
+
+        assert mapped_port == FAKE_PORT
+        assert len(ping.urls) == 3
+
+    @staticmethod
     def test_replaces_a_running_container_that_does_not_become_reachable_in_time(
         created_containers: CreatedContainers,
     ) -> None:
         created_containers.change_command = listen_on_another_port
+
         container = Container().with_image_tag(get_image_tag()).with_startup_timeout(1.5)
 
         started_at = time.monotonic()
