@@ -820,6 +820,17 @@ verification_key = container.get_verification_key()
 
 The `signing_key` is the private key EventSourcingDB signs events with. The `verification_key` can be passed to `verify_signature` when verifying events read from the database.
 
+By default, `start` waits up to 30 seconds for the database to become reachable, measured from creating the container, not counting the time it takes to pull the image. To change that, call the `with_startup_timeout` function with a number of seconds:
+
+```python
+container = (
+  Container()
+    .with_startup_timeout(60)
+)
+```
+
+If a container is running but does not become reachable in time, `start` replaces it with a new one, and raises a `TimeoutError` once three containers have failed. If the container exits before it becomes reachable, or if Docker fails, for example because the image cannot be pulled, `start` raises a `RuntimeError` at once. Either way, `start` removes every container whose start failed.
+
 #### Configuring the Client Manually
 
 In case you need to set up the client yourself, use the following functions to get details on the container:
