@@ -44,4 +44,7 @@ include = ["eventsourcingdb/**/*.py", "eventsourcingdb/py.typed"]
 
 [tool.pytest.ini_options]
 timeout = 30
+# Only the test itself is limited. Fixtures start containers, which the startup
+# timeout of Container limits per container, with up to three of them.
+timeout_func_only = true
 asyncio_default_fixture_loop_scope = "function"

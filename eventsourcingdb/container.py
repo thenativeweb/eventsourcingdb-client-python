@@ -1,7 +1,10 @@
 import io
 import logging
+import math
 import tarfile
 import time
+import uuid
+from concurrent.futures import ThreadPoolExecutor, wait
 from http import HTTPStatus
 from typing import ClassVar
 
@@ -10,10 +13,35 @@ import requests
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519
 from docker import DockerClient, errors
+from docker.models.containers import Container as DockerContainer
 
 from .client import Client
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_STARTUP_TIMEOUT_SECONDS = 30
+START_ATTEMPTS = 3
+
+# Every attempt to start a container labels it with an id of its own, so that a
+# failed attempt finds its container even if Docker never handed it over, for
+# example because creating it was still pending when the time was up.
+START_LABEL = "io.eventsourcingdb.container-start"
+
+# Errors of Docker itself, such as a missing image, a daemon that is not
+# running, an invalid configuration, or a call that does not return in time.
+# Another container would fail the same way, so they end the start at once.
+DOCKER_ERRORS = (errors.DockerException, requests.RequestException, TimeoutError)
+
+LOG_TAIL_LINES = 20
+PING_TIMEOUT_SECONDS = 1
+POLL_INTERVAL_SECONDS = 0.1
+
+
+def _format_seconds(seconds: float) -> str:
+    # Whole seconds without a fraction, others as short as possible, such as 1.5.
+    if float(seconds).is_integer():
+        return str(int(seconds))
+    return repr(float(seconds))
 
 
 class Container:
@@ -28,13 +56,14 @@ class Container:
         self._image_tag: str = "latest"
         self._api_token: str = "secret"
         self._internal_port: int = 3000
-        self._container = None
-        self._docker_client: DockerClient = docker.from_env()
+        self._container: DockerContainer | None = None
+        self._docker_client: DockerClient | None = None
         self._mapped_port: int | None = None
         self._host = "localhost"
         self._signing_key: ed25519.Ed25519PrivateKey | None = None
+        self._startup_timeout: float = DEFAULT_STARTUP_TIMEOUT_SECONDS
 
-    def _create_container(self) -> None:
+    def _create_container(self, docker_client: DockerClient, start_id: str) -> DockerContainer:
         port_bindings = {f"{self._internal_port}/tcp": None}
 
         command = [
@@ -54,9 +83,10 @@ class Container:
 
         # Only create the container for now, so that the signing key can be copied
         # into it before the server starts and tries to read it.
-        self._container = self._docker_client.containers.create(
+        container = docker_client.containers.create(
             f"{self._image_name}:{self._image_tag}",
             command=command,
+            labels={START_LABEL: start_id},
             ports=port_bindings,  # type: ignore
         )  # type: ignore
 
@@ -88,9 +118,39 @@ class Container:
             tar_stream.seek(0)
 
             # Put the archive into /etc which should exist
-            self._container.put_archive('/etc', tar_stream)
+            container.put_archive('/etc', tar_stream)
 
-        self._container.start()
+        container.start()
+
+        return container
+
+    def _create_and_start_container(
+        self, docker_client: DockerClient, start_id: str, deadline: float
+    ) -> DockerContainer:
+        # Docker may not return from creating or starting the container in
+        # time. Waiting for it in another thread allows to give up once the
+        # time is up, and to remove the container once Docker has created it
+        # after all.
+        executor = ThreadPoolExecutor(max_workers=1)
+        future = executor.submit(self._create_container, docker_client, start_id)
+        executor.shutdown(wait=False)
+
+        def remove_once_returned(_) -> None:
+            self._remove_containers_of_start(docker_client, start_id)
+
+        try:
+            done, _ = wait([future], timeout=max(deadline - time.monotonic(), 0))
+        except BaseException:
+            future.add_done_callback(remove_once_returned)
+            raise
+
+        if not done:
+            future.add_done_callback(remove_once_returned)
+            raise TimeoutError(
+                f"Docker did not answer within {_format_seconds(self._startup_timeout)}s"
+            )
+
+        return future.result()
 
     def _extract_port_from_container_info(self, container_info) -> int | None:
         port = None
@@ -102,44 +162,21 @@ class Container:
             port_mappings = container_info["NetworkSettings"]["Ports"].get(
                 f"{self._internal_port}/tcp"
             )
-        except KeyError:
+        except (KeyError, AttributeError):
             valid_mapping = False
 
         if valid_mapping and port_mappings and isinstance(port_mappings, list) and port_mappings:
             first_mapping = port_mappings[0]
 
-            if host_port_key in first_mapping:
-                port_value = first_mapping[host_port_key]
+            if port_value := first_mapping.get(host_port_key):
                 port = int(port_value)
 
         return port
 
-    def _fetch_mapped_port(self) -> None:
-        if self._container is None:
-            raise RuntimeError("Container failed to start")
-
-        max_retries, retry_delay = 5, 1
-
-        for attempt in range(max_retries):
-            if (port := self._try_get_port_from_container()) is not None:
-                self._mapped_port = port
-                return
-
-            if attempt < max_retries - 1:
-                time.sleep(retry_delay)
-
-        self._stop_and_remove_container()
-        raise RuntimeError("Failed to determine mapped port")
-
-    def _get_container_info(self) -> dict | None:
-        if self._container is None:
-            return None
-        try:
-            if self._container.id is None:
-                return None
-            return self._docker_client.api.inspect_container(self._container.id)
-        except (errors.NotFound, errors.APIError):
-            return None
+    def _get_docker_client(self) -> DockerClient:
+        if self._docker_client is None:
+            self._docker_client = docker.from_env()
+        return self._docker_client
 
     def get_api_token(self) -> str:
         return self._api_token
@@ -169,39 +206,88 @@ class Container:
         if self._container is not None:
             return self
 
-        self._pull_or_get_image()
-        self._create_container()
-        self._fetch_mapped_port()
-        self._wait_for_http("/api/v1/ping", timeout=20)
+        # Pulling the image does not count towards the startup timeout, since
+        # it may take long, for example on the first run.
+        try:
+            docker_client = self._get_docker_client()
+            self._pull_or_get_image(docker_client)
+        except DOCKER_ERRORS as error:
+            raise RuntimeError(f"Failed to start the container: {error}") from error
 
-        return self
+        # A container that is running but does not become reachable in time is
+        # replaced, since Docker sometimes does not publish its port.
+        for _ in range(START_ATTEMPTS):
+            if self._try_to_start(docker_client):
+                return self
 
-    def _pull_or_get_image(self) -> None:
+        raise TimeoutError(
+            "Failed to start the container, the database did not become reachable within "
+            f"{_format_seconds(self._startup_timeout)}s in any of {START_ATTEMPTS} containers"
+        )
+
+    def _try_to_start(self, docker_client: DockerClient) -> bool:
+        start_id = uuid.uuid4().hex
+        deadline = time.monotonic() + self._startup_timeout
+
+        try:
+            container = self._create_and_start_container(docker_client, start_id, deadline)
+            mapped_port = self._wait_until_reachable(container, deadline)
+        except DOCKER_ERRORS as error:
+            self._remove_containers_of_start(docker_client, start_id)
+            raise RuntimeError(f"Failed to start the container: {error}") from error
+        except BaseException:
+            self._remove_containers_of_start(docker_client, start_id)
+            raise
+
+        if mapped_port is None:
+            self._remove_containers_of_start(docker_client, start_id)
+            return False
+
+        self._container = container
+        self._mapped_port = mapped_port
+        return True
+
+    def _pull_or_get_image(self, docker_client: DockerClient) -> None:
         image = f"{self._image_name}:{self._image_tag}"
 
         if image in Container._pulled_images:
             return
 
         try:
-            self._docker_client.images.pull(self._image_name, self._image_tag)
-        except errors.APIError as e:
-            self._handle_image_pull_error(e)
+            docker_client.images.pull(self._image_name, self._image_tag)
+        except DOCKER_ERRORS as error:
+            if not self._has_local_image(docker_client, image):
+                raise
+            logger.warning("Warning: Could not pull image: %s. Using locally cached image.", error)
 
         Container._pulled_images.add(image)
 
-    def _handle_image_pull_error(self, error) -> None:
-        image_name = f"{self._image_name}:{self._image_tag}"
+    def _has_local_image(self, docker_client: DockerClient, image: str) -> bool:
         try:
-            self._docker_client.images.get(image_name)
+            docker_client.images.get(image)
         except errors.ImageNotFound:
-            raise RuntimeError(
-                f"Could not pull image and no local image available: {error}"
-            ) from error
-
-        logger.warning("Warning: Could not pull image: %s. Using locally cached image.", error)
+            return False
+        return True
 
     def stop(self) -> None:
         self._stop_and_remove_container()
+
+    def _remove_containers_of_start(self, docker_client: DockerClient, start_id: str) -> None:
+        try:
+            containers = docker_client.api.containers(
+                all=True, filters={"label": f"{START_LABEL}={start_id}"}
+            )
+        except DOCKER_ERRORS as e:
+            logger.warning("Warning: Could not list the containers of a failed start: %s", e)
+            return
+
+        for container in containers:
+            try:
+                docker_client.api.remove_container(container["Id"], force=True)
+            except errors.NotFound:
+                continue
+            except DOCKER_ERRORS as e:
+                logger.warning("Warning: Could not remove the container of a failed start: %s", e)
 
     def _stop_and_remove_container(self) -> None:
         if self._container is None:
@@ -224,36 +310,35 @@ class Container:
         self._container = None
         self._mapped_port = None
 
-    def _try_get_port_from_container(self) -> int | None:
-        if not self._container:
-            return None
+    def _wait_until_reachable(self, container: DockerContainer, deadline: float) -> int | None:
+        while True:
+            # Docker sometimes publishes the port late, so it is read again on
+            # every poll.
+            container.reload()
 
-        if not (container_info := self._get_container_info()):
-            return None
+            if container.status in ("exited", "dead"):
+                log_tail = container.logs(tail=LOG_TAIL_LINES).decode("utf-8", errors="replace")
+                raise RuntimeError(
+                    "Failed to start the container, it exited before the database became "
+                    f"reachable: {log_tail.rstrip()}"
+                )
 
-        return self._extract_port_from_container_info(container_info)
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return None
 
-    def _wait_for_http(self, path: str, timeout: int) -> None:
-        base_url = self.get_base_url()
-        url = f"{base_url}{path}"
-        start_time = time.time()
+            mapped_port = self._extract_port_from_container_info(container.attrs)
+            if mapped_port is not None and self._check_endpoint_available(
+                f"http://{self._host}:{mapped_port}/api/v1/ping",
+                min(remaining, PING_TIMEOUT_SECONDS),
+            ):
+                return mapped_port
 
-        max_attempts = int(timeout * 2)
-        for _ in range(max_attempts):
-            if time.time() - start_time >= timeout:
-                break
+            time.sleep(max(min(POLL_INTERVAL_SECONDS, deadline - time.monotonic()), 0))
 
-            if self._check_endpoint_available(url):
-                return
-
-            time.sleep(0.5)
-
-        self._stop_and_remove_container()
-        raise TimeoutError(f"Service failed to become ready within {timeout} seconds")
-
-    def _check_endpoint_available(self, url: str) -> bool:
+    def _check_endpoint_available(self, url: str, timeout: float) -> bool:
         try:
-            response = requests.get(url, timeout=2)
+            response = requests.get(url, timeout=timeout)
         except requests.RequestException:
             return False
         return self._check_response_ok(response)
@@ -275,6 +360,18 @@ class Container:
 
     def with_signing_key(self) -> "Container":
         self._signing_key = ed25519.Ed25519PrivateKey.generate()
+        return self
+
+    def with_startup_timeout(self, timeout: float) -> "Container":
+        # There is no way to turn the startup timeout off, since starting would
+        # then wait forever for a container that does not become reachable.
+        if not math.isfinite(timeout) or timeout <= 0:
+            raise ValueError(
+                'The startup timeout must be a finite number of seconds greater than zero, '
+                f'but is {timeout}.'
+            )
+
+        self._startup_timeout = timeout
         return self
 
     def get_signing_key(self) -> ed25519.Ed25519PrivateKey:

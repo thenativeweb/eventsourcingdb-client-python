@@ -1,4 +1,3 @@
-import asyncio
 import logging
 import uuid
 from types import TracebackType
@@ -49,53 +48,29 @@ class Database:
         return with_authorization_client, with_invalid_url_client
 
     @classmethod
-    async def create(cls, max_retries=3, retry_delay=2.0) -> 'Database':
+    async def create(cls) -> 'Database':
         api_token = str(uuid.uuid4())
         image_tag = get_image_tag()
         container = cls._create_container(api_token, image_tag)
-        error = None
 
-        for attempt in range(max_retries):
-            try:
-                container.start()
-            except OSError as caught_error:
-                error = caught_error
-                retry = True
-            except Exception:
-                container.stop()
-                raise
-            else:
-                retry = False
+        # Starting replaces a container that does not become reachable, and
+        # removes every container whose start fails, so there is nothing left
+        # to retry or to clean up here.
+        container.start()
 
-            if retry:
-                if attempt == max_retries - 1:
-                    container.stop()
-                    msg = f'Failed to initialize database container after {max_retries} attempts'
-                    raise RuntimeError(f'{msg}: {error}') from error
-                logger.warning(
-                    'Container startup attempt %d failed: %s. Retrying in %s seconds...',
-                    attempt + 1, error, retry_delay
-                )
-                await asyncio.sleep(retry_delay)
-                container.stop()
-                container = cls._create_container(api_token, image_tag)
-                continue
+        try:
+            (
+                with_authorization_client,
+                with_invalid_url_client
+            ) = await cls._initialize_clients(
+                container,
+                api_token
+            )
+        except Exception:
+            container.stop()
+            raise
 
-            try:
-                (
-                    with_authorization_client,
-                    with_invalid_url_client
-                ) = await cls._initialize_clients(
-                    container,
-                    api_token
-                )
-            except Exception:
-                container.stop()
-                raise
-
-            return cls(Database.__create_key, with_authorization_client, with_invalid_url_client)
-
-        raise RuntimeError('Failed to create database: Unexpected error during retry loop')
+        return cls(Database.__create_key, with_authorization_client, with_invalid_url_client)
 
     def get_client(self, client_type: str = CLIENT_TYPE_WITH_AUTH) -> Client:
         if client_type == self.CLIENT_TYPE_WITH_AUTH:
