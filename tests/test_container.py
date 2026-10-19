@@ -16,6 +16,7 @@ from eventsourcingdb.container import DEFAULT_STARTUP_TIMEOUT_SECONDS, START_LAB
 from .shared.image_tag import get_image_tag
 
 CLEANUP_GUARD_SECONDS = 10
+DOCKER_GUARD_SECONDS = 60
 FAKE_PORT = 49153
 POLL_GUARD_SECONDS = 2
 
@@ -255,10 +256,25 @@ class TestStartupTimeout:
 
     @staticmethod
     def test_replaces_a_running_container_that_does_not_become_reachable_in_time(
-        created_containers: CreatedContainers,
+        created_containers: CreatedContainers, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         created_containers.change_command = listen_on_another_port
 
+        # Docker may take as long as it needs to create and start a container,
+        # so that the time runs out while waiting for the database, however
+        # busy Docker is, and not while Docker has not answered yet.
+        create_and_start_container = Container._create_and_start_container
+
+        def without_a_deadline_for_docker(
+            container: Container, docker_client: Any, start_id: str, _: float
+        ) -> Any:
+            return create_and_start_container(
+                container, docker_client, start_id, time.monotonic() + DOCKER_GUARD_SECONDS
+            )
+
+        monkeypatch.setattr(
+            Container, '_create_and_start_container', without_a_deadline_for_docker
+        )
         container = Container().with_image_tag(get_image_tag()).with_startup_timeout(1.5)
 
         started_at = time.monotonic()
