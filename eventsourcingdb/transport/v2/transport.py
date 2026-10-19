@@ -119,7 +119,8 @@ class V2Transport(Transport):
         self.__http_client = http_client
 
     async def ping(self) -> None:
-        response = await self.__http_client.get(PING_PATH)
+        # The ping needs no API token, so it gets none.
+        response = await self.__http_client.get(PING_PATH, with_authorization=False)
         async with response:
             envelope = await read_envelope(response)
 

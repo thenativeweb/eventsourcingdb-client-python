@@ -44,6 +44,7 @@ class ReceivedRequest:
     method: str
     path: str
     body: bytes
+    authorization: str | None = None
 
 
 class StreamServer:
@@ -97,6 +98,9 @@ class StreamServer:
         self.requests: list[ReceivedRequest] = []
         self.request_received = asyncio.Event()
         self.probe_count = 0
+        # The Authorization header of every request to the path of the ping
+        # of the v2 API, whether it is the ping that asks for the API or not.
+        self.ping_authorizations: list[str | None] = []
 
     async def __aenter__(self) -> Self:
         application = web.Application()
@@ -149,12 +153,19 @@ class StreamServer:
     async def __handle(self, request: web.Request) -> web.StreamResponse:
         try:
             is_probe = request.method == 'GET' and request.path == PROBE_PATH
+            if is_probe:
+                self.ping_authorizations.append(request.headers.get('Authorization'))
             if is_probe and not (self.__answers_only_first_probe and self.probe_count > 0):
                 self.probe_count += 1
                 return await self.__answer_probe(request)
 
             self.requests.append(
-                ReceivedRequest(request.method, request.path, await request.read())
+                ReceivedRequest(
+                    request.method,
+                    request.path,
+                    await request.read(),
+                    request.headers.get('Authorization'),
+                )
             )
             self.request_received.set()
 

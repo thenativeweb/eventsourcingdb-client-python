@@ -71,7 +71,8 @@ class ChooseTransport:
         return not probe.cancelled() and probe.exception() is None
 
     async def __detect(self) -> Transport:
-        response = await self.__http_client.get(PROBE_PATH)
+        # The ping needs no API token, so it gets none.
+        response = await self.__http_client.get(PROBE_PATH, with_authorization=False)
         async with response:
             # A proxy that only forwards the v1 API answers the ping itself,
             # so this answer does not need to come from EventSourcingDB. The

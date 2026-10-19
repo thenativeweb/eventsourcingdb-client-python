@@ -94,7 +94,8 @@ class V1Transport(Transport):
         type_field = "type"
         ping_received_type = "io.eventsourcingdb.api.ping-received"
 
-        response = await self.__http_client.get(PING_PATH)
+        # The ping needs no API token, so it gets none.
+        response = await self.__http_client.get(PING_PATH, with_authorization=False)
         async with response:
             await ensure_answer_is_ok(response, PING_PATH)
             response_body = bytes.decode(await response.read(), encoding="utf-8")
