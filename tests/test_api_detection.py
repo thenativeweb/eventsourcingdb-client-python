@@ -1,5 +1,7 @@
 import asyncio
+import json
 import logging
+from collections.abc import Mapping
 
 import aiohttp
 import pytest
@@ -8,15 +10,20 @@ from aiohttp import web
 from eventsourcingdb import (
     Client,
     ConnectionStalledError,
+    CustomError,
     DbApiError,
+    ErrorCode,
+    OutcomeUnknownError,
     ReadEventsOptions,
     ReadSubjectsOptions,
     ServerError,
 )
 
 from .shared.database import Database
+from .shared.requests import ALL_REQUESTS, WRITES, Request, read_event_type, read_events
 from .shared.stream_server import (
     SERVER_HEADER,
+    Answer,
     StreamServer,
     answer_probe_with_v2_api,
     answer_probe_without_v2_api,
@@ -24,6 +31,32 @@ from .shared.stream_server import (
 from .shared.util.get_random_available_port import get_random_available_port
 
 GUARD_TIMEOUT_SECONDS = 5
+
+# The ping of the v2 API is the ping that the client asks with whether the
+# server offers the v2 API, and a write reports an unknown outcome instead.
+REQUESTS_EXCEPT_PING_AND_WRITES = [
+    parameter
+    for parameter in ALL_REQUESTS
+    if parameter.id != 'ping' and parameter.id not in {write.id for write in WRITES}
+]
+REQUESTS_EXCEPT_PING = [parameter for parameter in ALL_REQUESTS if parameter.id != 'ping']
+
+TEXTS_WITHOUT_V2_API = {404: '404 page not found\n', 405: 'Method Not Allowed\n'}
+PROXY_HEADER = {'Server': 'nginx'}
+# Who answers a path of the v2 API with 404 or 405, and the error with which
+# the request fails, as it did before the client forgot the API.
+ANSWERED_BY = [
+    pytest.param(SERVER_HEADER, DbApiError, id='EventSourcingDB'),
+    pytest.param(PROXY_HEADER, ServerError, id='a proxy'),
+]
+EVENT_TYPE_UNKNOWN_ITEM = json.dumps({
+    'type': 'error',
+    'data': {
+        'code': ErrorCode.EVENT_TYPE_UNKNOWN,
+        'description': 'event type unknown',
+        'details': {},
+    },
+}) + '\n'
 
 
 def answer_probe_with_status(status: int, text: str = 'nope'):
@@ -52,6 +85,86 @@ def v2_stream_server(**options: object) -> StreamServer:
         await response.write(b'{"type":"end","data":{}}\n')
 
     return StreamServer(write_stream, api='v2', **options)  # type: ignore[arg-type]
+
+
+def is_v2_path(request: web.Request) -> bool:
+    return request.path.startswith('/api/v2/')
+
+
+def apis_of(server: StreamServer) -> list[str]:
+    # The version of the API that each request went through, such as v2.
+    return [request.path.split('/')[2] for request in server.requests]
+
+
+async def answer_read_events(request: web.Request) -> web.StreamResponse:
+    # Reading events finds none, through either API.
+    return web.Response(
+        text='{"type":"end","data":{}}\n' if is_v2_path(request) else '', headers=SERVER_HEADER
+    )
+
+
+def answer_without_v2_api(
+    status: int = 404, headers: Mapping[str, str] = SERVER_HEADER
+) -> web.StreamResponse:
+    # As EventSourcingDB 1.2 answers a path of the v2 API, or, with headers of
+    # its own, a proxy that only forwards the v1 API.
+    return web.Response(status=status, text=TEXTS_WITHOUT_V2_API[status], headers=headers)
+
+
+class Rollback:
+    """
+    Answers as a server that offers the v2 API, until the test rolls it back
+    to a version without it. From then on, it answers the ping and every other
+    path of the v2 API with the given status and headers. Every other request
+    it answers with its answer function, which reads events unless the test
+    replaces it.
+    """
+
+    def __init__(self, status: int = 404, headers: Mapping[str, str] = SERVER_HEADER) -> None:
+        self.is_rolled_back = False
+        self.answer: Answer = answer_read_events
+        self.__status = status
+        self.__headers = headers
+
+    def create_server(self) -> StreamServer:
+        return StreamServer(None, answer_probe=self.__answer_probe, answer=self.__answer)
+
+    async def __answer_probe(self, request: web.Request) -> web.StreamResponse:
+        if self.is_rolled_back:
+            return answer_without_v2_api(self.__status, self.__headers)
+        return await answer_probe_with_v2_api(request)
+
+    async def __answer(self, request: web.Request) -> web.StreamResponse:
+        if self.is_rolled_back and is_v2_path(request):
+            return answer_without_v2_api(self.__status, self.__headers)
+        return await self.answer(request)
+
+
+class HeldRequests:
+    """
+    Holds every request of the v2 API while it is holding, until the test
+    releases it, and then answers it with 404, as a server without the v2
+    API. Every other request reads events.
+    """
+
+    def __init__(self) -> None:
+        self.is_holding = False
+        self.__releases: asyncio.Queue[asyncio.Future[None]] = asyncio.Queue()
+
+    async def answer(self, request: web.Request) -> web.StreamResponse:
+        if not self.is_holding or not is_v2_path(request):
+            return await answer_read_events(request)
+
+        release = asyncio.get_running_loop().create_future()
+        self.__releases.put_nowait(release)
+        await release
+        return answer_without_v2_api()
+
+    async def send(self, client: Client) -> tuple[asyncio.Task[None], asyncio.Future[None]]:
+        # Reads events, and returns once the request arrived, so that the test
+        # knows which request it releases.
+        request_ = asyncio.create_task(read_events(client))
+        return request_, await self.__releases.get()
 
 
 class TestApiDetection:
@@ -402,6 +515,216 @@ class TestApiDetection:
             assert server.probe_count == 2
 
         assert [record for record in caplog.records if record.levelno >= logging.ERROR] == []
+
+
+class TestApiDetectionAfterARollback:
+    @staticmethod
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize('request_', REQUESTS_EXCEPT_PING_AND_WRITES)
+    @pytest.mark.parametrize('status', [404, 405])
+    @pytest.mark.parametrize(('headers', 'expected_error'), ANSWERED_BY)
+    async def test_fails_once_with_the_404_or_405_of_the_v2_api_and_asks_again_on_the_next_request(
+        request_: Request, status: int, headers: Mapping[str, str], expected_error: type[Exception]
+    ) -> None:
+        rollback = Rollback(status, headers)
+        async with rollback.create_server() as server:
+            client = server.get_client()
+            await read_events(client)
+            rollback.is_rolled_back = True
+
+            with pytest.raises(CustomError) as error:
+                await request_(client)
+
+            assert type(error.value) is expected_error
+            assert server.probe_count == 1
+            assert apis_of(server) == ['v2', 'v2']
+
+            await read_events(client)
+
+            assert server.probe_count == 2
+            assert apis_of(server) == ['v2', 'v2', 'v1']
+
+    @staticmethod
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize('request_', WRITES)
+    @pytest.mark.parametrize('status', [404, 405])
+    @pytest.mark.parametrize(('headers', 'expected_cause'), ANSWERED_BY)
+    async def test_reports_an_unknown_outcome_for_a_write_and_asks_again_on_the_next_request(
+        request_: Request, status: int, headers: Mapping[str, str], expected_cause: type[Exception]
+    ) -> None:
+        rollback = Rollback(status, headers)
+        async with rollback.create_server() as server:
+            client = server.get_client()
+            await read_events(client)
+            rollback.is_rolled_back = True
+
+            with pytest.raises(OutcomeUnknownError) as error:
+                await request_(client)
+
+            assert type(error.value) is OutcomeUnknownError
+            assert type(error.value.cause) is expected_cause
+            assert server.probe_count == 1
+            assert apis_of(server) == ['v2', 'v2']
+
+            await read_events(client)
+
+            assert server.probe_count == 2
+            assert apis_of(server) == ['v2', 'v2', 'v1']
+
+    @staticmethod
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize('request_', REQUESTS_EXCEPT_PING)
+    async def test_keeps_the_api_after_an_error_item_of_the_v2_api_which_comes_with_status_200(
+        request_: Request,
+    ) -> None:
+        async def answer_with_error_item(_: web.Request) -> web.StreamResponse:
+            return web.Response(text=EVENT_TYPE_UNKNOWN_ITEM, headers=SERVER_HEADER)
+
+        rollback = Rollback()
+        async with rollback.create_server() as server:
+            client = server.get_client()
+            await read_events(client)
+
+            rollback.answer = answer_with_error_item
+            with pytest.raises(DbApiError) as error:
+                await request_(client)
+
+            assert (error.value.status, error.value.code) == (200, ErrorCode.EVENT_TYPE_UNKNOWN)
+
+            rollback.answer = answer_read_events
+            await read_events(client)
+
+            assert server.probe_count == 1
+
+            # The same client forgets the API once the server is rolled back.
+            rollback.is_rolled_back = True
+            with pytest.raises(DbApiError):
+                await read_events(client)
+            await read_events(client)
+
+            assert server.probe_count == 2
+            assert apis_of(server) == ['v2', 'v2', 'v2', 'v2', 'v1']
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_keeps_the_api_after_a_404_of_the_v1_api_which_it_uses_once_the_server_is_rolled_back() -> None:
+        async def answer_event_type_unknown(_: web.Request) -> web.StreamResponse:
+            return web.Response(status=404, text='event type not found', headers=SERVER_HEADER)
+
+        rollback = Rollback()
+        async with rollback.create_server() as server:
+            client = server.get_client()
+            await read_events(client)
+            rollback.is_rolled_back = True
+            with pytest.raises(DbApiError):
+                await read_events(client)
+            await read_events(client)
+
+            # Through the v1 API, 404 is an error such as an unknown event type.
+            rollback.answer = answer_event_type_unknown
+            with pytest.raises(DbApiError) as error:
+                await read_event_type(client)
+
+            assert (error.value.status, error.value.code) == (404, ErrorCode.EVENT_TYPE_UNKNOWN)
+
+            rollback.answer = answer_read_events
+            await read_events(client)
+
+            assert server.probe_count == 2
+            assert apis_of(server) == ['v2', 'v2', 'v1', 'v1', 'v1']
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_shares_the_ping_that_asks_again_and_keeps_its_answer_if_earlier_requests_fail_meanwhile() -> None:
+        # Once the server is rolled back, the first ping waits until the test
+        # releases it, and every later one is answered at once, so that a ping
+        # too many shows in the number of pings.
+        held_requests = HeldRequests()
+        is_probe_held = False
+        probe_arrived = asyncio.Event()
+        release_probe = asyncio.Event()
+
+        async def answer_probe(request: web.Request) -> web.StreamResponse:
+            nonlocal is_probe_held
+            if not held_requests.is_holding:
+                return await answer_probe_with_v2_api(request)
+
+            if not is_probe_held:
+                is_probe_held = True
+                probe_arrived.set()
+                await release_probe.wait()
+            return answer_without_v2_api()
+
+        async with StreamServer(
+            None, answer_probe=answer_probe, answer=held_requests.answer
+        ) as server:
+            client = server.get_client()
+            await read_events(client)
+            held_requests.is_holding = True
+
+            async with asyncio.timeout(GUARD_TIMEOUT_SECONDS):
+                fails_first, release_first = await held_requests.send(client)
+                fails_while_asking, release_while_asking = await held_requests.send(client)
+                fails_after_asking, release_after_asking = await held_requests.send(client)
+
+                release_first.set_result(None)
+                with pytest.raises(DbApiError):
+                    await fails_first
+
+                waits_from_before = asyncio.create_task(read_events(client))
+                await probe_arrived.wait()
+
+                release_while_asking.set_result(None)
+                with pytest.raises(DbApiError):
+                    await fails_while_asking
+
+                # Lets the request get as far as waiting for the ping.
+                waits_from_after = asyncio.create_task(read_events(client))
+                await asyncio.sleep(0)
+
+                release_probe.set()
+                await asyncio.gather(waits_from_before, waits_from_after)
+
+                release_after_asking.set_result(None)
+                with pytest.raises(DbApiError):
+                    await fails_after_asking
+
+                await read_events(client)
+
+            assert server.probe_count == 2
+            assert apis_of(server) == ['v2', 'v2', 'v2', 'v2', 'v1', 'v1', 'v1']
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_keeps_the_v2_api_that_a_newer_ping_found_if_an_earlier_request_fails_after_it() -> None:
+        # As if the server answered paths of the v2 API with 404 only for a
+        # moment, such as while it is deployed anew.
+        held_requests = HeldRequests()
+
+        async with StreamServer(None, api='v2', answer=held_requests.answer) as server:
+            client = server.get_client()
+            await read_events(client)
+            held_requests.is_holding = True
+
+            async with asyncio.timeout(GUARD_TIMEOUT_SECONDS):
+                fails_first, release_first = await held_requests.send(client)
+                fails_later, release_later = await held_requests.send(client)
+                held_requests.is_holding = False
+
+                release_first.set_result(None)
+                with pytest.raises(DbApiError):
+                    await fails_first
+
+                await read_events(client)
+
+                release_later.set_result(None)
+                with pytest.raises(DbApiError):
+                    await fails_later
+
+                await read_events(client)
+
+            assert server.probe_count == 2
+            assert apis_of(server) == ['v2', 'v2', 'v2', 'v2', 'v2']
 
 
 class TestApiDetectionAgainstEventSourcingDB:

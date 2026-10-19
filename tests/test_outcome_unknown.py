@@ -82,7 +82,11 @@ async def register_event_schema_with(transport: Transport) -> None:
     )
 
 
-TRANSPORTS: dict[Api, type[Transport]] = {'v1': V1Transport, 'v2': V2Transport}
+TRANSPORTS: dict[Api, Callable[[HttpClient], Transport]] = {
+    'v1': V1Transport,
+    # Without a client that chose it, there is nothing to forget.
+    'v2': lambda http_client: V2Transport(http_client, lambda _: None),
+}
 
 # Writes through a transport of their own, which never asks the server which
 # API it offers, so that the write is the first request to connect.

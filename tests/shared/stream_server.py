@@ -11,6 +11,7 @@ from eventsourcingdb import Client
 
 WriteStream = Callable[[web.StreamResponse], Awaitable[None]]
 AnswerProbe = Callable[[web.Request], Awaitable[web.StreamResponse]]
+Answer = Callable[[web.Request], Awaitable[web.StreamResponse]]
 Api = Literal['v1', 'v2']
 
 PROBE_PATH = '/api/v2/system/ping'
@@ -54,7 +55,9 @@ class StreamServer:
     writes to the stream, so that tests can control every single line. Without
     a function, it never answers at all, not even with the response headers.
     It answers with the given status, and with the headers of EventSourcingDB
-    unless the given headers replace them, or remove them with None.
+    unless the given headers replace them, or remove them with None. Given a
+    function that answers a request, it answers every request with it instead,
+    so that tests can answer each request in a way of its own.
 
     The ping with which a client asks whether the server offers the v2 API is
     answered apart from that, as a server with the given API does, or by the
@@ -74,7 +77,9 @@ class StreamServer:
         answer_probe: AnswerProbe | None = None,
         port: int = 0,
         answers_only_first_probe: bool = False,
+        answer: Answer | None = None,
     ) -> None:
+        self.__answer = answer
         self.__answers_only_first_probe = answers_only_first_probe
         self.__port = port
         self.__write_stream = write_stream
@@ -169,6 +174,8 @@ class StreamServer:
             )
             self.request_received.set()
 
+            if self.__answer is not None:
+                return await self.__answer(request)
             if self.__write_stream is None:
                 await asyncio.Event().wait()
 
