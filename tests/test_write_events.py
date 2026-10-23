@@ -524,6 +524,8 @@ class TestPreconditionsOnASubjectOnTheV1Api:
                     [IsSubjectPristine("/books/23"), precondition],
                 )
 
+            # The answer of the first request is fresh, so it is not asked again.
+            assert server.probe_count == 1
             assert server.requests == []
 
         assert isinstance(error.value, CustomError)

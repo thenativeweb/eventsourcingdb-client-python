@@ -24,7 +24,10 @@ class ChooseTransport:
     that need the answer at the same time share a single ping. Once the server
     answers a path of the v2 API with 404 or 405, for example after it was
     rolled back to a version without it, the answer is forgotten, and the
-    next request asks again.
+    next request asks again. A request that needs the v2 API, such as a write
+    with a recursive precondition, asks again as well if the answer is that
+    the server does not offer it, since it may offer it by now, for example
+    after an upgrade.
     """
 
     def __init__(self, http_client: HttpClient) -> None:
@@ -55,6 +58,13 @@ class ChooseTransport:
         # fails after the request that waited for it was cancelled.
         await asyncio.wait({probe})
         return probe.result()
+
+    async def get_asking_again_without_v2_api(self) -> Transport:
+        # Forgetting the answer makes this request ask again, or wait for a
+        # ping that asks already, as for every request that finds no answer.
+        # So requests that ask again at the same time share a single ping.
+        self.__forget(self.__v1_transport)
+        return await self.get()
 
     def __remember(self, probe: asyncio.Task[Transport]) -> None:
         if self.__probe is probe:

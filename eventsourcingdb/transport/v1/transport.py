@@ -24,12 +24,8 @@ from ...observe_events import ObserveEventsOptions
 from ...parse_raw_message import parse_raw_message
 from ...read_event_types import EventType
 from ...read_events import ReadEventsOptions
-from ...write_events import (
-    IsSubjectOnEventId,
-    IsSubjectPopulated,
-    IsSubjectPristine,
-    Precondition,
-)
+from ...write_events import Precondition
+from ...write_events.preconditions import PRECONDITIONS_ON_A_SUBJECT, is_recursive
 from ..error_of_answer import error_of_answer
 from ..guard_write import guard_write
 from ..stream_broke_off import stream_broke_off
@@ -54,9 +50,6 @@ RUN_EVENTQL_QUERY_PATH = '/api/v1/run-eventql-query'
 OBSERVE_EVENTS_PATH = '/api/v1/observe-events'
 READ_SUBJECTS_PATH = '/api/v1/read-subjects'
 READ_EVENT_TYPES_PATH = '/api/v1/read-event-types'
-
-# The preconditions on a subject, which take options.
-PRECONDITIONS_ON_A_SUBJECT = (IsSubjectPristine, IsSubjectPopulated, IsSubjectOnEventId)
 
 
 async def ensure_answer_is_ok(response: Response, path: str) -> None:
@@ -91,12 +84,12 @@ def precondition_of_v1_api(precondition: Precondition) -> Any:
     a recursive precondition, which fails the write before it is sent, rather
     than have the server check less than was asked.
     """
-    if not isinstance(precondition, PRECONDITIONS_ON_A_SUBJECT) or precondition.options is None:
-        return precondition.to_json()
-    if precondition.options.recursive:
+    if is_recursive(precondition):
         raise IncompatibleServerError()
+    if isinstance(precondition, PRECONDITIONS_ON_A_SUBJECT):
+        return replace(precondition, options=None).to_json()
 
-    return replace(precondition, options=None).to_json()
+    return precondition.to_json()
 
 
 def error_of_stream_item(message: dict) -> DbApiError:

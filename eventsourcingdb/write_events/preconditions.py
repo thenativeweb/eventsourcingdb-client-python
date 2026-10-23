@@ -58,6 +58,18 @@ class IsSubjectOnEventId(Precondition):
             ),
         }
 
+# The preconditions on a subject, which take options.
+PRECONDITIONS_ON_A_SUBJECT = (IsSubjectPristine, IsSubjectPopulated, IsSubjectOnEventId)
+
+
+def is_recursive(precondition: Precondition) -> bool:
+    return (
+        isinstance(precondition, PRECONDITIONS_ON_A_SUBJECT)
+        and precondition.options is not None
+        and bool(precondition.options.recursive)
+    )
+
+
 @dataclass
 class IsEventQlQueryTrue(Precondition):
     query: str
