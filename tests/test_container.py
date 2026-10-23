@@ -310,6 +310,7 @@ class TestWaitingForTheDatabase:
     @pytest.mark.parametrize(
         'failure',
         [
+            pytest.param(204, id='another success status'),
             pytest.param(503, id='another status'),
             pytest.param(requests.exceptions.ReadTimeout('Read timed out.'), id='bound per request'),
         ],
@@ -334,7 +335,11 @@ class TestWaitingForTheDatabase:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         ping = FakePing({V2_PING_URL: [404], V1_PING_URL: [200]})
-        deadline = time.monotonic() + 0.5
+
+        # Less time than a single ping may take, so that the time left bounds
+        # the ping rather than the bound of every ping.
+        time_left = PING_TIMEOUT_SECONDS / 2
+        deadline = time.monotonic() + time_left
 
         def answer_once_the_time_is_up(url: str, timeout: float | None = None) -> SimpleNamespace:
             time.sleep(max(deadline - time.monotonic(), 0))
@@ -346,6 +351,9 @@ class TestWaitingForTheDatabase:
 
         assert mapped_port is None
         assert ping.urls == [V2_PING_URL]
+        assert ping.timeouts[0] is not None and 0 < ping.timeouts[0] <= time_left, (
+            f'The ping must be bounded by the time left, {time_left}s, but was bounded by {ping.timeouts[0]}.'
+        )
 
 
 class TestStartupTimeout:
