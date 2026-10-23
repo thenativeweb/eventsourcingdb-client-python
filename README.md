@@ -228,6 +228,33 @@ written_events = await client.write_events(
 
 *Note that according to the CloudEvents standard, event IDs must be of type string.*
 
+#### Checking Preconditions on Subjects Recursively
+
+The `IsSubjectPristine`, `IsSubjectPopulated`, and `IsSubjectOnEventId` preconditions check the given subject alone. If you want them to check the subject together with all nested subjects, import the `PreconditionOptions` class and pass it with the `recursive` option set to `True`:
+
+```python
+from eventsourcingdb import IsSubjectOnEventId, PreconditionOptions
+
+written_events = await client.write_events(
+  event_candidates = [
+    # event candidates
+  ],
+  preconditions = [
+    IsSubjectOnEventId(
+      subject = '/books/42',
+      event_id = '0',
+      options = PreconditionOptions(
+        recursive = True
+      ),
+    )
+  ],
+)
+```
+
+Then `IsSubjectPristine` holds if neither the subject nor any of its nested subjects has an event, `IsSubjectPopulated` holds if any of them has one, and `IsSubjectOnEventId` holds if the latest event among all of them has the given ID. A recursive precondition that does not hold is reported like any other precondition that does not hold.
+
+Checking a precondition recursively needs the v2 API. If the server does not offer it, `write_events` raises an `IncompatibleServerError` before it sends the events, so none of them is written. `IncompatibleServerError` is a subclass of `CustomError`. If you set the `recursive` option to `False`, the precondition works with every server, just as without options.
+
 #### Using the `isEventQlQueryTrue` precondition
 
 If you want to write events depending on an EventQL query, import the `IsEventQlQueryTrue` class and pass it as a list of preconditions in the second argument:
