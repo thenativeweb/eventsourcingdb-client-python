@@ -363,9 +363,12 @@ class Container:
         if remaining <= 0:
             return None
 
+        # Bandit sees that a request has a bound only if it is passed by name.
+        timeout = min(remaining, PING_TIMEOUT_SECONDS)
+
         # The ping needs no API token, so it gets none.
         try:
-            response = requests.get(url, timeout=min(remaining, PING_TIMEOUT_SECONDS))
+            response = requests.get(url, timeout=timeout)
         except requests.RequestException:
             return None
         return response.status_code
