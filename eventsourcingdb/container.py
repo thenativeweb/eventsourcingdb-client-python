@@ -36,6 +36,15 @@ LOG_TAIL_LINES = 20
 PING_TIMEOUT_SECONDS = 1
 POLL_INTERVAL_SECONDS = 0.1
 
+V1_PING_PATH = "/api/v1/ping"
+V2_PING_PATH = "/api/v2/system/ping"
+
+# A server without the v2 API answers its ping with one of these statuses.
+# They are stated here rather than taken from the client, so that the
+# readiness of the container that tests the client does not depend on the way
+# the client chooses its API, which those tests are meant to check.
+STATUSES_WITHOUT_V2_API = (HTTPStatus.NOT_FOUND, HTTPStatus.METHOD_NOT_ALLOWED)
+
 
 def _format_seconds(seconds: float) -> str:
     # Whole seconds without a fraction, others as short as possible, such as 1.5.
@@ -328,23 +337,38 @@ class Container:
                 return None
 
             mapped_port = self._extract_port_from_container_info(container.attrs)
-            if mapped_port is not None and self._check_endpoint_available(
-                f"http://{self._host}:{mapped_port}/api/v1/ping",
-                min(remaining, PING_TIMEOUT_SECONDS),
+            if mapped_port is not None and self._is_database_ready(
+                f"http://{self._host}:{mapped_port}", deadline
             ):
                 return mapped_port
 
             time.sleep(max(min(POLL_INTERVAL_SECONDS, deadline - time.monotonic()), 0))
 
-    def _check_endpoint_available(self, url: str, timeout: float) -> bool:
-        try:
-            response = requests.get(url, timeout=timeout)
-        except requests.RequestException:
+    def _is_database_ready(self, base_url: str, deadline: float) -> bool:
+        # The v1 API is asked only where the server lacks the v2 API, since a
+        # later release of EventSourcingDB removes it. Any other failure means
+        # that the server is not ready yet, so the next attempt asks the v2 API
+        # again, rather than remembering an answer of a server that may still
+        # be starting.
+        status = self._ping(f"{base_url}{V2_PING_PATH}", deadline)
+        if status == HTTPStatus.OK:
+            return True
+        if status not in STATUSES_WITHOUT_V2_API:
             return False
-        return self._check_response_ok(response)
 
-    def _check_response_ok(self, response: requests.Response) -> bool:
-        return response is not None and response.status_code == HTTPStatus.OK
+        return self._ping(f"{base_url}{V1_PING_PATH}", deadline) == HTTPStatus.OK
+
+    def _ping(self, url: str, deadline: float) -> int | None:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return None
+
+        # The ping needs no API token, so it gets none.
+        try:
+            response = requests.get(url, timeout=min(remaining, PING_TIMEOUT_SECONDS))
+        except requests.RequestException:
+            return None
+        return response.status_code
 
     def with_api_token(self, token: str) -> "Container":
         self._api_token = token

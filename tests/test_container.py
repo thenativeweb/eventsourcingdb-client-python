@@ -12,7 +12,11 @@ from docker.models.containers import ContainerCollection
 from docker.models.images import ImageCollection
 
 from eventsourcingdb import Container
-from eventsourcingdb.container import DEFAULT_STARTUP_TIMEOUT_SECONDS, START_LABEL
+from eventsourcingdb.container import (
+    DEFAULT_STARTUP_TIMEOUT_SECONDS,
+    PING_TIMEOUT_SECONDS,
+    START_LABEL,
+)
 
 from .shared.image_tag import get_image_tag
 
@@ -20,6 +24,9 @@ CLEANUP_GUARD_SECONDS = 10
 DOCKER_GUARD_SECONDS = 60
 FAKE_PORT = 49153
 POLL_GUARD_SECONDS = 2
+
+V1_PING_URL = f'http://localhost:{FAKE_PORT}/api/v1/ping'
+V2_PING_URL = f'http://localhost:{FAKE_PORT}/api/v2/system/ping'
 
 
 class CreatedContainers:
@@ -116,17 +123,31 @@ class FakeContainer:
 
 class FakePing:
     """
-    Answers the pings with the given statuses in turn, and with the last one
-    from then on.
+    Answers the pings of each URL with the given answers in turn, and with the
+    last one from then on. An answer is a status, or an error that the ping
+    raises instead, such as when the connection is refused or the ping hits its
+    bound. A URL without answers is answered with 404, as a server answers a
+    path that it does not know.
     """
 
-    def __init__(self, statuses: list[int]) -> None:
-        self.statuses = statuses
+    def __init__(self, answers: dict[str, list[int | requests.RequestException]]) -> None:
+        self.answers = answers
         self.urls: list[str] = []
+        self.timeouts: list[float | None] = []
 
-    def __call__(self, url: str, timeout: float) -> SimpleNamespace:
+    def __call__(self, url: str, timeout: float | None = None) -> SimpleNamespace:
         self.urls.append(url)
-        return SimpleNamespace(status_code=self.statuses[min(len(self.urls), len(self.statuses)) - 1])
+        self.timeouts.append(timeout)
+
+        # As requests does, which refuses a bound that leaves no time at all.
+        if timeout is not None and timeout <= 0:
+            raise ValueError(f'The ping must have time left, but its bound is {timeout}.')
+
+        answers = self.answers.get(url, [404])
+        answer = answers[min(self.urls.count(url), len(answers)) - 1]
+        if isinstance(answer, requests.RequestException):
+            raise answer
+        return SimpleNamespace(status_code=answer)
 
 
 def listen_on_another_port(command: list[str]) -> list[str]:
@@ -205,6 +226,128 @@ class TestContainer:
             other_container.remove(force=True)
 
 
+class TestWaitingForTheDatabase:
+    """
+    Every attempt asks the ping of the v2 API, and the ping of the v1 API only
+    if the server answers that with 404 or 405, as a server without the v2 API
+    does, so that the container becomes ready against servers with either API.
+    """
+
+    @staticmethod
+    def test_is_ready_once_the_v2_api_answers_its_ping_without_asking_the_v1_api(
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        ping = FakePing({V2_PING_URL: [200], V1_PING_URL: [200]})
+        monkeypatch.setattr(requests, 'get', ping)
+
+        mapped_port = Container()._wait_until_reachable(
+            FakeContainer(published_from_poll=1), time.monotonic() + POLL_GUARD_SECONDS
+        )
+
+        assert mapped_port == FAKE_PORT
+        assert ping.urls == [V2_PING_URL]
+
+    @staticmethod
+    def test_is_ready_once_the_v2_api_answers_its_ping_if_the_server_lacks_the_v1_api(
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        ping = FakePing({V2_PING_URL: [200], V1_PING_URL: [404]})
+        monkeypatch.setattr(requests, 'get', ping)
+
+        mapped_port = Container()._wait_until_reachable(
+            FakeContainer(published_from_poll=1), time.monotonic() + POLL_GUARD_SECONDS
+        )
+
+        assert mapped_port == FAKE_PORT
+        assert ping.urls == [V2_PING_URL]
+
+    @staticmethod
+    @pytest.mark.parametrize('status', [404, 405])
+    def test_asks_the_v1_api_within_the_same_attempt_if_the_server_lacks_the_v2_api(
+        status: int, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        ping = FakePing({V2_PING_URL: [status], V1_PING_URL: [200]})
+        monkeypatch.setattr(requests, 'get', ping)
+        fake_container = FakeContainer(published_from_poll=1)
+
+        mapped_port = Container()._wait_until_reachable(
+            fake_container, time.monotonic() + POLL_GUARD_SECONDS
+        )
+
+        assert mapped_port == FAKE_PORT
+        assert ping.urls == [V2_PING_URL, V1_PING_URL]
+        assert fake_container.polls == 1
+        assert all(
+            timeout is not None and 0 < timeout <= PING_TIMEOUT_SECONDS
+            for timeout in ping.timeouts
+        ), f'Every ping must be bounded, but the bounds were {ping.timeouts}.'
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        'failure',
+        [
+            pytest.param(503, id='another status'),
+            pytest.param(requests.exceptions.ReadTimeout('Read timed out.'), id='bound per request'),
+            pytest.param(requests.exceptions.ConnectionError('Connection refused.'), id='refused'),
+        ],
+    )
+    def test_tries_again_without_asking_the_v1_api_if_the_ping_of_the_v2_api_fails_otherwise(
+        failure: int | requests.RequestException, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        ping = FakePing({V2_PING_URL: [failure, 200], V1_PING_URL: [200]})
+        monkeypatch.setattr(requests, 'get', ping)
+        fake_container = FakeContainer(published_from_poll=1)
+
+        mapped_port = Container()._wait_until_reachable(
+            fake_container, time.monotonic() + POLL_GUARD_SECONDS
+        )
+
+        assert mapped_port == FAKE_PORT
+        assert ping.urls == [V2_PING_URL, V2_PING_URL]
+        assert fake_container.polls == 2
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        'failure',
+        [
+            pytest.param(503, id='another status'),
+            pytest.param(requests.exceptions.ReadTimeout('Read timed out.'), id='bound per request'),
+        ],
+    )
+    def test_starts_the_next_attempt_with_the_v2_api_if_the_ping_of_the_v1_api_fails(
+        failure: int | requests.RequestException, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        ping = FakePing({V2_PING_URL: [404, 200], V1_PING_URL: [failure]})
+        monkeypatch.setattr(requests, 'get', ping)
+        fake_container = FakeContainer(published_from_poll=1)
+
+        mapped_port = Container()._wait_until_reachable(
+            fake_container, time.monotonic() + POLL_GUARD_SECONDS
+        )
+
+        assert mapped_port == FAKE_PORT
+        assert ping.urls == [V2_PING_URL, V1_PING_URL, V2_PING_URL]
+        assert fake_container.polls == 2
+
+    @staticmethod
+    def test_does_not_ask_the_v1_api_once_the_ping_of_the_v2_api_used_up_the_time(
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        ping = FakePing({V2_PING_URL: [404], V1_PING_URL: [200]})
+        deadline = time.monotonic() + 0.5
+
+        def answer_once_the_time_is_up(url: str, timeout: float | None = None) -> SimpleNamespace:
+            time.sleep(max(deadline - time.monotonic(), 0))
+            return ping(url, timeout)
+
+        monkeypatch.setattr(requests, 'get', answer_once_the_time_is_up)
+
+        mapped_port = Container()._wait_until_reachable(FakeContainer(published_from_poll=1), deadline)
+
+        assert mapped_port is None
+        assert ping.urls == [V2_PING_URL]
+
+
 class TestStartupTimeout:
     @staticmethod
     def test_is_30_seconds_by_default() -> None:
@@ -230,7 +373,7 @@ class TestStartupTimeout:
 
     @staticmethod
     def test_reads_the_port_again_on_every_poll(monkeypatch: pytest.MonkeyPatch) -> None:
-        ping = FakePing([200])
+        ping = FakePing({V2_PING_URL: [200]})
         monkeypatch.setattr(requests, 'get', ping)
         fake_container = FakeContainer(published_from_poll=3)
 
@@ -240,11 +383,11 @@ class TestStartupTimeout:
 
         assert mapped_port == FAKE_PORT
         assert fake_container.polls == 3
-        assert ping.urls == [f'http://localhost:{FAKE_PORT}/api/v1/ping']
+        assert ping.urls == [V2_PING_URL]
 
     @staticmethod
     def test_accepts_only_status_200_from_the_ping(monkeypatch: pytest.MonkeyPatch) -> None:
-        ping = FakePing([204, 500, 200])
+        ping = FakePing({V2_PING_URL: [204, 500, 200]})
         monkeypatch.setattr(requests, 'get', ping)
         fake_container = FakeContainer(published_from_poll=1)
 
@@ -253,7 +396,7 @@ class TestStartupTimeout:
         )
 
         assert mapped_port == FAKE_PORT
-        assert len(ping.urls) == 3
+        assert ping.urls == [V2_PING_URL] * 3
 
     @staticmethod
     def test_replaces_a_running_container_that_does_not_become_reachable_in_time(
