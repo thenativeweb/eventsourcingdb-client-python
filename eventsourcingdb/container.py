@@ -16,6 +16,7 @@ from docker import DockerClient, errors
 from docker.models.containers import Container as DockerContainer
 
 from .client import Client
+from .transport.statuses_without_v2_api import STATUSES_WITHOUT_V2_API
 
 logger = logging.getLogger(__name__)
 
@@ -38,12 +39,6 @@ POLL_INTERVAL_SECONDS = 0.1
 
 V1_PING_PATH = "/api/v1/ping"
 V2_PING_PATH = "/api/v2/system/ping"
-
-# A server without the v2 API answers its ping with one of these statuses.
-# They are stated here rather than taken from the client, so that the
-# readiness of the container that tests the client does not depend on the way
-# the client chooses its API, which those tests are meant to check.
-STATUSES_WITHOUT_V2_API = (HTTPStatus.NOT_FOUND, HTTPStatus.METHOD_NOT_ALLOWED)
 
 
 def _format_seconds(seconds: float) -> str:
@@ -349,7 +344,10 @@ class Container:
         # later release of EventSourcingDB removes it. Any other failure means
         # that the server is not ready yet, so the next attempt asks the v2 API
         # again, rather than remembering an answer of a server that may still
-        # be starting.
+        # be starting. The statuses that tell a server without the v2 API are
+        # shared with the client, but not the way the client chooses its API,
+        # so that the readiness of the container that tests the client does
+        # not depend on what those tests are meant to check.
         status = self._ping(f"{base_url}{V2_PING_PATH}", deadline)
         if status == HTTPStatus.OK:
             return True
