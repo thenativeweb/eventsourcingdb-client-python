@@ -8,6 +8,7 @@ from .errors import (
     DbApiError,
     ErrorCode,
     HashVerificationFailedError,
+    IncompatibleServerError,
     InternalError,
     OutcomeUnknownError,
     ServerError,
@@ -36,6 +37,7 @@ from .write_events import (
     IsSubjectPopulated,
     IsSubjectPristine,
     Precondition,
+    PreconditionOptions,
 )
 
 __all__ = [
@@ -54,6 +56,7 @@ __all__ = [
     "HashVerificationFailedError",
     "IfEventIsMissingDuringObserve",
     "IfEventIsMissingDuringRead",
+    "IncompatibleServerError",
     "InternalError",
     "IsEventQlQueryTrue",
     "IsSubjectOnEventId",
@@ -64,6 +67,7 @@ __all__ = [
     "Order",
     "OutcomeUnknownError",
     "Precondition",
+    "PreconditionOptions",
     "ReadEventsOptions",
     "ReadFromLatestEvent",
     "ReadSubjectsOptions",

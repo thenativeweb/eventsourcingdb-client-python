@@ -13,12 +13,18 @@ from eventsourcingdb import (
     CustomError,
     DbApiError,
     ErrorCode,
+    EventCandidate,
+    IncompatibleServerError,
+    IsSubjectPristine,
     OutcomeUnknownError,
+    Precondition,
+    PreconditionOptions,
     ReadEventsOptions,
     ReadSubjectsOptions,
     ServerError,
 )
 
+from .event.fixtures import WRITTEN_EVENTS_FROM_V2_API, WRITTEN_EVENTS_WITH_HASH_V2
 from .shared.database import Database
 from .shared.requests import ALL_REQUESTS, WRITES, Request, read_event_type, read_events
 from .shared.stream_server import (
@@ -100,6 +106,30 @@ async def answer_read_events(request: web.Request) -> web.StreamResponse:
     # Reading events finds none, through either API.
     return web.Response(
         text='{"type":"end","data":{}}\n' if is_v2_path(request) else '', headers=SERVER_HEADER
+    )
+
+
+async def answer_writes_and_read_events(request: web.Request) -> web.StreamResponse:
+    # Writing events stores two, and reading events finds none, through either
+    # API.
+    if request.path == '/api/v2/data/write-events':
+        return web.Response(text=WRITTEN_EVENTS_FROM_V2_API, headers=SERVER_HEADER)
+    if request.path == '/api/v1/write-events':
+        return web.Response(text=WRITTEN_EVENTS_WITH_HASH_V2, headers=SERVER_HEADER)
+    return await answer_read_events(request)
+
+
+async def write_events_with(client: Client, precondition: Precondition) -> None:
+    await client.write_events(
+        [
+            EventCandidate(
+                source='https://www.eventsourcingdb.io',
+                subject='/books/42',
+                type='io.eventsourcingdb.library.book-acquired',
+                data={},
+            )
+        ],
+        [precondition],
     )
 
 
@@ -725,6 +755,197 @@ class TestApiDetectionAfterARollback:
 
             assert server.probe_count == 2
             assert apis_of(server) == ['v2', 'v2', 'v2', 'v2', 'v2']
+
+
+class TestApiDetectionForARecursivePrecondition:
+    # Only the v2 API checks a recursive precondition, and a server that did
+    # not offer it may offer it by now, for example after an upgrade.
+    RECURSIVE = IsSubjectPristine('/books', PreconditionOptions(recursive=True))
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_asks_again_and_writes_through_the_v2_api_once_the_server_offers_it() -> None:
+        async with StreamServer(
+            None,
+            answer_probe=answer_probes_in_turn(
+                answer_probe_without_v2_api, answer_probe_with_v2_api
+            ),
+            answer=answer_writes_and_read_events,
+        ) as server:
+            client = server.get_client()
+            await read_events(client)
+
+            await write_events_with(client, TestApiDetectionForARecursivePrecondition.RECURSIVE)
+
+            assert server.probe_count == 2
+            assert [(request.method, request.path) for request in server.requests] == [
+                ('POST', '/api/v1/read-events'),
+                ('POST', '/api/v2/data/write-events'),
+            ]
+            assert json.loads(server.requests[-1].body)['preconditions'] == [
+                {
+                    'type': 'isSubjectPristine',
+                    'payload': {'subject': '/books', 'options': {'recursive': True}},
+                }
+            ]
+
+            await read_events(client)
+
+            assert server.probe_count == 2
+            assert apis_of(server) == ['v1', 'v2', 'v2']
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_asks_again_and_refuses_the_write_if_the_server_still_lacks_the_v2_api() -> None:
+        async with StreamServer(None, answer=answer_writes_and_read_events) as server:
+            client = server.get_client()
+            await read_events(client)
+
+            with pytest.raises(IncompatibleServerError):
+                await write_events_with(client, TestApiDetectionForARecursivePrecondition.RECURSIVE)
+
+            assert server.probe_count == 2
+            assert apis_of(server) == ['v1']
+
+            await read_events(client)
+
+            assert server.probe_count == 2
+            assert apis_of(server) == ['v1', 'v1']
+
+    @staticmethod
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        'precondition',
+        [
+            pytest.param(IsSubjectPristine('/books'), id='without options'),
+            pytest.param(
+                IsSubjectPristine('/books', PreconditionOptions(recursive=False)),
+                id='not recursive',
+            ),
+        ],
+    )
+    async def test_keeps_the_answer_for_a_write_without_a_recursive_precondition(
+        precondition: Precondition,
+    ) -> None:
+        async with StreamServer(
+            None,
+            answer_probe=answer_probes_in_turn(
+                answer_probe_without_v2_api, answer_probe_with_v2_api
+            ),
+            answer=answer_writes_and_read_events,
+        ) as server:
+            client = server.get_client()
+            await read_events(client)
+
+            await write_events_with(client, precondition)
+
+            assert server.probe_count == 1
+            assert apis_of(server) == ['v1', 'v1']
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_lets_every_other_request_use_the_answer_while_it_asks_again() -> None:
+        probe_arrived = asyncio.Event()
+        release_probe = asyncio.Event()
+
+        async def answer_probe_once_released(request: web.Request) -> web.StreamResponse:
+            probe_arrived.set()
+            await release_probe.wait()
+            return await answer_probe_with_v2_api(request)
+
+        async with StreamServer(
+            None,
+            answer_probe=answer_probes_in_turn(
+                answer_probe_without_v2_api, answer_probe_once_released
+            ),
+            answer=answer_writes_and_read_events,
+        ) as server:
+            client = server.get_client()
+            await read_events(client)
+
+            write = asyncio.create_task(
+                write_events_with(client, TestApiDetectionForARecursivePrecondition.RECURSIVE)
+            )
+            async with asyncio.timeout(GUARD_TIMEOUT_SECONDS):
+                await probe_arrived.wait()
+
+            read = asyncio.create_task(read_events(client))
+            done, _ = await asyncio.wait({read}, timeout=GUARD_TIMEOUT_SECONDS)
+            did_read_while_asking = read in done
+
+            release_probe.set()
+            async with asyncio.timeout(GUARD_TIMEOUT_SECONDS):
+                await asyncio.gather(read, write)
+
+            assert did_read_while_asking, 'The read waited for the ping that asks again.'
+            assert server.probe_count == 2
+            assert apis_of(server) == ['v1', 'v1', 'v2']
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_keeps_the_answer_if_asking_again_fails() -> None:
+        async with StreamServer(
+            None,
+            answer_probe=answer_probes_in_turn(
+                answer_probe_without_v2_api,
+                answer_probe_with_status(500, 'internal server error'),
+                answer_probe_without_v2_api,
+            ),
+            answer=answer_writes_and_read_events,
+        ) as server:
+            client = server.get_client()
+            await read_events(client)
+
+            with pytest.raises(DbApiError) as error:
+                await write_events_with(client, TestApiDetectionForARecursivePrecondition.RECURSIVE)
+
+            assert error.value.status == 500
+            assert server.probe_count == 2
+            assert apis_of(server) == ['v1']
+
+            await read_events(client)
+
+            assert server.probe_count == 2
+            assert apis_of(server) == ['v1', 'v1']
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_shares_the_ping_that_asks_again_between_concurrent_writes() -> None:
+        probe_arrived = asyncio.Event()
+        release_probe = asyncio.Event()
+
+        async def answer_probe_once_released(request: web.Request) -> web.StreamResponse:
+            probe_arrived.set()
+            await release_probe.wait()
+            return await answer_probe_with_v2_api(request)
+
+        async with StreamServer(
+            None,
+            answer_probe=answer_probes_in_turn(
+                answer_probe_without_v2_api, answer_probe_once_released
+            ),
+            answer=answer_writes_and_read_events,
+        ) as server:
+            client = server.get_client()
+            await read_events(client)
+
+            writes = [
+                asyncio.create_task(
+                    write_events_with(client, TestApiDetectionForARecursivePrecondition.RECURSIVE)
+                )
+                for _ in range(3)
+            ]
+
+            async with asyncio.timeout(GUARD_TIMEOUT_SECONDS):
+                await probe_arrived.wait()
+                release_probe.set()
+                await asyncio.gather(*writes)
+
+            assert server.probe_count == 2
+            assert [request.path for request in server.requests] == [
+                '/api/v1/read-events',
+                *['/api/v2/data/write-events'] * 3,
+            ]
 
 
 class TestApiDetectionAgainstEventSourcingDB:

@@ -18,10 +18,13 @@ from eventsourcingdb import (
     IfEventIsMissingDuringObserve,
     IfEventIsMissingDuringRead,
     IsSubjectOnEventId,
+    IsSubjectPopulated,
+    IsSubjectPristine,
     ObserveEventsOptions,
     ObserveFromLatestEvent,
     Order,
     OutcomeUnknownError,
+    PreconditionOptions,
     ReadEventsOptions,
     ReadFromLatestEvent,
     ReadSubjectsOptions,
@@ -196,6 +199,55 @@ class TestCallsOfTheV2Api:
 
             assert server.last_request_json()['preconditions'] == [  # type: ignore[index]
                 {'type': 'isSubjectOnEventId', 'payload': {'subject': '/books/42', 'eventId': '0'}}
+            ]
+
+    @staticmethod
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ('options', 'sent_options'),
+        [
+            pytest.param(None, {}, id='without options'),
+            pytest.param(
+                PreconditionOptions(recursive=False),
+                {'options': {'recursive': False}},
+                id='not recursive',
+            ),
+            pytest.param(
+                PreconditionOptions(recursive=True),
+                {'options': {'recursive': True}},
+                id='recursive',
+            ),
+        ],
+    )
+    async def test_sends_the_options_of_the_preconditions_on_a_subject_only_if_given(
+        options: PreconditionOptions | None, sent_options: dict[str, Any]
+    ) -> None:
+        async with StreamServer(
+            answer_with_lines(WRITTEN_EVENTS_FROM_V2_API.strip()), api='v2'
+        ) as server:
+            await server.get_client().write_events(
+                [
+                    EventCandidate(
+                        source='https://www.eventsourcingdb.io',
+                        subject='/books/42',
+                        type='io.eventsourcingdb.library.book-acquired',
+                        data={},
+                    ),
+                ],
+                [
+                    IsSubjectPristine('/books', options),
+                    IsSubjectPopulated('/books', options),
+                    IsSubjectOnEventId('/books', '0', options),
+                ],
+            )
+
+            assert server.last_request_json()['preconditions'] == [  # type: ignore[index]
+                {'type': 'isSubjectPristine', 'payload': {'subject': '/books', **sent_options}},
+                {'type': 'isSubjectPopulated', 'payload': {'subject': '/books', **sent_options}},
+                {
+                    'type': 'isSubjectOnEventId',
+                    'payload': {'subject': '/books', 'eventId': '0', **sent_options},
+                },
             ]
 
     @staticmethod

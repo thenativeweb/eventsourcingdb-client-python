@@ -4,6 +4,7 @@ from .custom_error import CustomError
 from .db_api_error import DbApiError
 from .error_code import ErrorCode
 from .hash_verification_failed_error import HashVerificationFailedError
+from .incompatible_server_error import IncompatibleServerError
 from .internal_error import InternalError
 from .is_outcome_unknown import is_outcome_unknown
 from .outcome_unknown_error import OutcomeUnknownError
@@ -19,6 +20,7 @@ __all__ = [
     "DbApiError",
     "ErrorCode",
     "HashVerificationFailedError",
+    "IncompatibleServerError",
     "InternalError",
     "OutcomeUnknownError",
     "ServerError",

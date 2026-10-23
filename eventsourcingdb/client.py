@@ -12,6 +12,7 @@ from .read_events import ReadEventsOptions
 from .read_subjects import ReadSubjectsOptions
 from .transport import ChooseTransport
 from .write_events import Precondition
+from .write_events.preconditions import is_recursive
 
 T = TypeVar('T')
 
@@ -78,7 +79,14 @@ class Client:
         if preconditions is None:
             preconditions = []
 
-        transport = await self.__transports.get()
+        # Only the v2 API checks a recursive precondition, so the client asks
+        # again whether the server offers it rather than refuse the write on
+        # an answer that may be outdated.
+        if any(is_recursive(precondition) for precondition in preconditions):
+            transport = await self.__transports.get_asking_again_without_v2_api()
+        else:
+            transport = await self.__transports.get()
+
         return await transport.write_events(event_candidates, preconditions)
 
     async def read_events(

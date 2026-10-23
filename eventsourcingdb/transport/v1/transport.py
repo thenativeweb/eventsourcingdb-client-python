@@ -1,12 +1,14 @@
 import json
 from collections import OrderedDict
 from collections.abc import AsyncGenerator
+from dataclasses import replace
 from http import HTTPStatus
 from typing import Any
 
 from ...errors import (
     CustomError,
     DbApiError,
+    IncompatibleServerError,
     InternalError,
     ServerError,
     ValidationError,
@@ -23,6 +25,7 @@ from ...parse_raw_message import parse_raw_message
 from ...read_event_types import EventType
 from ...read_events import ReadEventsOptions
 from ...write_events import Precondition
+from ...write_events.preconditions import PRECONDITIONS_ON_A_SUBJECT, is_recursive
 from ..error_of_answer import error_of_answer
 from ..guard_write import guard_write
 from ..stream_broke_off import stream_broke_off
@@ -71,6 +74,22 @@ def is_refusal(error: DbApiError) -> bool:
         HTTPStatus.SERVICE_UNAVAILABLE,
         HTTPStatus.INSUFFICIENT_STORAGE,
     }
+
+
+def precondition_of_v1_api(precondition: Precondition) -> Any:
+    """
+    Turns a precondition into what the v1 API expects. The v1 API knows no
+    options of a precondition and rejects them, so a precondition whose
+    options are not recursive is sent as one without options. It cannot check
+    a recursive precondition, which fails the write before it is sent, rather
+    than have the server check less than was asked.
+    """
+    if is_recursive(precondition):
+        raise IncompatibleServerError()
+    if isinstance(precondition, PRECONDITIONS_ON_A_SUBJECT):
+        return replace(precondition, options=None).to_json()
+
+    return precondition.to_json()
 
 
 def error_of_stream_item(message: dict) -> DbApiError:
@@ -140,7 +159,9 @@ class V1Transport(Transport):
         request_body = json.dumps(
             {
                 'events': [event_candidate.to_json() for event_candidate in event_candidates],
-                'preconditions': [precondition.to_json() for precondition in preconditions]
+                'preconditions': [
+                    precondition_of_v1_api(precondition) for precondition in preconditions
+                ],
             }
         )
 

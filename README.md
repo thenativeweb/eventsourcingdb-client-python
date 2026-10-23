@@ -46,7 +46,7 @@ await client.verify_api_token()
 
 ### Talking to Servers With and Without the v2 API
 
-The client SDK works with servers that offer the v2 API of EventSourcingDB, which it has since version 1.3, as well as with servers that only offer the v1 API. Creating a client does not send any request. Instead, on its first request, the client asks the server whether it offers the v2 API, and remembers the answer. If the server answers a path of the v2 API with 404 or 405, for example after it was rolled back to a version without it, the client asks again on the next request. If the server cannot be asked, for example because it is not reachable, the first request fails with that error, and the next request asks again.
+The client SDK works with servers that offer the v2 API of EventSourcingDB, which it has since version 1.3, as well as with servers that only offer the v1 API. Creating a client does not send any request. Instead, on its first request, the client asks the server whether it offers the v2 API, and remembers the answer. If the server answers a path of the v2 API with 404 or 405, for example after it was rolled back to a version without it, the client asks again on the next request. If the server cannot be asked, for example because it is not reachable, the first request fails with that error, and the next request asks again. A write with a recursive precondition, which needs the v2 API, asks again as well if the client remembers that the server does not offer it, while every other request keeps using that answer, see [Checking Preconditions on Subjects Recursively](#checking-preconditions-on-subjects-recursively).
 
 With the v2 API, every function that reads, such as `read_events`, `observe_events`, `run_eventql_query`, `read_subjects`, `read_event_type`, and `read_event_types`, uses the HTTP method `QUERY` ([RFC 10008](https://www.rfc-editor.org/rfc/rfc10008)). If there is a proxy, a load balancer, or a firewall in front of EventSourcingDB, it has to let requests with this method through. The client does not fall back to `POST`.
 
@@ -106,7 +106,7 @@ Servers without the v2 API report errors without a code. For them, the client as
 
 EventSourcingDB never stores a write halfway: the events of a call to `write_events`, or the schema of a call to `register_event_schema`, are either stored completely or not at all. If one of these functions fails in a way that leaves open whether the server stored the write, it raises an `OutcomeUnknownError`, whose `cause` attribute holds the error that the write failed with. This happens, for example, if the server stalls or the connection breaks once the request has a connection, if the server answers with a status such as `500`, `502`, or `504`, if the answer does not come from EventSourcingDB, or if the server ends its answer before it is complete. Before you repeat such a write, find out whether it was stored, for example by reading the events of the subject, or repeat it with a precondition such as `IsSubjectOnEventId` that only holds if it was not stored.
 
-The function raises the error itself, which tells that the write was certainly not stored, only if the request could not get a connection at all, such as when the name of the server cannot be resolved, connecting or TLS fails, or the request waits for a free connection for longer than the stall timeout, or if the server refused the write: with an error that it reports within its answer, other than `ErrorCode.STORE_FAILED`, with one of the statuses `400`, `401`, `408`, `413`, `429`, and `503`, or, for servers without the v2 API, with any status `4xx`, `503`, or `507`.
+The function raises the error itself, which tells that the write was certainly not stored, only if the client refused the write before sending it, such as with an `IncompatibleServerError`, if the client could not find out which API the server offers, which it asks with a ping before the write where needed (see [Talking to Servers With and Without the v2 API](#talking-to-servers-with-and-without-the-v2-api)), for example because the ping stalled, the server answered it with a status such as `500`, or the answer did not come from EventSourcingDB, if the request could not get a connection at all, such as when the name of the server cannot be resolved, connecting or TLS fails, or the request waits for a free connection for longer than the stall timeout, or if the server refused the write: with an error that it reports within its answer, other than `ErrorCode.STORE_FAILED`, with one of the statuses `400`, `401`, `408`, `413`, `429`, and `503`, or, for servers without the v2 API, with any status `4xx`, `503`, or `507`.
 
 Cancelling a write once it has a connection, for example with `asyncio.timeout` or by cancelling its task, leaves its outcome open as well. It is cancelled as usual nonetheless, so that `asyncio.timeout`, `asyncio.wait_for`, and task groups work as always: the `asyncio.CancelledError` is not wrapped, but marked, and carries a note that says so. To tell whether the outcome of a write is unknown, call `is_outcome_unknown` with the error. It returns `True` for an `OutcomeUnknownError`, for a marked `CancelledError`, and for an error caused by one of them, such as the `TimeoutError` of `asyncio.timeout`:
 
@@ -227,6 +227,33 @@ written_events = await client.write_events(
 ```
 
 *Note that according to the CloudEvents standard, event IDs must be of type string.*
+
+#### Checking Preconditions on Subjects Recursively
+
+The `IsSubjectPristine`, `IsSubjectPopulated`, and `IsSubjectOnEventId` preconditions check the given subject alone. If you want them to check the subject together with all nested subjects, import the `PreconditionOptions` class and pass it with the `recursive` option set to `True`:
+
+```python
+from eventsourcingdb import IsSubjectOnEventId, PreconditionOptions
+
+written_events = await client.write_events(
+  event_candidates = [
+    # event candidates
+  ],
+  preconditions = [
+    IsSubjectOnEventId(
+      subject = '/books/42',
+      event_id = '0',
+      options = PreconditionOptions(
+        recursive = True
+      ),
+    )
+  ],
+)
+```
+
+Then `IsSubjectPristine` holds if neither the subject nor any of its nested subjects has an event, `IsSubjectPopulated` holds if any of them has one, and `IsSubjectOnEventId` holds if the latest event among all of them has the given ID. A recursive precondition that does not hold is reported like any other precondition that does not hold.
+
+Checking a precondition recursively needs the v2 API. If the client remembers that the server does not offer it, it asks the server again before the write, since the server may offer it by now, for example after an upgrade. If asking again fails, the write fails with that error, and the client keeps its answer. If the server still does not offer it, `write_events` raises an `IncompatibleServerError` before it sends the events, so none of them is written. `IncompatibleServerError` is a subclass of `CustomError`. If you set the `recursive` option to `False`, the precondition works with every server, just as without options.
 
 #### Using the `isEventQlQueryTrue` precondition
 

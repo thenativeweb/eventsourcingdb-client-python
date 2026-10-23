@@ -1,3 +1,4 @@
+from .precondition_options import PreconditionOptions
 from .preconditions import (
     IsEventQlQueryTrue,
     IsSubjectOnEventId,
@@ -12,4 +13,5 @@ __all__ = [
     "IsSubjectPopulated",
     "IsSubjectPristine",
     "Precondition",
+    "PreconditionOptions",
 ]
