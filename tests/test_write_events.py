@@ -31,9 +31,9 @@ from .shared.stream_server import StreamServer
 RECURSIVE = PreconditionOptions(recursive=True)
 NOT_RECURSIVE = PreconditionOptions(recursive=False)
 
-# Events 0 and 1 are written below /books, but none to /books itself, and none
-# to /authors or below it, so that each precondition on a subject holds or is
-# violated depending on whether it is recursive.
+# Events 0 and 1 are written to /books/42 and to /books/42/chapters/1, so that
+# /books has no event of its own but events below it, the latest event of
+# /books/42 is not the latest one below it, and /authors has no event at all.
 SUBJECTS_OF_WRITTEN_EVENTS = ["/books/42", "/books/42/chapters/1"]
 IDS_OF_WRITTEN_EVENTS = ["0", "1"]
 
@@ -444,6 +444,7 @@ class TestPreconditionsOnASubject:
 
             assert await read_ids_of_all_events(client) == [*IDS_OF_WRITTEN_EVENTS, "2"]
         else:
+            # Without the v2 API, the client refuses the write instead.
             with pytest.raises(IncompatibleServerError):
                 await write_event_with(client, test_data, precondition)
 
@@ -466,6 +467,7 @@ class TestPreconditionsOnASubject:
 
             assert error.value.code == ErrorCode.PRECONDITION_VIOLATED
         else:
+            # Without the v2 API, the client refuses the write instead.
             with pytest.raises(IncompatibleServerError):
                 await write_event_with(client, test_data, precondition)
 
