@@ -24,10 +24,12 @@ class ChooseTransport:
     that need the answer at the same time share a single ping. Once the server
     answers a path of the v2 API with 404 or 405, for example after it was
     rolled back to a version without it, the answer is forgotten, and the
-    next request asks again. A request that needs the v2 API, such as a write
-    with a recursive precondition, asks again as well if the answer is that
-    the server does not offer it, since it may offer it by now, for example
-    after an upgrade.
+    next request asks again. A write with a recursive precondition, which
+    needs the v2 API, asks again if the answer is that the server does not
+    offer it, since it may offer it by now, for example after an upgrade.
+    Writes that ask again at the same time share a single ping, while every
+    other request keeps using the answer, which only a definite answer of
+    that ping replaces.
     """
 
     def __init__(self, http_client: HttpClient) -> None:
@@ -35,6 +37,7 @@ class ChooseTransport:
         self.__v1_transport = V1Transport(http_client)
         self.__transport: Transport | None = None
         self.__probe: asyncio.Task[Transport] | None = None
+        self.__reask: asyncio.Task[Transport] | None = None
 
     async def get(self) -> Transport:
         if self.__transport is not None:
@@ -60,15 +63,33 @@ class ChooseTransport:
         return probe.result()
 
     async def get_asking_again_without_v2_api(self) -> Transport:
-        # Forgetting the answer makes this request ask again, or wait for a
-        # ping that asks already, as for every request that finds no answer.
-        # So requests that ask again at the same time share a single ping.
-        self.__forget(self.__v1_transport)
-        return await self.get()
+        # Without an answer yet, the ping of get finds a fresh one, and with
+        # the answer that the server offers the v2 API, there is nothing to
+        # ask again about.
+        if self.__transport is not self.__v1_transport:
+            return await self.get()
+
+        # The answer stays remembered while the ping asks again, so that every
+        # other request keeps using it, and nothing else replaces it meanwhile,
+        # since only the answer that the server offers the v2 API is ever
+        # forgotten. Unlike the ping of get, this ping is shared only while it
+        # runs, so that every write that needs it gets an answer that is newer
+        # than the one it asks again about.
+        reask = self.__reask
+        if reask is None or reask.get_loop() is not asyncio.get_running_loop() or reask.done():
+            reask = asyncio.create_task(self.__detect())
+            reask.add_done_callback(self.__remember)
+            self.__reask = reask
+
+        # Waiting rather than shielding, for the same reasons as in get.
+        await asyncio.wait({reask})
+        return reask.result()
 
     def __remember(self, probe: asyncio.Task[Transport]) -> None:
         if self.__probe is probe:
             self.__probe = None
+        if self.__reask is probe:
+            self.__reask = None
 
         if ChooseTransport.__succeeded(probe):
             self.__transport = probe.result()

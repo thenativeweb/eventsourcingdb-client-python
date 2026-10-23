@@ -20,9 +20,10 @@ async def guard_write(
     tells a failure that leaves open whether the server stored the write by
     raising an OutcomeUnknownError with the failure as its cause.
 
-    Apart from a write that the client refuses before it calls this function,
-    such as one with a recursive precondition for a server without the v2
-    API, the write was certainly not stored only if the request never got a
+    Apart from a write that fails before it calls this function, such as one
+    with a recursive precondition for a server without the v2 API, or one for
+    which the client could not find out which API the server offers, the
+    write was certainly not stored only if the request never got a
     connection, such as when the name of the server could not be resolved,
     connecting or TLS failed, or the request waited for a free connection in
     vain, or if the server explicitly refused the write, which the given

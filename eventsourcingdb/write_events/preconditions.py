@@ -58,6 +58,7 @@ class IsSubjectOnEventId(Precondition):
             ),
         }
 
+
 # The preconditions on a subject, which take options.
 PRECONDITIONS_ON_A_SUBJECT = (IsSubjectPristine, IsSubjectPopulated, IsSubjectOnEventId)
 

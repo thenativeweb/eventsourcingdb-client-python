@@ -807,6 +807,11 @@ class TestApiDetectionForARecursivePrecondition:
             assert server.probe_count == 2
             assert apis_of(server) == ['v1']
 
+            await read_events(client)
+
+            assert server.probe_count == 2
+            assert apis_of(server) == ['v1', 'v1']
+
     @staticmethod
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
@@ -835,6 +840,72 @@ class TestApiDetectionForARecursivePrecondition:
             await write_events_with(client, precondition)
 
             assert server.probe_count == 1
+            assert apis_of(server) == ['v1', 'v1']
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_lets_every_other_request_use_the_answer_while_it_asks_again() -> None:
+        probe_arrived = asyncio.Event()
+        release_probe = asyncio.Event()
+
+        async def answer_probe_once_released(request: web.Request) -> web.StreamResponse:
+            probe_arrived.set()
+            await release_probe.wait()
+            return await answer_probe_with_v2_api(request)
+
+        async with StreamServer(
+            None,
+            answer_probe=answer_probes_in_turn(
+                answer_probe_without_v2_api, answer_probe_once_released
+            ),
+            answer=answer_writes_and_read_events,
+        ) as server:
+            client = server.get_client()
+            await read_events(client)
+
+            write = asyncio.create_task(
+                write_events_with(client, TestApiDetectionForARecursivePrecondition.RECURSIVE)
+            )
+            async with asyncio.timeout(GUARD_TIMEOUT_SECONDS):
+                await probe_arrived.wait()
+
+            read = asyncio.create_task(read_events(client))
+            done, _ = await asyncio.wait({read}, timeout=GUARD_TIMEOUT_SECONDS)
+            did_read_while_asking = read in done
+
+            release_probe.set()
+            async with asyncio.timeout(GUARD_TIMEOUT_SECONDS):
+                await asyncio.gather(read, write)
+
+            assert did_read_while_asking, 'The read waited for the ping that asks again.'
+            assert server.probe_count == 2
+            assert apis_of(server) == ['v1', 'v1', 'v2']
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_keeps_the_answer_if_asking_again_fails() -> None:
+        async with StreamServer(
+            None,
+            answer_probe=answer_probes_in_turn(
+                answer_probe_without_v2_api,
+                answer_probe_with_status(500, 'internal server error'),
+                answer_probe_without_v2_api,
+            ),
+            answer=answer_writes_and_read_events,
+        ) as server:
+            client = server.get_client()
+            await read_events(client)
+
+            with pytest.raises(DbApiError) as error:
+                await write_events_with(client, TestApiDetectionForARecursivePrecondition.RECURSIVE)
+
+            assert error.value.status == 500
+            assert server.probe_count == 2
+            assert apis_of(server) == ['v1']
+
+            await read_events(client)
+
+            assert server.probe_count == 2
             assert apis_of(server) == ['v1', 'v1']
 
     @staticmethod
