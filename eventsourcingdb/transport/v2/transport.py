@@ -7,7 +7,6 @@ from typing import Any
 from ...errors import (
     CustomError,
     DbApiError,
-    ErrorCode,
     InternalError,
     ServerError,
     ValidationError,
@@ -64,11 +63,15 @@ REFUSING_STATUSES = {
 def is_refusal(error: DbApiError) -> bool:
     """
     Tells whether the server refused a write before it stored anything, as
-    the v2 API does with every error item except store-failed, and with the
-    statuses above.
+    the v2 API does with every error item, and with the statuses above. This
+    includes store-failed, which the server reports only after its store has
+    failed, since it then refuses every later write until it is restarted. A
+    write during which storing fails gets an error without a code instead, a
+    status of 500 or a stream that ends before it is complete, so its outcome
+    is unknown.
     """
     if error.status == HTTPStatus.OK:
-        return error.code != ErrorCode.STORE_FAILED
+        return True
 
     return error.status in REFUSING_STATUSES
 

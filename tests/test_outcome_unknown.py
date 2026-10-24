@@ -282,13 +282,12 @@ class TestWritesThatWereCertainlyNotStored:
             'license-invalid',
             'store-read-only',
             'disk-full',
+            'store-failed',
             'indexes-rebuilding',
             'server-shutting-down',
         ],
     )
-    async def test_raises_an_error_item_of_the_v2_api_other_than_store_failed(
-        request_: Request, code: str
-    ) -> None:
+    async def test_raises_an_error_item_of_the_v2_api(request_: Request, code: str) -> None:
         error = await outcome_of(
             request_, StreamServer(answer_with(V2_HEARTBEAT + error_item(code) + V2_END), api='v2')
         )
@@ -328,18 +327,6 @@ class TestWritesThatWereCertainlyNotStored:
 
 
 class TestWritesWhoseOutcomeIsUnknown:
-    @staticmethod
-    @pytest.mark.asyncio
-    @pytest.mark.parametrize('request_', [write.values[0] for write in WRITES])
-    async def test_reports_an_unknown_outcome_for_a_store_that_failed(request_: Request) -> None:
-        error = await outcome_of(
-            request_,
-            StreamServer(answer_with(error_item('store-failed') + V2_END), api='v2'),
-        )
-
-        assert_is_outcome_unknown(error, DbApiError)
-        assert error.cause.code == 'https://docs.eventsourcingdb.io/errors/store-failed'  # type: ignore[union-attr]
-
     @staticmethod
     @pytest.mark.asyncio
     @pytest.mark.parametrize(('api', 'request_'), WRITES_PER_API)
