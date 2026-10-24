@@ -458,7 +458,11 @@ class TestStartupTimeout:
                 'for line in $(seq 1 30); do echo "line $line"; done; exit 1',
             ],
         }
-        container = Container().with_image_tag(get_image_tag()).with_startup_timeout(5)
+        # The default startup timeout leaves a busy Docker the time it needs to
+        # create and start the container. The test does not depend on it: a
+        # start that waited for the time to run out would fail with another
+        # error than the log tail.
+        container = Container().with_image_tag(get_image_tag())
 
         with pytest.raises(RuntimeError) as error:
             container.start()
