@@ -1,11 +1,13 @@
 # The slugs of the error codes that EventSourcingDB lists, copied verbatim
-# from cmd/server/api/error.go of its repository (main, commit 36fa8821).
+# from cmd/server/api/error.go of its repository (main, commit 0efae07d).
 # Copy the block again whenever the server adds a code, so that the test of
 # ErrorCode tells which constants are missing.
 SERVER_ERROR_SLUGS = r"""
 const (
 	SlugSubjectMissing               = "subject-missing"
 	SlugSubjectMalformed             = "subject-malformed"
+	SlugSubjectTooLong               = "subject-too-long"
+	SlugSubjectTooDeep               = "subject-too-deep"
 	SlugOrderUnknown                 = "order-unknown"
 	SlugEventIDMissing               = "event-id-missing"
 	SlugEventIDMalformed             = "event-id-malformed"
@@ -35,6 +37,7 @@ const (
 	SlugEventSchemaMissing           = "event-schema-missing"
 	SlugEventSchemaMalformed         = "event-schema-malformed"
 	SlugEventSchemaNotObject         = "event-schema-not-object"
+	SlugEventSchemaTooComplex        = "event-schema-too-complex"
 	SlugEventSchemaAlreadyRegistered = "event-schema-already-registered"
 	SlugLastAuditedEventMissing      = "last-audited-event-missing"
 	SlugLastAuditedEventMismatched   = "last-audited-event-mismatched"
@@ -54,10 +57,16 @@ const (
 	SlugBackupIncrementDisconnected  = "backup-increment-disconnected"
 	SlugBackupFailed                 = "backup-failed"
 	SlugBackupUnreadable             = "backup-unreadable"
+	SlugBackupAheadOfClock           = "backup-ahead-of-clock"
+	SlugImportAheadOfClock           = "import-ahead-of-clock"
+	SlugImportMalformed              = "import-malformed"
+	SlugImportUnreadable             = "import-unreadable"
 	SlugEventTooLarge                = "event-too-large"
 	SlugDataMalformed                = "data-malformed"
 	SlugQueryMissing                 = "query-missing"
 	SlugQueryMalformed               = "query-malformed"
+	SlugQueryTooDeep                 = "query-too-deep"
+	SlugQueryTooLong                 = "query-too-long"
 	SlugQueryUnevaluable             = "query-unevaluable"
 	SlugQueryNotBoolean              = "query-not-boolean"
 	SlugPreconditionViolated         = "precondition-violated"
@@ -68,4 +77,5 @@ const (
 	SlugStoreFailed                  = "store-failed"
 	SlugIndexesRebuilding            = "indexes-rebuilding"
 	SlugServerShuttingDown           = "server-shutting-down"
+	SlugFileUnreadable               = "file-unreadable"
 )"""

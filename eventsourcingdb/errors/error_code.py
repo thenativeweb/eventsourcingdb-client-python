@@ -12,6 +12,8 @@ class ErrorCode(StrEnum):
 
     SUBJECT_MISSING = "https://docs.eventsourcingdb.io/errors/subject-missing"
     SUBJECT_MALFORMED = "https://docs.eventsourcingdb.io/errors/subject-malformed"
+    SUBJECT_TOO_LONG = "https://docs.eventsourcingdb.io/errors/subject-too-long"
+    SUBJECT_TOO_DEEP = "https://docs.eventsourcingdb.io/errors/subject-too-deep"
     ORDER_UNKNOWN = "https://docs.eventsourcingdb.io/errors/order-unknown"
     EVENT_ID_MISSING = "https://docs.eventsourcingdb.io/errors/event-id-missing"
     EVENT_ID_MALFORMED = "https://docs.eventsourcingdb.io/errors/event-id-malformed"
@@ -47,6 +49,7 @@ class ErrorCode(StrEnum):
     EVENT_SCHEMA_MISSING = "https://docs.eventsourcingdb.io/errors/event-schema-missing"
     EVENT_SCHEMA_MALFORMED = "https://docs.eventsourcingdb.io/errors/event-schema-malformed"
     EVENT_SCHEMA_NOT_OBJECT = "https://docs.eventsourcingdb.io/errors/event-schema-not-object"
+    EVENT_SCHEMA_TOO_COMPLEX = "https://docs.eventsourcingdb.io/errors/event-schema-too-complex"
     EVENT_SCHEMA_ALREADY_REGISTERED = (
         "https://docs.eventsourcingdb.io/errors/event-schema-already-registered"
     )
@@ -84,10 +87,16 @@ class ErrorCode(StrEnum):
     )
     BACKUP_FAILED = "https://docs.eventsourcingdb.io/errors/backup-failed"
     BACKUP_UNREADABLE = "https://docs.eventsourcingdb.io/errors/backup-unreadable"
+    BACKUP_AHEAD_OF_CLOCK = "https://docs.eventsourcingdb.io/errors/backup-ahead-of-clock"
+    IMPORT_AHEAD_OF_CLOCK = "https://docs.eventsourcingdb.io/errors/import-ahead-of-clock"
+    IMPORT_MALFORMED = "https://docs.eventsourcingdb.io/errors/import-malformed"
+    IMPORT_UNREADABLE = "https://docs.eventsourcingdb.io/errors/import-unreadable"
     EVENT_TOO_LARGE = "https://docs.eventsourcingdb.io/errors/event-too-large"
     DATA_MALFORMED = "https://docs.eventsourcingdb.io/errors/data-malformed"
     QUERY_MISSING = "https://docs.eventsourcingdb.io/errors/query-missing"
     QUERY_MALFORMED = "https://docs.eventsourcingdb.io/errors/query-malformed"
+    QUERY_TOO_DEEP = "https://docs.eventsourcingdb.io/errors/query-too-deep"
+    QUERY_TOO_LONG = "https://docs.eventsourcingdb.io/errors/query-too-long"
     QUERY_UNEVALUABLE = "https://docs.eventsourcingdb.io/errors/query-unevaluable"
     QUERY_NOT_BOOLEAN = "https://docs.eventsourcingdb.io/errors/query-not-boolean"
     PRECONDITION_VIOLATED = "https://docs.eventsourcingdb.io/errors/precondition-violated"
@@ -100,3 +109,4 @@ class ErrorCode(StrEnum):
     STORE_FAILED = "https://docs.eventsourcingdb.io/errors/store-failed"
     INDEXES_REBUILDING = "https://docs.eventsourcingdb.io/errors/indexes-rebuilding"
     SERVER_SHUTTING_DOWN = "https://docs.eventsourcingdb.io/errors/server-shutting-down"
+    FILE_UNREADABLE = "https://docs.eventsourcingdb.io/errors/file-unreadable"
