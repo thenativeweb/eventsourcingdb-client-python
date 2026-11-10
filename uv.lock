@@ -514,6 +514,11 @@ dependencies = [
     { name = "testcontainers" },
 ]
 
+[package.optional-dependencies]
+pandas = [
+    { name = "pandas" },
+]
+
 [package.dev-dependencies]
 dev = [
     { name = "bandit" },
@@ -526,16 +531,15 @@ dev = [
     { name = "ruff" },
     { name = "twine" },
 ]
-pandas = [
-    { name = "pandas" },
-]
 
 [package.metadata]
 requires-dist = [
     { name = "aiohttp", specifier = "==3.14.5" },
     { name = "cryptography", specifier = "==50.0.2" },
+    { name = "pandas", marker = "extra == 'pandas'", specifier = ">=2.0.0" },
     { name = "testcontainers", specifier = "==4.15.0" },
 ]
+provides-extras = ["pandas"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -549,7 +553,6 @@ dev = [
     { name = "ruff", specifier = "==0.17.3" },
     { name = "twine", specifier = "==7.0.0" },
 ]
-pandas = [{ name = "pandas", specifier = ">=2.0.0" }]
 
 [[package]]
 name = "frozenlist"
