@@ -454,7 +454,7 @@ await rows.aclose()
 For data analysis and exploration, you can convert event streams to pandas DataFrames. To use this feature, install the client SDK with pandas support:
 
 ```shell
-pip install eventsourcingdb[pandas]
+pip install "eventsourcingdb[pandas]"
 ```
 
 Import the `events_to_dataframe` function from the `eventsourcingdb.pandas` module and pass an event stream to it:
